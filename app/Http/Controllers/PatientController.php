@@ -6,6 +6,7 @@ use App\Http\Services\Patient\PatientService;
 use App\Models\Patient;
 use App\Models\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class PatientController extends Controller
@@ -58,6 +59,20 @@ class PatientController extends Controller
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('relatorio-pacientes.pdf');
+    }
+
+    public function update(Patient $patient, Request $request)
+    {
+        $this->patientService->update($patient, $request->input('answers', []));
+
+        return redirect()->route('patients.index');
+    }
+
+    public function destroy(Patient $patient)
+    {
+        $this->patientService->delete($patient);
+
+        return redirect()->route('patients.index');
     }
 
     public function downloadPdf(Patient $patient)
