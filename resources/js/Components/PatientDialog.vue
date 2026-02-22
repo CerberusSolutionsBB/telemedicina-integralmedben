@@ -66,10 +66,10 @@ const getQuestion = (answer) => answer.question ?? null;
               <option value="">Selecione...</option>
               <option
                 v-for="opt in answer.question.options"
-                :key="opt"
-                :value="opt"
+                :key="typeof opt === 'object' ? opt.value : opt"
+                :value="typeof opt === 'object' ? opt.value : opt"
               >
-                {{ opt }}
+                {{ typeof opt === 'object' ? opt.label : opt }}
               </option>
             </select>
 
