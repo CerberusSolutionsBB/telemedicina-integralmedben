@@ -31,7 +31,7 @@ const yTicks = computed(() => {
 
 <template>
   <Card>
-    <CardHeader v-if="title || description" class="pb-2">
+    <CardHeader v-if="title || description" class="pb-2 mb-8">
       <CardTitle class="text-sm font-medium">{{ title }}</CardTitle>
       <CardDescription v-if="description">{{ description }}</CardDescription>
     </CardHeader>
@@ -47,7 +47,7 @@ const yTicks = computed(() => {
             :key="i"
             class="flex-1 flex flex-col items-center justify-end h-full group relative"
           >
-            <div class="absolute -top-5 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-medium bg-popover text-popover-foreground border rounded px-1.5 py-0.5 shadow-sm whitespace-nowrap z-10">
+            <div class="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-medium bg-popover text-popover-foreground border rounded px-1.5 py-0.5 shadow-sm whitespace-nowrap z-10">
               {{ item.value }}
             </div>
 
