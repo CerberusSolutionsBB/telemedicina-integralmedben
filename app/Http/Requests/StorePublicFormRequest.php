@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\QuestionRoleEnum;
 use App\Models\Question;
 use App\Rules\UniqueAnswerRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -26,7 +27,10 @@ class StorePublicFormRequest extends FormRequest
 
         if (!empty($questionIds)) {
             $uniqueQuestions = Question::whereIn('id', $questionIds)
-                ->where('is_unique', true)
+                ->where(function ($query) {
+                    $query->where('is_unique', true)
+                          ->orWhere('role', QuestionRoleEnum::Cpf->value);
+                })
                 ->pluck('id');
 
             foreach ($uniqueQuestions as $questionId) {

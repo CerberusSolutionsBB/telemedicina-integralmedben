@@ -69,7 +69,14 @@ const formatType = (type) => {
           </span>
         </TableCell>
         <TableCell class="text-center">
-          <div class="flex justify-center gap-2">
+          <div class="flex justify-center items-center gap-2">
+            <span
+              v-if="question.role"
+              class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
+              title="Pergunta essencial do sistema — não pode ser editada ou excluída"
+            >
+              Sistema
+            </span>
             <button
               @click="viewQuestion(question)"
               class="text-black hover:text-gray-900 transition-colors"
@@ -77,20 +84,22 @@ const formatType = (type) => {
             >
               <Eye class="w-4 h-4" />
             </button>
-            <button
-              @click="editQuestion(question)"
-              class="text-black  hover:text-cyan-900 transition-colors"
-              title="Editar"
-            >
-              <Pencil class="w-4 h-4" />
-            </button>
-            <button
-              @click="deleteQuestion(question.id)"
-              class="text-black hover:text-red-900 transition-colors"
-              title="Deletar"
-            >
-              <Trash2 class="w-4 h-4" />
-            </button>
+            <template v-if="!question.role">
+              <button
+                @click="editQuestion(question)"
+                class="text-black hover:text-cyan-900 transition-colors"
+                title="Editar"
+              >
+                <Pencil class="w-4 h-4" />
+              </button>
+              <button
+                @click="deleteQuestion(question.id)"
+                class="text-black hover:text-red-900 transition-colors"
+                title="Deletar"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </template>
           </div>
         </TableCell>
       </TableRow>

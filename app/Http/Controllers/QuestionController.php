@@ -45,6 +45,10 @@ class QuestionController extends Controller
 
     public function update(UpdateQuestionRequest $request, Question $question)
     {
+        if ($question->isSystem()) {
+            abort(403, 'Esta pergunta é essencial para o sistema e não pode ser editada.');
+        }
+
         $data = $request->validated();
         $this->questionService->updateQuestion($question, $data);
 
@@ -61,6 +65,10 @@ class QuestionController extends Controller
 
     public function destroy(Question $question)
     {
+        if ($question->isSystem()) {
+            abort(403, 'Esta pergunta é essencial para o sistema e não pode ser excluída.');
+        }
+
         $this->questionService->deleteQuestion($question);
 
         return redirect()->route('registros.index')

@@ -16,7 +16,6 @@ class CentralPatient extends Model
     protected $table = 'central_patients';
 
     protected $fillable = [
-        'cpf',
         'tenant_id',
     ];
 

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\QuestionRoleEnum;
 use Illuminate\Database\Seeder;
 use App\Models\Question;
 
@@ -28,11 +29,13 @@ class QuestionSeeder extends Seeder
                     ['label' => 'Intermediário', 'value' => 'intermediario', 'order' => 1],
                     ['label' => 'Premium', 'value' => 'premium', 'order' => 2],
                 ],
+                'role' => QuestionRoleEnum::Plan->value,
             ],
             [
                 'title' => 'CPF',
                 'type' => 'text',
                 'options' => null,
+                'role' => QuestionRoleEnum::Cpf->value,
             ],
             [
                 'title' => 'WhatsApp',
@@ -52,13 +55,18 @@ class QuestionSeeder extends Seeder
         ];
 
         foreach ($questions as $data) {
-            Question::firstOrCreate(
+            $question = Question::firstOrCreate(
                 ['title' => $data['title']],
                 [
                     'type' => $data['type'],
-                    'options' => $data['options'],
+                    'options' => $data['options'] ?? null,
+                    'role' => $data['role'] ?? null,
                 ]
             );
+
+            if (isset($data['role']) && $question->role?->value !== $data['role']) {
+                $question->update(['role' => $data['role']]);
+            }
         }
     }
 }

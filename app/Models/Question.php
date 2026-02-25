@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\QuestionRoleEnum;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -18,6 +19,7 @@ class Question extends Model
         'is_required',
         'is_unique',
         'is_active',
+        'role',
     ];
 
     protected $casts = [
@@ -25,7 +27,13 @@ class Question extends Model
         'is_required' => 'boolean',
         'is_unique' => 'boolean',
         'options' => 'array',
+        'role' => QuestionRoleEnum::class,
     ];
+
+    public function isSystem(): bool
+    {
+        return $this->role !== null;
+    }
 
     public function tenants()
     {
