@@ -39,6 +39,16 @@ watch(
   { immediate: true }
 );
 
+const allSelected = computed(() => props.tenants.length > 0 && selectedTenants.value.length === props.tenants.length);
+
+const toggleAll = () => {
+  if (allSelected.value) {
+    selectedTenants.value = [];
+  } else {
+    selectedTenants.value = props.tenants.map((t) => t.id);
+  }
+};
+
 const toggleTenant = (id) => {
   const index = selectedTenants.value.indexOf(id);
   if (index === -1) {
@@ -81,6 +91,19 @@ const submit = () => {
             </span>
           </p>
         </DialogHeader>
+
+        <div class="flex justify-end mb-1">
+          <button
+            type="button"
+            @click="toggleAll"
+            class="text-xs font-medium px-3 py-1 rounded-full transition-colors"
+            :class="allSelected
+              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+              : 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200'"
+          >
+            {{ allSelected ? "Desmarcar todos" : "Selecionar todos" }}
+          </button>
+        </div>
 
         <div class="py-4 max-h-[400px] overflow-y-auto space-y-2">
           <div

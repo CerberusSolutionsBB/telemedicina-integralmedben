@@ -1,7 +1,6 @@
 <script setup>
-import { useForm } from "@inertiajs/vue3";
-import { router } from "@inertiajs/vue3";
-import { CheckCircle2 } from "lucide-vue-next";
+import { useForm, router } from "@inertiajs/vue3";
+import { CheckCircle2, Lock } from "lucide-vue-next";
 import Dialog from "./ui/dialog/Dialog.vue";
 import DialogContent from "./ui/dialog/DialogContent.vue";
 import DialogHeader from "./ui/dialog/DialogHeader.vue";
@@ -25,19 +24,19 @@ const form = useForm({
 });
 
 const emit = defineEmits(["close"]);
+
+const systemQuestionIds = computed(() => props.questions.filter(q => q.role).map(q => q.id));
 const selectedCount = computed(() => selectedQuestions.value.length);
 
 watch(() => props.tenant, (newTenant) => {
-  if (newTenant && newTenant.questions) {
-    selectedQuestions.value = newTenant.questions.map(q => q.id);
-  } else {
-    selectedQuestions.value = [];
-  }
+  const tenantQuestionIds = newTenant?.questions?.map(q => q.id) ?? [];
+  selectedQuestions.value = [...new Set([...systemQuestionIds.value, ...tenantQuestionIds])];
 }, { immediate: true });
 
 const toggleQuestion = (id) => {
-  const index = selectedQuestions.value.indexOf(id);
+  if (systemQuestionIds.value.includes(id)) return;
 
+  const index = selectedQuestions.value.indexOf(id);
   if (index === -1) {
     selectedQuestions.value.push(id);
   } else {
@@ -58,9 +57,7 @@ const formatType = (type) => {
 };
 
 const submit = () => {
-  if (!props.tenant) {
-    return;
-  }
+  if (!props.tenant) return;
 
   form.tenant_id = props.tenant.id;
   form.questions = selectedQuestions.value;
@@ -95,31 +92,41 @@ const submit = () => {
               v-for="question in questions"
               :key="question.id"
               @click="toggleQuestion(question.id)"
-              class="group flex items-start gap-4 border-2 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md"
+              class="group flex items-start gap-4 border-2 p-4 rounded-xl transition-all duration-200"
               :class="{
-                'border-cyan-500 bg-cyan-50 shadow-sm': selectedQuestions.includes(question.id),
-                'border-gray-200 hover:border-gray-300 bg-white': !selectedQuestions.includes(question.id),
+                'border-amber-300 bg-amber-50 cursor-not-allowed': question.role,
+                'border-cyan-500 bg-cyan-50 shadow-sm cursor-pointer hover:shadow-md': !question.role && selectedQuestions.includes(question.id),
+                'border-gray-200 hover:border-gray-300 bg-white cursor-pointer hover:shadow-md': !question.role && !selectedQuestions.includes(question.id),
               }"
             >
               <div class="flex items-center pt-0.5">
                 <input
                   type="checkbox"
                   :checked="selectedQuestions.includes(question.id)"
+                  :disabled="!!question.role"
                   class="w-4 h-4 text-cyan-600 bg-gray-100 border-gray-300 rounded focus:ring-cyan-500 pointer-events-none"
                 />
               </div>
 
               <div class="flex-1 min-w-0">
                 <div class="flex items-start justify-between gap-2">
-                  <Label class="cursor-pointer font-medium text-gray-900 group-hover:text-gray-700">
+                  <Label class="font-medium text-gray-900" :class="question.role ? 'cursor-not-allowed' : 'cursor-pointer'">
                     {{ question.title }}
                   </Label>
-                  <CheckCircle2
-                    v-if="selectedQuestions.includes(question.id)"
-                    class="w-5 h-5 text-cyan-600 flex-shrink-0"
-                  />
-                </div>
-                <div class="mt-2">
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <span
+                      v-if="question.role"
+                      class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold"
+                      title="Obrigatória — não pode ser removida do tenant"
+                    >
+                      <Lock class="w-3 h-3" />
+                      Sistema
+                    </span>
+                    <CheckCircle2
+                      v-else-if="selectedQuestions.includes(question.id)"
+                      class="w-5 h-5 text-cyan-600"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -131,19 +138,10 @@ const submit = () => {
         </div>
 
         <DialogFooter class="gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            @click="emit('close')"
-          >
+          <Button type="button" variant="secondary" @click="emit('close')">
             Cancelar
           </Button>
-
-          <Button
-            type="submit"
-            variant="primary"
-            :disabled="selectedCount === 0"
-          >
+          <Button type="submit" variant="primary" :disabled="selectedCount === 0">
             Salvar Seleção
           </Button>
         </DialogFooter>

@@ -41,6 +41,7 @@ class QuestionSeeder extends Seeder
                 'title' => 'WhatsApp',
                 'type' => 'tel',
                 'options' => null,
+                'role' => QuestionRoleEnum::Tel->value,
             ],
             [
                 'title' => 'E-mail',

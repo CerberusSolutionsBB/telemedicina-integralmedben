@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\Question;
 
+use App\Models\Question;
 use App\Models\Tenant;
 
 class AssignTenantQuestionService
@@ -14,7 +15,11 @@ class AssignTenantQuestionService
             throw new \Exception('Tenant não encontrado');
         }
 
-        $tenant->questions()->sync($questions);
+        $systemQuestionIds = Question::whereNotNull('role')->pluck('id')->toArray();
+
+        $merged = array_unique(array_merge($systemQuestionIds, $questions));
+
+        $tenant->questions()->sync($merged);
 
         return $tenant;
     }
