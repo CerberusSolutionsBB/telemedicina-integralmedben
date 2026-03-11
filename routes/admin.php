@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SmsLogsController;
 use App\Http\Controllers\TenantController;
 use App\Models\Question;
 use App\Models\Tenant;
@@ -29,4 +30,9 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth'])->group(funct
     Route::resource('tenants', TenantController::class);
     Route::post('tenants/{tenant}/questions', [TenantController::class, 'attachQuestions'])
         ->name('tenants.attach-questions');
+    Route::post('tenants/{tenant}/add-sms-quota', [TenantController::class, 'addSmsQuota'])
+        ->name('tenants.add-sms-quota');
+
+    Route::get('sms-logs', [SmsLogsController::class, 'index'])->name('sms-logs.index');
+    Route::post('sms-logs/global-balance', [SmsLogsController::class, 'addGlobalBalance'])->name('sms-logs.add-global-balance');
 });

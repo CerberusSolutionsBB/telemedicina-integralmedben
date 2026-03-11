@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\TenantStoreRequest;
+use App\Http\Services\Tenant\AddSmsQuotaService;
 use App\Http\Services\Tenant\TenantAllService;
 use App\Http\Services\Tenant\TenantDeleteService;
 use App\Http\Services\Tenant\TenantService;
@@ -16,7 +17,8 @@ class TenantController extends Controller
     public function __construct(
         private TenantService $tenantService,
         private TenantAllService $tenantAllService,
-        private TenantDeleteService $tenantDeleteService
+        private TenantDeleteService $tenantDeleteService,
+        private AddSmsQuotaService $addSmsQuotaService,
     ) {}
     /**
      * Display a listing of the resource.
@@ -64,6 +66,22 @@ class TenantController extends Controller
 
         return redirect(route('dashboard'))
             ->with('success', 'Tenant atualizado com sucesso!');
+    }
+
+    public function addSmsQuota(Request $request, Tenant $tenant)
+    {
+        $request->validate([
+            'amount' => 'required|integer|min:1|max:10000',
+            'notes'  => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $this->addSmsQuotaService->execute($tenant, $request->amount, $request->notes);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['amount' => $e->getMessage()]);
+        }
+
+        return back()->with('success', "Cota de {$request->amount} SMS adicionada com sucesso.");
     }
 
     /**

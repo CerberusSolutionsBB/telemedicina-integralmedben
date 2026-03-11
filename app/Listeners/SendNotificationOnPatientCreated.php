@@ -8,7 +8,6 @@ use App\Models\Question;
 use App\Models\SmsTemplate;
 use App\Notifications\NotificationDispatcher;
 use Illuminate\Support\Str;
-use App\Models\SmsLogs;
 
 class SendNotificationOnPatientCreated
 {
@@ -16,36 +15,31 @@ class SendNotificationOnPatientCreated
 
     public function handle(PatientCreated $event): void
     {
-         \Log::info('SendNotificationOnPatientCreated fired', [
-        'tenantPatientId' => $event->tenantPatientId,
-        'trace' => collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10))
-            ->map(fn($t) => ($t['class'] ?? '') . '::' . ($t['function'] ?? ''))
-            ->implode(' → ')
-    ]);
         // Busca templates ativos para o evento 'patient.created'
         // que estejam vinculados ao tenant via tabela pivot tenant_sms_templates
         $templates = SmsTemplate::where('event', SmsTemplateEventEnum::PatientCreated->value)
-            ->where('is_active', true)
-            ->whereHas('tenants', function ($query) use ($event) {
-                $query->where('tenants.id', $event->tenantId);
-            })
-            ->get();
-
-
+        ->where('is_active', true)
+        ->whereHas('tenants', function ($query) use ($event) {
+            $query->where('tenants.id', $event->tenantId);
+        })
+        ->get();
         if ($templates->isEmpty()) {
             return;
         }
 
         // Carrega as perguntas correspondentes às respostas do paciente
         $questions = Question::whereIn('id', array_keys($event->answers))
-            ->get()
-            ->keyBy('id');
+        ->get()
+        ->keyBy('id');
 
         // Monta o array de variáveis disponíveis para o template.
         // Ex: ['telefone' => '11999999999', 'cpf' => '12345678900', 'nome_completo' => 'João']
         $data = [
+            'tenant_id' => $event->tenantId,
+            'patient_id' => $event->tenantPatientId,
             'tenant' => $event->tenantId, // nome do tenant (ex: "clinicaxyz")
         ];
+
         foreach ($event->answers as $questionId => $value) {
             $question = $questions[$questionId] ?? null;
 
@@ -70,11 +64,6 @@ class SendNotificationOnPatientCreated
         foreach ($templates as $template) {
             $this->dispatcher->send($template, $data);
 
-            SmsLogs::create([
-                'tenant_id'  => $event->tenantId,
-                'patient_id' => $event->tenantPatientId,
-                'message'    => $template->resolveMessage($data),
-            ]);
         }
     }
 }

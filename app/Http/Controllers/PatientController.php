@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Services\Patient\PatientService;
+use App\Http\Services\Sms\ResendSmsService;
 use App\Models\Patient;
+use App\Models\SmsLogs;
 use App\Models\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -11,7 +13,10 @@ use Inertia\Inertia;
 
 class PatientController extends Controller
 {
-    public function __construct(private PatientService $patientService) {}
+    public function __construct(
+        private PatientService $patientService,
+        private ResendSmsService $resendSmsService,
+    ) {}
 
     public function index()
     {
@@ -29,9 +34,25 @@ class PatientController extends Controller
     {
         $patient = $this->patientService->getPatientDetails($patient);
 
+        $smsLogs = SmsLogs::where('tenant_id', tenant('id'))
+            ->where('patient_id', $patient->id)
+            ->latest()
+            ->get(['id', 'status', 'message', 'recipient', 'sent_at', 'error_message', 'created_at']);
+
         return Inertia::render('Patient/Show', [
-            'patient' => $patient
+            'patient' => $patient,
+            'smsLogs' => $smsLogs,
         ]);
+    }
+
+    public function resendSms(Patient $patient)
+    {
+        $result = $this->resendSmsService->execute($patient, tenant('id'));
+
+        return back()->with(
+            $result['success'] ? 'success' : 'error',
+            $result['message']
+        );
     }
 
     public function reportPdf()

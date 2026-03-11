@@ -24,10 +24,14 @@ class TenantCreateService
             throw new \Exception('Subdomínio em uso.');
         }
 
+        //
+
         $tenantData = [
             'id'        => $data['name'],
             'name'      => $data['name'],
             'subdomain' => $data['subdomain'],
+            ''    => $data[''],
+            'sms_quota' => 50,
         ];
 
         if (isset($data['photo']) && $data['photo']) {

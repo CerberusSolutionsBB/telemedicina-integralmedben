@@ -16,7 +16,12 @@ class TenantAllService
                     $query->select('id', 'tenant_id', 'domain'),
                 'questions'
             ])
-            ->withCount('centralPatients')
+            ->withCount([
+                'centralPatients',
+                'smsLogs as sms_sent_count'    => fn ($q) => $q->where('status', 'sent'),
+                'smsLogs as sms_pending_count' => fn ($q) => $q->where('status', 'pending'),
+                'smsLogs as sms_failed_count'  => fn ($q) => $q->where('status', 'failed'),
+            ])
             ->latest()
             ->paginate();
 

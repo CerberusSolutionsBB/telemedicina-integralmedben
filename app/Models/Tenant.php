@@ -44,6 +44,23 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         return $this->hasMany(CentralPatient::class, 'tenant_id');
     }
 
+    public function smsLogs()
+    {
+        return $this->hasMany(SmsLogs::class, 'tenant_id');
+    }
+
+    public function hasSmsQuota(): bool
+    {
+        return $this->sms_quota > 0;
+    }
+
+    public function decrementSmsQuota(): void
+    {
+        if ($this->sms_quota > 0) {
+            $this->decrement('sms_quota');
+        }
+    }
+
     public static function generateDatabaseName(string $tenantName): string
     {
         return 'tenant_' . str_replace('-', '_', $tenantName);

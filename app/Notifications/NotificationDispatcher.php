@@ -2,8 +2,11 @@
 
 namespace App\Notifications;
 
+use App\Enums\SmsStatusEnum;
 use App\Interfaces\NotificationChannelInterface;
+use App\Models\SmsLogs;
 use App\Models\SmsTemplate;
+use App\Models\Tenant;
 
 class NotificationDispatcher
 {
@@ -20,10 +23,47 @@ class NotificationDispatcher
             return;
         }
 
-        $message = $template->resolveMessage($data);
+        $tenantId = $data['tenant_id'] ?? null;
+        $tenant   = $tenantId ? Tenant::find($tenantId) : null;
+        $message  = $template->resolveMessage($data);
+
+        if ($tenant && !$tenant->hasSmsQuota()) {
+            SmsLogs::create([
+                'tenant_id'     => $tenantId,
+                'patient_id'    => $data['patient_id'] ?? null,
+                'recipient'     => $recipient,
+                'message'       => $message,
+                'status'        => SmsStatusEnum::Failed,
+                'error_message' => 'Cota de SMS esgotada.',
+            ]);
+            return;
+        }
 
         $channel = $this->resolve($template->channel);
-        $channel->send($recipient, $message);
+
+        $log = SmsLogs::create([
+            'tenant_id'  => $tenantId,
+            'patient_id' => $data['patient_id'] ?? null,
+            'recipient'  => $recipient,
+            'message'    => $message,
+            'status'     => SmsStatusEnum::Pending,
+        ]);
+
+        try {
+            $channel->send($recipient, $message);
+
+            $log->update([
+                'status'  => SmsStatusEnum::Sent,
+                'sent_at' => now(),
+            ]);
+
+            $tenant?->decrementSmsQuota();
+        } catch (\Throwable $e) {
+            $log->update([
+                'status'        => SmsStatusEnum::Failed,
+                'error_message' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function resolve(string $channelType): NotificationChannelInterface

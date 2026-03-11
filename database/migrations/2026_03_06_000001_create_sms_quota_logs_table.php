@@ -6,25 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('sms_logs', function (Blueprint $table) {
+        Schema::create('sms_quota_logs', function (Blueprint $table) {
             $table->id();
             $table->string('tenant_id')->index();
-            $table->unsignedBigInteger('patient_id')->index();
-            $table->string('message')->nullable();
+            $table->unsignedInteger('amount');
+            $table->unsignedBigInteger('added_by')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('sms_logs');
+        Schema::dropIfExists('sms_quota_logs');
     }
 };

@@ -1,6 +1,6 @@
 <script setup>
-import { FileText, Download, Pencil, Trash2 } from "lucide-vue-next";
-import { Link } from "@inertiajs/vue3";
+import { FileText, Download, Pencil, Trash2, Eye } from "lucide-vue-next";
+import { Link, router } from "@inertiajs/vue3";
 import {
   Table,
   TableBody,
@@ -91,6 +91,11 @@ const getAnswer = (patient, questionId) => {
 
           <TableCell class="text-center">
             <div class="flex gap-3 justify-center">
+              <Eye
+                class="w-4 h-4 cursor-pointer hover:text-cyan-600"
+                @click="router.visit(route('patients.show', patient.id))"
+                title="Ver detalhes"
+              />
               <a
                 :href="route('patients.pdf', patient.id)"
                 target="_blank"
