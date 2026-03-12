@@ -56,18 +56,14 @@ class QuestionSeeder extends Seeder
         ];
 
         foreach ($questions as $data) {
-            $question = Question::firstOrCreate(
+            Question::updateOrCreate(
                 ['title' => $data['title']],
                 [
-                    'type' => $data['type'],
+                    'type'    => $data['type'],
                     'options' => $data['options'] ?? null,
-                    'role' => $data['role'] ?? null,
+                    'role'    => $data['role'] ?? null,
                 ]
             );
-
-            if (isset($data['role']) && $question->role?->value !== $data['role']) {
-                $question->update(['role' => $data['role']]);
-            }
         }
     }
 }

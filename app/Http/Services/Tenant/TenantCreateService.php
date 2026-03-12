@@ -30,7 +30,6 @@ class TenantCreateService
             'id'        => $data['name'],
             'name'      => $data['name'],
             'subdomain' => $data['subdomain'],
-            ''    => $data[''],
             'sms_quota' => 50,
         ];
 
@@ -59,7 +58,7 @@ class TenantCreateService
         $subdomainNormalized = preg_replace('/[\x{0300}-\x{036F}]/u', '', $subdomainNormalized);
 
         $tenant->domains()->create([
-            'domain' => $subdomainNormalized,
+            'domain' => $subdomainNormalized . '.' . EnvironmentEnum::currentDomains()[0],
         ]);
 
         $systemQuestionIds = Question::whereNotNull('role')->pluck('id')->toArray();
