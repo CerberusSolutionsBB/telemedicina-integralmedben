@@ -85,9 +85,6 @@ const clearFilters = () => {
     <Head title="Formulários" />
 
     <CentralAdminLayout>
-        <pre>
-            {{ can }}
-        </pre>
         <!-- Header -->
         <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div>
