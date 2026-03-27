@@ -18,7 +18,7 @@ class RouteModuleServiceProvider extends ServiceProvider
             'file'       => 'web.php',
         ],
         'form'  => [
-            'middleware' => ['web', 'auth'],
+            'middleware' => ['web'],
             'prefix'     => 'forms',
             'name'       => 'forms.',
             'file'       => 'form.php',

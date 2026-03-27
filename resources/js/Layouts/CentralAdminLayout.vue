@@ -16,7 +16,7 @@ const logout = () => {
 const navLinks = [
     { label: "Dashboard", routeName: "dashboard", icon: LayoutDashboard },
     { label: "Credenciados", routeName: "credenciados.index", icon: Building2 },
-    { label: "Registros", routeName: "registros.index", icon: ClipboardList },
+    // { label: "Registros", routeName: "registros.index", icon: ClipboardList },
     { label: "Formulários", routeName: "forms.index", icon: ClipboardList },
     { label: "Usuários", routeName: "central-users.index", icon: Users },
     { label: "SMS Templates", routeName: "sms-templates.index", icon: MessageSquare },

@@ -4,18 +4,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class Form extends Model
 {
     use HasFactory, SoftDeletes;
+
     public const STATUS_RASCUNHO  = 'rascunho';
     public const STATUS_ATIVO     = 'ativo';
     public const STATUS_PAUSADO   = 'pausado';
     public const STATUS_ENCERRADO = 'encerrado';
-    protected $table              = 'forms';
-    protected $fillable           = [
+
+    protected $table = 'forms';
+
+    protected $fillable = [
         'code',
         'user_id',
         'title',
@@ -29,6 +33,7 @@ class Form extends Model
         'responses_count',
         'status',
     ];
+
     protected $casts = [
         'is_public'       => 'boolean',
         'published_at'    => 'datetime',
@@ -39,9 +44,11 @@ class Form extends Model
         'updated_at'      => 'datetime',
         'deleted_at'      => 'datetime',
     ];
+
     protected static function boot(): void
     {
         parent::boot();
+
         static::creating(function (self $model): void {
             if (empty($model->code)) {
                 $model->code = (string) Str::ulid();
@@ -51,14 +58,27 @@ class Form extends Model
             }
             $model->responses_count ??= 0;
         });
+
         static::updating(function (self $model): void {
             if ($model->isDirty('title') && ! $model->isDirty('slug')) {
                 $model->slug = Str::slug($model->title);
             }
         });
     }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function fields(): HasMany
+    {
+        return $this->hasMany(FormField::class)->orderBy('order');
+    }
+
+    // ⬇️⬇️⬇️ ADICIONAR ESTA RELAÇÃO ⬇️⬇️⬇️
+    public function responses(): HasMany
+    {
+        return $this->hasMany(FormResponse::class);
     }
 }

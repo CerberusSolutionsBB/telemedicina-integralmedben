@@ -22,6 +22,7 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
+        "@headlessui/vue": "^1.7.23",
         "@vueuse/core": "^14.2.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -32,6 +33,7 @@
         "tailwind-merge": "^3.4.0",
         "tailwindcss-animate": "^1.0.7",
         "vee-validate": "^4.15.1",
-        "vue-sonner": "^2.0.9"
+        "vue-sonner": "^2.0.9",
+        "vue3-toastify": "^0.2.9"
     }
 }

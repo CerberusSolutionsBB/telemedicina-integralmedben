@@ -36,8 +36,28 @@ class IndexFormController extends Controller
             ->paginate(10)
             ->withQueryString();
 
+        // Mapear formulários com URL pública
+        $formsMapped = $forms->through(function ($form) {
+            return [
+                'id'              => $form->id,
+                'code'            => $form->code,
+                'title'           => $form->title,
+                'slug'            => $form->slug,
+                'description'     => $form->description,
+                'status'          => $form->status,
+                'is_public'       => $form->is_public,
+                'responses_count' => $form->responses_count,
+                'created_by'      => $form->user->name ?? 'Desconhecido',
+                'updated_at'      => $form->updated_at->format('d/m/Y H:i'),
+                // URL pública para responder o formulário
+                'public_url'      => $form->is_public && $form->status === 'ativo'
+                    ? route('forms.public.show', $form->slug)
+                    : null,
+            ];
+        });
+
         return Inertia::render('Form/Index', [
-            'forms'         => $forms,
+            'forms'         => $formsMapped,
             'filters'       => $request->only(['status', 'search']),
             'statusOptions' => [
                 ['value' => '', 'label' => 'Todos'],
@@ -46,7 +66,6 @@ class IndexFormController extends Controller
                 ['value' => 'pausado', 'label' => 'Pausado'],
                 ['value' => 'encerrado', 'label' => 'Encerrado'],
             ],
-            // Agora vai funcionar!
             'can'           => [
                 'create' => $user->can('forms.create'),
                 'edit'   => $user->can('forms.edit'),
