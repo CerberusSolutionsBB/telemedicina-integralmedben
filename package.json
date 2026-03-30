@@ -23,6 +23,11 @@
     },
     "dependencies": {
         "@headlessui/vue": "^1.7.23",
+        "@tiptap/extension-placeholder": "^3.21.0",
+        "@tiptap/extension-underline": "^3.21.0",
+        "@tiptap/starter-kit": "^3.21.0",
+        "@tiptap/vue-3": "^3.21.0",
+        "@vueup/vue-quill": "^1.2.0",
         "@vueuse/core": "^14.2.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",

@@ -11,19 +11,31 @@ class RouteModuleServiceProvider extends ServiceProvider
      * Módulos de rotas configuráveis
      */
     protected array $modules = [
-        'web'   => [
+        'web'          => [
             'middleware' => 'web',
             'prefix'     => '',
             'name'       => '',
             'file'       => 'web.php',
         ],
-        'form'  => [
+        'form'         => [
             'middleware' => ['web'],
             'prefix'     => 'forms',
             'name'       => 'forms.',
             'file'       => 'form.php',
         ],
-        'admin' => [
+        'lei'          => [
+            'middleware' => ['web'],
+            'prefix'     => 'leis',
+            'name'       => 'leis.',
+            'file'       => 'lei.php',
+        ],
+        'configuracao' => [
+            'middleware' => ['web'],
+            'prefix'     => 'configuracoes',
+            'name'       => 'configuracoes.',
+            'file'       => 'configuracao.php',
+        ],
+        'admin'        => [
             'middleware' => ['web', 'auth', 'can:admin'],
             'prefix'     => 'admin',
             'name'       => 'admin.',

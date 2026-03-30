@@ -11,8 +11,7 @@ class IndexFormController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $user = $request->user();
-
+        $user  = $request->user();
         $forms = Form::query()
             ->with('user:id,name')
             ->when($user, function ($query) use ($user) {
@@ -35,8 +34,6 @@ class IndexFormController extends Controller
             ->latest('updated_at')
             ->paginate(10)
             ->withQueryString();
-
-        // Mapear formulários com URL pública
         $formsMapped = $forms->through(function ($form) {
             return [
                 'id'              => $form->id,
@@ -49,13 +46,11 @@ class IndexFormController extends Controller
                 'responses_count' => $form->responses_count,
                 'created_by'      => $form->user->name ?? 'Desconhecido',
                 'updated_at'      => $form->updated_at->format('d/m/Y H:i'),
-                // URL pública para responder o formulário
                 'public_url'      => $form->is_public && $form->status === 'ativo'
                     ? route('forms.public.show', $form->slug)
                     : null,
             ];
         });
-
         return Inertia::render('Form/Index', [
             'forms'         => $formsMapped,
             'filters'       => $request->only(['status', 'search']),
@@ -67,10 +62,11 @@ class IndexFormController extends Controller
                 ['value' => 'encerrado', 'label' => 'Encerrado'],
             ],
             'can'           => [
-                'create' => $user->can('forms.create'),
-                'edit'   => $user->can('forms.edit'),
-                'delete' => $user->can('forms.delete'),
-                'manage' => $user->hasAnyRole(['Admin', 'Manager']),
+                'create'           => $user->can('forms.create'),
+                'edit'             => $user->can('forms.edit'),
+                'delete'           => $user->can('forms.delete'),
+                'manage'           => $user->hasAnyRole(['Admin', 'Manager']),
+                'toggleVisibility' => $request->user()->can('forms.toggle.visibility'),
             ],
         ]);
     }

@@ -19,6 +19,8 @@ class StoreFormRequest extends FormRequest
         return [
             'title'                => ['required', 'string', 'max:255'],
             'description'          => ['nullable', 'string'],
+            'categoria_id'         => ['nullable', 'integer', 'exists:form_categories,id'],
+            'lei_id'               => ['nullable', 'integer', 'exists:leis,id'],
             'status'               => ['required', Rule::in(['rascunho', 'ativo', 'pausado', 'encerrado'])],
             'is_public'            => ['nullable', 'boolean'],
             'published_at'         => ['nullable', 'date'],
@@ -26,7 +28,7 @@ class StoreFormRequest extends FormRequest
             'response_limit'       => ['nullable', 'integer', 'min:1'],
             'settings'             => ['nullable', 'array'],
 
-            // Validação do array fields - mensagem personalizada por índice
+            // Validação do array fields
             'fields'               => ['required', 'array', 'min:1'],
             'fields.*.type'        => ['required', Rule::in(['text', 'textarea', 'email', 'number', 'date', 'select', 'checkbox', 'radio'])],
             'fields.*.label'       => ['required', 'string', 'max:255'],
@@ -44,6 +46,12 @@ class StoreFormRequest extends FormRequest
         return [
             'title.required'            => 'O título do formulário é obrigatório.',
             'title.max'                 => 'O título não pode ter mais de 255 caracteres.',
+
+            'categoria_id.integer'      => 'A categoria selecionada é inválida.',
+            'categoria_id.exists'       => 'A categoria selecionada não existe.',
+
+            'lei_id.integer'            => 'A lei selecionada é inválida.',
+            'lei_id.exists'             => 'A lei selecionada não existe.',
 
             'status.required'           => 'O status do formulário é obrigatório.',
             'status.in'                 => 'O status selecionado é inválido.',
@@ -79,6 +87,19 @@ class StoreFormRequest extends FormRequest
         if ($this->has('is_public')) {
             $this->merge([
                 'is_public' => filter_var($this->is_public, FILTER_VALIDATE_BOOLEAN),
+            ]);
+        }
+
+        // Converter categoria_id e lei_id para int ou null
+        if ($this->has('categoria_id')) {
+            $this->merge([
+                'categoria_id' => $this->categoria_id ? (int) $this->categoria_id : null,
+            ]);
+        }
+
+        if ($this->has('lei_id')) {
+            $this->merge([
+                'lei_id' => $this->lei_id ? (int) $this->lei_id : null,
             ]);
         }
 
@@ -123,13 +144,15 @@ class StoreFormRequest extends FormRequest
     }
 
     /**
-     * Personalizar mensagens de erro com número do campo
+     * Personalizar atributos para mensagens de erro
      */
     public function attributes(): array
     {
         $attributes = [
             'title'          => 'título',
             'description'    => 'descrição',
+            'categoria_id'   => 'categoria',
+            'lei_id'         => 'base legal',
             'status'         => 'status',
             'is_public'      => 'visibilidade pública',
             'published_at'   => 'data de publicação',
@@ -164,7 +187,7 @@ class StoreFormRequest extends FormRequest
         foreach ($errors as $key => $messages) {
             // Extrair índice do campo se for fields.*.algo
             if (preg_match('/fields\.(\d+)\./', $key, $matches)) {
-                $position        = (int) $matches[1] + 1; // +1 para mostrar como 1, 2, 3...
+                $position        = (int) $matches[1] + 1;
                 $formatted[$key] = array_map(function ($msg) use ($position) {
                     return str_replace(':position', $position, $msg);
                 }, $messages);
@@ -183,7 +206,6 @@ class StoreFormRequest extends FormRequest
     {
         $errors = $this->formatErrors($validator);
 
-        // Para requisições Inertia/AJAX, retornar JSON com erros
         if ($this->expectsJson() || $this->header('X-Inertia')) {
             throw new HttpResponseException(
                 redirect()->back()
@@ -192,7 +214,6 @@ class StoreFormRequest extends FormRequest
             );
         }
 
-        // Fallback para requisições normais
         throw new HttpResponseException(
             Redirect::back()
                 ->withInput()

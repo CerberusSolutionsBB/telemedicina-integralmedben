@@ -21,6 +21,8 @@ class Form extends Model
 
     protected $fillable = [
         'code',
+        'categoria_id',
+        'lei_id',
         'user_id',
         'title',
         'slug',
@@ -66,17 +68,41 @@ class Form extends Model
         });
     }
 
+    /**
+     * Usuário criador do formulário
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Categoria do formulário
+     */
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(FormCategory::class, 'categoria_id');
+    }
+
+    /**
+     * Lei associada ao formulário
+     */
+    public function lei(): BelongsTo
+    {
+        return $this->belongsTo(Lei::class, 'lei_id');
+    }
+
+    /**
+     * Campos do formulário
+     */
     public function fields(): HasMany
     {
         return $this->hasMany(FormField::class)->orderBy('order');
     }
 
-    // ⬇️⬇️⬇️ ADICIONAR ESTA RELAÇÃO ⬇️⬇️⬇️
+    /**
+     * Respostas do formulário
+     */
     public function responses(): HasMany
     {
         return $this->hasMany(FormResponse::class);

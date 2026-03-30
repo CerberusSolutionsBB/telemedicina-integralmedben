@@ -33,6 +33,8 @@ class RolePermissionSeeder extends Seeder
             'forms.create',
             'forms.edit',
             'forms.delete',
+            'forms.update.status',
+            'forms.toggle.visibility',
             'forms.manage.all',
         ];
         foreach ($formPermissions as $permission) {
@@ -53,6 +55,7 @@ class RolePermissionSeeder extends Seeder
         $managerRole->syncPermissions([
             'users.view', 'users.create', 'users.edit',
             'forms.view', 'forms.create', 'forms.edit', 'forms.delete',
+            'forms.update.status', 'forms.toggle.visibility',
         ]);
         $editorRole = Role::firstOrCreate(
             ['name' => 'Editor'],
@@ -60,6 +63,7 @@ class RolePermissionSeeder extends Seeder
         );
         $editorRole->syncPermissions([
             'forms.view', 'forms.create', 'forms.edit',
+            'forms.update.status', 'forms.toggle.visibility',
         ]);
         $userRole = Role::firstOrCreate(
             ['name' => 'User'],
@@ -67,6 +71,7 @@ class RolePermissionSeeder extends Seeder
         );
         $userRole->syncPermissions([
             'forms.view', 'forms.create',
+            'forms.toggle.visibility',
         ]);
         $admin = User::firstOrCreate(
             ['email' => 'admin@admin.com'],
@@ -105,7 +110,5 @@ class RolePermissionSeeder extends Seeder
         );
         $user->syncRoles(['User']);
         echo "Roles, permissões e usuários criados com sucesso!\n";
-        echo "Login: admin@localhost / manager@localhost / editor@localhost / user@localhost\n";
-        echo "Senha: password\n";
     }
 }

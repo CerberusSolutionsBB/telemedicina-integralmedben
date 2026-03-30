@@ -12,27 +12,18 @@ class ShowFormController extends Controller
     public function __invoke(Request $request, Form $form): Response
     {
         $user = $request->user();
-
-        // Verificar permissão
         if (! $user->can('forms.view') && $form->user_id !== $user->id && ! $form->is_public) {
             abort(403);
         }
-
-        // Carregar relações
         $form->load(['user:id,name', 'fields' => fn($q) => $q->orderBy('order')]);
-
-        // Estatísticas básicas (sem quebrar se não tiver respostas)
         $stats = [
             'total_responses'  => $form->responses_count ?? 0,
             'last_response_at' => $form->responses()->latest()->first()?->created_at?->format('d/m/Y H:i'),
         ];
-
-        // Respostas paginadas (ou array vazio se não existir tabela)
         $responses = $form->responses()
             ->with('user:id,name,email')
             ->latest()
             ->paginate(20);
-
         return Inertia::render('Form/Show', [
             'form'      => [
                 'id'              => $form->id,

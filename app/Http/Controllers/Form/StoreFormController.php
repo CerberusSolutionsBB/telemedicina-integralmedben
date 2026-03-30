@@ -12,27 +12,24 @@ class StoreFormController extends Controller
     public function __invoke(StoreFormRequest $request)
     {
         $validated = $request->validated();
-
         try {
             DB::beginTransaction();
-
-            // Criar o formulário
             $form = Form::create([
                 'user_id'         => auth()->id(),
+                'categoria_id'    => $validated['categoria_id'] ?? null,
+                'lei_id'          => $validated['lei_id'] ?? null,
                 'title'           => $validated['title'],
                 'slug'            => $this->generateUniqueSlug($validated['title']),
                 'description'     => $validated['description'] ?? null,
                 'status'          => $validated['status'],
                 'is_public'       => $validated['is_public'] ?? false,
-                'published_at'    => $validated['published_at'],
-                'expires_at'      => $validated['expires_at'],
-                'response_limit'  => $validated['response_limit'],
+                'published_at'    => $validated['published_at'] ?? null,
+                'expires_at'      => $validated['expires_at'] ?? null,
+                'response_limit'  => $validated['response_limit'] ?? null,
                 'settings'        => $validated['settings'] ?? [],
                 'responses_count' => 0,
             ]);
-
-            // Criar os campos do formulário
-            foreach ($validated['fields'] as $fieldData) {
+            foreach ($validated['fields'] as $index => $fieldData) {
                 $form->fields()->create([
                     'type'        => $fieldData['type'],
                     'label'       => $fieldData['label'],
@@ -42,41 +39,33 @@ class StoreFormController extends Controller
                         ? ($fieldData['options'] ?? [])
                         : [],
                     'help_text'   => $fieldData['help_text'] ?? null,
-                    'order'       => $fieldData['order'] ?? 0,
+                    'order'       => $fieldData['order'] ?? $index,
                 ]);
             }
-
             DB::commit();
-
             return redirect()
                 ->route('forms.index')
                 ->with('success', 'Formulário criado com sucesso!');
-
         } catch (\Exception $e) {
             DB::rollBack();
-
+            \Log::error('Erro ao criar formulário: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Erro ao criar formulário: ' . $e->getMessage());
+                ->with('error', 'Erro ao criar formulário. Tente novamente.');
         }
     }
-
-    /**
-     * Gerar slug único
-     */
     private function generateUniqueSlug(string $title): string
     {
         $baseSlug = Str::slug($title);
         $slug     = $baseSlug . '-' . Str::random(6);
         $counter  = 1;
-
-        // Garantir unicidade
         while (Form::where('slug', $slug)->exists()) {
             $slug = $baseSlug . '-' . Str::random(6) . '-' . $counter;
             $counter++;
         }
-
         return $slug;
     }
 }

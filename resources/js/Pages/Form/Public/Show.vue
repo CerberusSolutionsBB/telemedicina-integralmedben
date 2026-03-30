@@ -12,7 +12,8 @@ import {
     AlertTriangle,
     Lock,
     PauseCircle,
-    XCircle
+    XCircle,
+    CheckSquare
 } from "lucide-vue-next";
 
 const props = defineProps({
@@ -98,6 +99,9 @@ const statusConfig = computed(() => {
 const answers = ref({});
 const submitting = ref(false);
 const errors = ref({});
+// ⭐ NOVO: Checkbox de aceite dos termos
+const acceptedTerms = ref(false);
+const termsError = ref(false);
 
 // Inicializa respostas se ativo
 if (statusConfig.value.canSubmit && props.form.fields) {
@@ -110,9 +114,25 @@ if (statusConfig.value.canSubmit && props.form.fields) {
     });
 }
 
+// ⭐ NOVO: Função para validar termos antes de enviar
+const validateTerms = () => {
+    if (!acceptedTerms.value) {
+        termsError.value = true;
+        showToast('Você precisa aceitar os Termos de uso e Política de Privacidade para continuar.', 'error');
+        return false;
+    }
+    termsError.value = false;
+    return true;
+};
+
 const submitForm = () => {
     if (!statusConfig.value.canSubmit) {
         showToast('Este formulário não pode receber respostas no momento.', 'error');
+        return;
+    }
+
+    // ⭐ NOVO: Validação dos termos
+    if (!validateTerms()) {
         return;
     }
 
@@ -267,7 +287,52 @@ const progress = computed(() => {
                         </p>
                     </div>
 
+                    <!-- ⭐ NOVO: CHECKBOX DE ACEITE DOS TERMOS -->
                     <div class="pt-4 border-t border-gray-200">
+                        <div class="flex items-start gap-3 p-4 rounded-lg border-2 transition-all duration-200" :class="[
+                            termsError
+                                ? 'border-red-300 bg-red-50'
+                                : acceptedTerms
+                                    ? 'border-green-300 bg-green-50'
+                                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                        ]">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <input type="checkbox" id="terms" v-model="acceptedTerms" @change="termsError = false"
+                                    class="w-5 h-5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                                    :class="{ 'border-red-400': termsError }" />
+                            </div>
+                            <div class="flex-1">
+                                <label for="terms" class="text-sm text-gray-700 cursor-pointer select-none">
+                                    <span class="font-medium">Li e concordo com os</span>
+                                    <a href="/termos-de-uso" target="_blank"
+                                        class="text-cyan-600 hover:text-cyan-800 underline font-medium" @click.stop>
+                                        Termos de uso
+                                    </a>
+                                    <span class="font-medium">e</span>
+                                    <a href="/politica-de-privacidade" target="_blank"
+                                        class="text-cyan-600 hover:text-cyan-800 underline font-medium" @click.stop>
+                                        Política de Privacidade
+                                    </a>
+                                    <span class="text-red-500 font-bold">*</span>
+                                </label>
+
+                                <!-- Mensagem de erro -->
+                                <p v-if="termsError" class="text-sm text-red-600 mt-1 flex items-center gap-1">
+                                    <AlertTriangle class="w-4 h-4" />
+                                    Você deve aceitar os termos para enviar o formulário.
+                                </p>
+
+                                <!-- Mensagem de sucesso (opcional, quando marcado) -->
+                                <p v-else-if="acceptedTerms"
+                                    class="text-sm text-green-600 mt-1 flex items-center gap-1">
+                                    <CheckSquare class="w-4 h-4" />
+                                    Termos aceitos.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
                         <Button type="submit" variant="primary" size="lg" class="w-full gap-2" :disabled="submitting">
                             <Send v-if="!submitting" class="w-4 h-4" />
                             <span v-if="submitting">Enviando...</span>

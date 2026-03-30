@@ -16,77 +16,58 @@ use Throwable;
 
 class PublicFormController extends Controller
 {
-    /**
-     * Verifica se o formulário pode receber respostas
-     * Apenas status "ativo" permite respostas
-     */
     private function canAcceptResponses(Form $form): bool
     {
         return $form->status === 'ativo';
     }
-
-    /**
-     * Exibe o formulário público
-     */
     public function show(string $slug): Response
     {
         try {
-            // Busca o formulário sem filtros restritivos
             $form = Form::where('slug', $slug)
                 ->where('is_public', true)
                 ->with(['fields' => fn($q) => $q->orderBy('order')])
                 ->first();
-
-            // Não existe ou não é público
             if (! $form) {
                 Log::warning('Formulário não encontrado', [
                     'slug' => $slug,
                     'ip'   => request()->ip(),
                 ]);
-
                 abort(404, 'Formulário não encontrado.');
             }
-
-            // ⭐ NÃO ESTÁ ATIVO - mostra página de inativo
             if (! $this->canAcceptResponses($form)) {
                 $statusLabels = [
                     'rascunho'  => 'em edição (rascunho)',
                     'pausado'   => 'pausado',
                     'encerrado' => 'encerrado',
                 ];
-
                 $label = $statusLabels[$form->status] ?? $form->status;
-
                 Log::info('Tentativa de acesso a formulário não ativo', [
                     'form_id' => $form->id,
                     'slug'    => $slug,
                     'status'  => $form->status,
                     'ip'      => request()->ip(),
                 ]);
-
-                return Inertia::render('Form/Public/Inactive', [
+                return Inertia::render('Form/Public/Show', [
                     'form'        => [
                         'title'       => $form->title,
                         'status'      => $form->status,
                         'statusLabel' => $label,
                         'message'     => "Este formulário está {$label} e não pode receber respostas no momento.",
                         'instruction' => 'Para permitir o preenchimento, altere o status para "Ativo" nas configurações.',
-                        'canActivate' => true, // Indica que pode ser ativado
+                        'canActivate' => true,
                     ],
                 ]);
             }
-
-            // Verifica se expirou (mesmo ativo, pode ter data de expiração)
             if ($form->expires_at && $form->expires_at <= now()) {
                 Log::info('Tentativa de acesso a formulário expirado', [
                     'form_id'    => $form->id,
                     'slug'       => $slug,
                     'expires_at' => $form->expires_at,
                 ]);
-
-                return Inertia::render('Form/Public/Inactive', [
+                return Inertia::render('Form/Public/Show', [
                     'form' => [
                         'title'       => $form->title,
+                        'slug'        => $slug,
                         'status'      => 'expirado',
                         'statusLabel' => 'expirado',
                         'message'     => 'Este formulário expirou e não está mais disponível para respostas.',
@@ -95,8 +76,6 @@ class PublicFormController extends Controller
                     ],
                 ]);
             }
-
-            // Verifica limite de respostas
             if ($form->response_limit && $form->responses_count >= $form->response_limit) {
                 Log::info('Formulário atingiu limite de respostas', [
                     'form_id'         => $form->id,
@@ -104,8 +83,7 @@ class PublicFormController extends Controller
                     'response_limit'  => $form->response_limit,
                     'responses_count' => $form->responses_count,
                 ]);
-
-                return Inertia::render('Form/Public/Inactive', [
+                return Inertia::render('Form/Public/Show', [
                     'form' => [
                         'title'       => $form->title,
                         'status'      => 'limite_atingido',
@@ -116,12 +94,11 @@ class PublicFormController extends Controller
                     ],
                 ]);
             }
-
-            // ✅ FORMULÁRIO ATIVO E DISPONÍVEL
             return Inertia::render('Form/Public/Show', [
                 'form' => [
                     'id'          => $form->id,
                     'title'       => $form->title,
+                    'slug'        => $slug,
                     'description' => $form->description,
                     'status'      => $form->status,
                     'fields'      => $form->fields->map(fn($f) => [
@@ -135,81 +112,58 @@ class PublicFormController extends Controller
                     ]),
                 ],
             ]);
-
         } catch (HttpException $e) {
             throw $e;
-
         } catch (Throwable $e) {
             Log::error('Erro ao exibir formulário', [
                 'slug'  => $slug,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
             abort(500, 'Erro ao carregar o formulário. Tente novamente mais tarde.');
         }
     }
-
-    /**
-     * Armazena a resposta - SÓ ACEITA SE STATUS FOR "ATIVO"
-     */
     public function store(Request $request, string $slug): RedirectResponse
     {
         DB::beginTransaction();
-
         try {
-            // Busca o formulário e verifica se está ativo
             $form = Form::where('slug', $slug)
                 ->where('is_public', true)
                 ->lockForUpdate()
                 ->first();
-
             if (! $form) {
                 abort(404, 'Formulário não encontrado.');
             }
-
-            // ⭐ BLOQUEIA SE NÃO ESTIVER ATIVO
             if (! $this->canAcceptResponses($form)) {
                 DB::rollBack();
-
                 Log::warning('Tentativa de envio para formulário não ativo', [
                     'form_id' => $form->id,
                     'slug'    => $slug,
                     'status'  => $form->status,
                     'ip'      => $request->ip(),
                 ]);
-
                 return redirect()
                     ->back()
                     ->with('error', "Este formulário está {$form->status} e não pode receber respostas. Entre em contato com o administrador.");
             }
-
-            // Verifica expiração
             if ($form->expires_at && $form->expires_at <= now()) {
                 DB::rollBack();
                 abort(403, 'Este formulário expirou.');
             }
-
-            // Verifica limite
             if ($form->response_limit && $form->responses_count >= $form->response_limit) {
                 DB::rollBack();
                 abort(403, 'Limite de respostas atingido.');
             }
-
-            // Validação dos campos...
             $rules    = [];
             $messages = [];
-
             foreach ($form->fields as $field) {
                 $fieldRules = [];
-
                 if ($field->required) {
                     $fieldRules[]                              = 'required';
                     $messages["answers.{$field->id}.required"] = "O campo \"{$field->label}\" é obrigatório.";
                 } else {
                     $fieldRules[] = 'nullable';
                 }
-
                 switch ($field->type) {
                     case 'email':
                         $fieldRules[] = 'email:rfc,dns';
@@ -221,13 +175,9 @@ class PublicFormController extends Controller
                         $fieldRules[] = 'date';
                         break;
                 }
-
                 $rules["answers.{$field->id}"] = $fieldRules;
             }
-
             $validated = $request->validate($rules, $messages);
-
-            // Salva resposta
             FormResponse::create([
                 'form_id'    => $form->id,
                 'user_id'    => auth()->id(),
@@ -235,40 +185,31 @@ class PublicFormController extends Controller
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
-
             $form->increment('responses_count');
-
             DB::commit();
-
             return redirect()
                 ->route('forms.public.thanks', $slug)
                 ->with('success', 'Resposta enviada com sucesso!');
-
         } catch (ValidationException $e) {
             DB::rollBack();
             throw $e;
-
         } catch (Throwable $e) {
             DB::rollBack();
-
             Log::error('Erro ao salvar resposta', [
                 'slug'  => $slug,
                 'error' => $e->getMessage(),
             ]);
-
             return redirect()
                 ->back()
                 ->withInput()
                 ->with('error', 'Erro ao enviar resposta. Tente novamente.');
         }
     }
-
     public function thanks(string $slug): Response
     {
         $form = Form::where('slug', $slug)
             ->where('is_public', true)
             ->firstOrFail();
-
         return Inertia::render('Form/Public/Thanks', [
             'form' => [
                 'title'       => $form->title,
