@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Lei;
 
 use App\Http\Controllers\Controller;
@@ -25,6 +26,13 @@ class IndexLeiController extends Controller
         return Inertia::render('Leis/Index', [
             'leis'    => $leis,
             'filters' => ['search' => $search, 'type' => $type],
+            'can'     => [
+                'create'           => auth()->user()->can('forms.create'),
+                'edit'             => auth()->user()->can('forms.edit'),
+                'delete'           => auth()->user()->can('forms.delete'),
+                'manage'           => auth()->user()->hasAnyRole(['Admin', 'Manager']),
+                'toggleVisibility' => auth()->user()->can('forms.toggle.visibility'),
+            ],
         ]);
     }
 }
