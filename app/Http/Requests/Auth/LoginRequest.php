@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Auth\Events\Lockout;
@@ -27,13 +26,43 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
     }
 
     /**
+     * Get custom messages for validator errors.
+     * Mensagens de validação dos campos (formato, obrigatoriedade)
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.required'    => 'O campo email é obrigatório.',
+            'email.email'       => 'Por favor, insira um email válido (ex: seu@email.com).',
+            'password.required' => 'O campo senha é obrigatório.',
+        ];
+    }
+
+    /**
+     * Get custom attributes for validator errors.
+     * Nomes amigáveis dos campos nas mensagens de erro
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'email'    => 'email',
+            'password' => 'senha',
+        ];
+    }
+
+    /**
      * Attempt to authenticate the request's credentials.
+     * Autenticação com mensagens de erro personalizadas
      *
      * @throws \Illuminate\Validation\ValidationException
      */
@@ -44,8 +73,17 @@ class LoginRequest extends FormRequest
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
+            // Verifica se o email existe para dar mensagem mais específica
+            $userExists = \App\Models\User::where('email', $this->input('email'))->exists();
+
+            if (! $userExists) {
+                throw ValidationException::withMessages([
+                    'email' => 'Não encontramos uma conta com este email. Verifique se digitou corretamente ou cadastre-se.',
+                ]);
+            }
+
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'Senha incorreta. Tente novamente ou clique em "Esqueceu a senha?" para recuperar.',
             ]);
         }
 
@@ -54,6 +92,7 @@ class LoginRequest extends FormRequest
 
     /**
      * Ensure the login request is not rate limited.
+     * Proteção contra tentativas excessivas com mensagem clara
      *
      * @throws \Illuminate\Validation\ValidationException
      */
@@ -66,12 +105,14 @@ class LoginRequest extends FormRequest
         event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+        $minutes = ceil($seconds / 60);
+
+        $timeMessage = $minutes > 1
+            ? "aproximadamente {$minutes} minutos"
+            : "alguns segundos";
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'email' => "Muitas tentativas de login. Por segurança, aguarde {$timeMessage} antes de tentar novamente.",
         ]);
     }
 
@@ -80,6 +121,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('email')) . '|' . $this->ip());
     }
 }
