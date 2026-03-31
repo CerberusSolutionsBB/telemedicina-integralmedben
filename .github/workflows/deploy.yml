@@ -1,16 +1,19 @@
-name: "Deploy Main"
+name: 🚀 Deploy Production (Main)
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  build_deploy:
+  deploy:
+    name: Deploy via SSH
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy Main
+      - name: 📦 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🔐 Deploy no servidor
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.HOST }}
@@ -18,13 +21,50 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            cd /var/www/telemedicinamedben/prod/public
+            set -e
 
-            git pull origin main
+            # Navegar para a raiz do projeto (geralmente um nível acima da public)
+            cd /var/www/telemedicinamedben/prod
 
-            composer install --no-dev --no-progress --prefer-dist -a
+            echo "🚀 Iniciando deploy..."
 
-            npm install
+            echo "🔒 Colocando aplicação em manutenção..."
+            php artisan down --retry=60 || true
+
+            echo "📥 Atualizando código..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Ajuste de permissões rápido se necessário
+            # chown -R www-data:www-data .
+
+            echo "📦 Instalando dependências PHP..."
+            # Adicionado --no-interaction e --prefer-dist para maior velocidade
+            composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+            echo "📦 Instalando dependências JS..."
+            # npm ci é excelente para produção pois respeita o package-lock.json
+            npm ci
+
+            echo "🏗️ Buildando assets..."
             npm run build
 
+            echo "⚙️ Rodando migrations..."
+            # Rodar antes do cache para garantir que as tabelas existam
             php artisan migrate --force
+
+            # CUIDADO: Rodar seed em produção pode duplicar dados.
+            # Use apenas se os seeds tiverem lógica de "updateOrCreate"
+            echo "⚙️ Rodando seeds..."
+            # Rodar antes do cache para garantir que as tabelas existam
+            php artisan db:seed --force
+
+            echo "⚡ Otimizando aplicação..."
+            php artisan optimize
+            php artisan view:cache
+            php artisan event:cache
+
+            echo "🔓 Retirando aplicação de manutenção..."
+            php artisan up
+
+            echo "✅ Deploy finalizado com sucesso!"
