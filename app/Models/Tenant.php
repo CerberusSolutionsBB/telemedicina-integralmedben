@@ -1,13 +1,11 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
-use Stancl\Tenancy\Database\Models\Domain;
+use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
@@ -23,11 +21,6 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'tenant_domain',
         'photo_url',
     ];
-
-    public function domain()
-    {
-        return $this->hasMany(Domain::class , 'tenant_id');
-    }
 
     public function questions()
     {
@@ -68,7 +61,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 
     public function getTenantDomainAttribute()
     {
-        return $this->domain->first()?->domain;
+        return $this->domains->first()?->domain;
     }
 
     public function getPhotoUrlAttribute()
