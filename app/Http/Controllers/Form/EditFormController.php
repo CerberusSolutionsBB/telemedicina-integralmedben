@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
 use App\Models\Form;
+use App\Models\FormArquivo;
 use App\Models\FormCategory;
 use App\Models\Lei;
 use Illuminate\Http\Request;
@@ -44,17 +45,26 @@ class EditFormController extends Controller
     private function getLogoData(Form $form): ?array
     {
         $logoArquivo = $form->arquivos->first();
+        $posicao     = 'centro';
         if (! $logoArquivo) {
             return null;
         }
+
+        $formArquvio = FormArquivo::where('form_id', $logoArquivo->pivot->form_id)->firstOrFail();
+
+        if ($formArquvio) {
+            $posicao = $formArquvio->posicao;
+        }
+
         return [
             'url'     => $logoArquivo->url,
-            'posicao' => $logoArquivo->pivot->posicao ?? 'centro',
+            'posicao' => $posicao,
         ];
     }
-    private function formatFormData(Form $form): array
+    public function formatFormData(Form $form): array
     {
         $logoData = $this->getLogoData($form);
+
         return [
             'id'              => $form->id,
             'code'            => $form->code,
@@ -93,7 +103,7 @@ class EditFormController extends Controller
             ],
         ];
     }
-    private function getStats(Form $form): array
+    public function getStats(Form $form): array
     {
         $lastResponse = $form->responses()->latest()->first();
         return [
@@ -103,14 +113,14 @@ class EditFormController extends Controller
             'completion_rate'  => $this->calculateCompletionRate($form),
         ];
     }
-    private function calculateCompletionRate(Form $form): ?float
+    public function calculateCompletionRate(Form $form): ?float
     {
         if ($form->response_limit === null || $form->response_limit === 0) {
             return null;
         }
         return round(($form->responses_count / $form->response_limit) * 100, 1);
     }
-    private function getResponses(Form $form)
+    public function getResponses(Form $form)
     {
         return $form->responses()
             ->with('user:id,name,email')
@@ -125,7 +135,7 @@ class EditFormController extends Controller
                 'created_at' => $response->created_at->format('d/m/Y H:i'),
             ]);
     }
-    private function getStatusOptions(): array
+    public function getStatusOptions(): array
     {
         return [
             ['value' => 'rascunho', 'label' => 'Rascunho'],
@@ -134,7 +144,7 @@ class EditFormController extends Controller
             ['value' => 'encerrado', 'label' => 'Encerrado'],
         ];
     }
-    private function getCategorias(Request $request): array
+    public function getCategorias(Request $request): array
     {
         $search = $request->input('categoria_search');
         return FormCategory::query()
@@ -149,7 +159,7 @@ class EditFormController extends Controller
             ])
             ->toArray();
     }
-    private function getLeis(Request $request): array
+    public function getLeis(Request $request): array
     {
         $search = $request->input('lei_search');
         return Lei::query()
@@ -168,7 +178,7 @@ class EditFormController extends Controller
             ])
             ->toArray();
     }
-    private function getPermissions($user, Form $form): array
+    public function getPermissions($user, Form $form): array
     {
         $isOwner = $form->user_id === $user->id;
         return [
