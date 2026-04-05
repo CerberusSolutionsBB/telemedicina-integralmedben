@@ -76,7 +76,6 @@ class StoreFormController extends Controller
         $caminhoDiretorio = 'forms/logos/' . $form->id;
         $caminhoCompleto  = $caminhoDiretorio . '/' . $nomeArmazenado;
 
-        // ⭐ MUDANÇA AQUI: Força disco 'public' em vez do default
         $disk = 'public';
 
         $this->criarDiretorioSeNaoExistir($caminhoDiretorio, $disk);

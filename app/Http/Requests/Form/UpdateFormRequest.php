@@ -40,6 +40,7 @@ class UpdateFormRequest extends FormRequest
             'fields.*.options.*'   => ['nullable', 'string'],
             'fields.*.help_text'   => ['nullable', 'string', 'max:500'],
             'fields.*.order'       => ['nullable', 'integer'],
+            'remove_logo'          => ['nullable', 'boolean'],
         ];
     }
 
@@ -110,6 +111,12 @@ class UpdateFormRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if ($this->has('remove_logo')) {
+            $this->merge([
+                'remove_logo' => filter_var($this->remove_logo, FILTER_VALIDATE_BOOLEAN),
+            ]);
+        }
+
         // Garantir que is_public seja boolean
         if ($this->has('is_public')) {
             $this->merge([

@@ -16,16 +16,6 @@ class UpdateFormController extends Controller
 {
     public function __invoke(UpdateFormRequest $request, Form $form): RedirectResponse
     {
-        if ($form->responses_count > 0 || $form->responses()->exists()) {
-            Log::warning('Tentativa de editar formulário com respostas', [
-                'form_id'         => $form->id,
-                'user_id'         => $request->user()->id,
-                'responses_count' => $form->responses_count,
-            ]);
-            return redirect()
-                ->back()
-                ->with('error', 'Este formulário não pode ser editado porque já possui respostas. Crie uma nova versão ou duplique o formulário.');
-        }
         try {
             DB::beginTransaction();
             $validated = $request->validated();
@@ -44,12 +34,11 @@ class UpdateFormController extends Controller
                 'settings'        => $validated['settings'] ?? null,
             ]);
             $this->syncLogo($form, $request, $validated);
-            $this->syncFields($form, $validated['fields']);
+            if (isset($validated['fields'])) {
+                $this->syncFields($form, $validated['fields']);
+            }
             DB::commit();
-            Log::info('Formulário atualizado', [
-                'form_id' => $form->id,
-                'user_id' => $request->user()->id,
-            ]);
+
             return redirect()
                 ->route('forms.index')
                 ->with('success', 'Formulário atualizado com sucesso!');
@@ -64,61 +53,51 @@ class UpdateFormController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Erro ao atualizar formulário. Tente novamente.');
+                ->with('error', 'Erro ao atualizar formulário: ' . $e->getMessage());
         }
     }
     private function syncLogo(Form $form, $request, array $validated): void
     {
-        $logosExistentes = FormArquivo::where('form_id', $form->id)
-            ->where('tipo', FormArquivo::TIPO_LOGO)
-            ->with('arquivo')
-            ->get();
+        $logoAtual = $form->logoArquivo;
         if ($request->boolean('remove_logo')) {
-            foreach ($logosExistentes as $logoAtual) {
+            if ($logoAtual) {
                 $this->removerLogo($form, $logoAtual);
             }
-            Log::info('Todos os logos removidos do formulário', ['form_id' => $form->id]);
             return;
         }
         if ($request->hasFile('logo') && $request->file('logo')->isValid()) {
-            foreach ($logosExistentes as $logoAtual) {
+            if ($logoAtual) {
                 $this->removerLogo($form, $logoAtual);
             }
             $posicao = $validated['logo_posicao'] ?? 'centro';
-            $this->processarLogo($form, $request->file('logo'), $posicao);
+            $this->processarLogo($form, $request->file('logo'), $posicao, $request->user()->id);
             return;
         }
-        if ($logosExistentes->isNotEmpty() && isset($validated['logo_posicao'])) {
-            $logosExistentes->first()->update([
-                'posicao' => $validated['logo_posicao'],
-            ]);
-            Log::info('Posição do logo atualizada', [
-                'form_id' => $form->id,
-                'posicao' => $validated['logo_posicao'],
-            ]);
+        if ($logoAtual && isset($validated['logo_posicao'])) {
+            $logoAtual->update(['posicao' => $validated['logo_posicao']]);
         }
     }
     private function removerLogo(Form $form, FormArquivo $formArquivo): void
     {
         $arquivo = $formArquivo->arquivo;
         if ($arquivo) {
-            if (Storage::disk($arquivo->disk)->exists($arquivo->caminho)) {
-                Storage::disk($arquivo->disk)->delete($arquivo->caminho);
-                Log::info('Arquivo deletado do storage', [
-                    'caminho' => $arquivo->caminho,
-                    'disk'    => $arquivo->disk,
+            try {
+                if (Storage::disk($arquivo->disk)->exists($arquivo->caminho)) {
+                    Storage::disk($arquivo->disk)->delete($arquivo->caminho);
+                    Log::info('Logo deletado do storage', ['caminho' => $arquivo->caminho]);
+                }
+                $arquivo->delete();
+            } catch (\Exception $e) {
+                Log::error('Erro ao remover arquivo do storage', [
+                    'arquivo_id' => $arquivo->id,
+                    'error'      => $e->getMessage(),
                 ]);
             }
-            $arquivo->delete();
-            Log::info('Registro de arquivo deletado', ['arquivo_id' => $arquivo->id]);
         }
         $formArquivo->delete();
-        Log::info('Registro form_arquivo deletado', [
-            'form_arquivo_id' => $formArquivo->id,
-            'form_id'         => $form->id,
-        ]);
+        Log::info('Logo removido do formulário', ['form_id' => $form->id]);
     }
-    private function processarLogo(Form $form, $file, string $posicao = 'centro'): void
+    private function processarLogo(Form $form, $file, string $posicao = 'centro', int $userId): void
     {
         $nomeOriginal     = $file->getClientOriginalName();
         $extensao         = $file->getClientOriginalExtension();
@@ -138,18 +117,12 @@ class UpdateFormController extends Controller
             'mime_type'       => $mimeType,
             'tamanho'         => $tamanho,
             'disk'            => $disk,
-            'user_id'         => auth()->id(),
+            'user_id'         => $userId,
         ]);
         FormArquivo::create([
             'arquivo_id' => $arquivo->id,
             'form_id'    => $form->id,
             'tipo'       => FormArquivo::TIPO_LOGO,
-            'posicao'    => $posicao,
-        ]);
-        Log::info('Novo logo processado com sucesso', [
-            'form_id'    => $form->id,
-            'arquivo_id' => $arquivo->id,
-            'caminho'    => $caminhoCompleto,
             'posicao'    => $posicao,
         ]);
     }
@@ -162,10 +135,7 @@ class UpdateFormController extends Controller
             if (is_dir($caminhoCompleto)) {
                 chmod($caminhoCompleto, 0755);
             }
-            Log::info("Diretório criado", [
-                'caminho' => $caminho,
-                'disk'    => $disk,
-            ]);
+            Log::info("Diretório criado: {$caminho} no disco {$disk}");
         }
     }
     private function syncFields(Form $form, array $fields): void
@@ -184,9 +154,5 @@ class UpdateFormController extends Controller
                 'order'       => $fieldData['order'] ?? $index,
             ]);
         }
-        Log::info('Campos sincronizados', [
-            'form_id'      => $form->id,
-            'total_fields' => count($fields),
-        ]);
     }
 }
