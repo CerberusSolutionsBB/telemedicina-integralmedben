@@ -3,7 +3,6 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -26,9 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Grupo tenant (Tenancy)
-        $middleware->appendToGroup('tenant', [
-            InitializeTenancyByDomain::class,
-        ]);
+        // $middleware->appendToGroup('tenant', [
+        //     InitializeTenancyByDomain::class,
+        // ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
