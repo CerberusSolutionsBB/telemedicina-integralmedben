@@ -58,6 +58,7 @@ class UpdateFormController extends Controller
     }
     private function syncLogo(Form $form, $request, array $validated): void
     {
+
         $logoAtual = $form->logoArquivo;
         if ($request->boolean('remove_logo')) {
             if ($logoAtual) {
@@ -74,8 +75,15 @@ class UpdateFormController extends Controller
             return;
         }
         if ($logoAtual && isset($validated['logo_posicao'])) {
+
             $logoAtual->update(['posicao' => $validated['logo_posicao']]);
         }
+        $dataFormArquivo = FormArquivo::where('form_id', $form->id)->firstOrFail();
+
+        if ($dataFormArquivo) {
+            $dataFormArquivo->update(['posicao' => $validated['logo_posicao']]);
+        }
+
     }
     private function removerLogo(Form $form, FormArquivo $formArquivo): void
     {

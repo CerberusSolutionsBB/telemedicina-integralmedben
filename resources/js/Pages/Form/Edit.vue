@@ -9,7 +9,6 @@ import Breadcrumb from "@/Components/Breadcrumb.vue";
 import FormField from "@/Components/FormFields/FormField.vue";
 import ColorPicker from "@/Components/ColorPicker.vue";
 import ImageUpload from '@/Components/ImageUpload.vue';
-
 import {
     Plus,
     Trash2,
@@ -35,15 +34,10 @@ import {
     Paintbrush,
     ArrowLeft
 } from "lucide-vue-next";
-
-// ==========================================
-// PROPS
-// ==========================================
-
 const props = defineProps({
     form: {
         type: Object,
-        required: true // ✅ Obrigatório no edit
+        required: true
     },
     statusOptions: {
         type: Array,
@@ -62,31 +56,18 @@ const props = defineProps({
         default: () => ({})
     }
 });
-
-// ==========================================
-// COMPUTED
-// ==========================================
-
 const breadcrumbs = computed(() => [
     { label: 'Início', href: route('dashboard'), icon: Home },
     { label: 'Formulários', href: route('forms.index') },
     { label: 'Editar', href: null },
 ]);
-
 const selectedCategoria = computed(() => {
     return props.categorias.find(c => c.value === formData.value.categoria_id);
 });
-
 const selectedLei = computed(() => {
     return props.leis.find(l => l.value === formData.value.lei_id);
 });
-
-// ==========================================
-// STATE - Inicializado com dados do formulário existente
-// ==========================================
-
 const formData = ref({
-    // ✅ Dados básicos do formulário existente
     title: props.form.title || '',
     description: props.form.description || '',
     categoria_id: props.form.categoria_id || null,
@@ -98,35 +79,22 @@ const formData = ref({
     response_limit: props.form.response_limit || '',
     primary_color: props.form.primary_color || '#22d3ee',
     secondary_color: props.form.secondary_color || '#06b6d4',
-
-    // ✅ Logo - arquivo novo (null inicialmente) e URL existente
-    logo: null, // File | null - para upload novo
-    logo_url: props.form.logo_url || null, // URL do logo existente
-    logo_posicao: props.form.logo_posicao || 'centro', // Posição do logo
-
-    // ✅ Settings existentes ou default
+    logo: null,
+    logo_url: props.form.logo_url || null,
+    logo_posicao: props.form.logo_posicao || 'centro',
     settings: props.form.settings || {
         allow_multiple: false,
         show_progress: true,
         theme: 'default'
     },
-
-    // ✅ Campos existentes ou array vazio
     fields: props.form.fields?.map(f => ({
         ...f,
         options: f.options || []
     })) || []
 });
-
 const saving = ref(false);
 const showPreview = ref(false);
-
 const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500";
-
-// ==========================================
-// FIELD TYPES
-// ==========================================
-
 const fieldTypes = [
     { value: 'text', label: 'Texto curto', icon: Type },
     { value: 'textarea', label: 'Texto longo', icon: Type },
@@ -137,11 +105,6 @@ const fieldTypes = [
     { value: 'checkbox', label: 'Múltipla escolha', icon: CheckSquare },
     { value: 'radio', label: 'Opções (radio)', icon: List },
 ];
-
-// ==========================================
-// FIELD MANAGEMENT
-// ==========================================
-
 const addField = (type = 'text') => {
     const newField = {
         id: Date.now(),
@@ -155,114 +118,74 @@ const addField = (type = 'text') => {
     };
     formData.value.fields.push(newField);
 };
-
 const removeField = (index) => {
     if (confirm('Tem certeza que deseja remover este campo?')) {
         formData.value.fields.splice(index, 1);
-        // Reordenar
         formData.value.fields.forEach((field, idx) => field.order = idx);
     }
 };
-
 const addOption = (fieldIndex) => {
     const field = formData.value.fields[fieldIndex];
     field.options.push(`Opção ${field.options.length + 1}`);
 };
-
 const removeOption = (fieldIndex, optionIndex) => {
     const field = formData.value.fields[fieldIndex];
     if (field.options.length > 1) {
         field.options.splice(optionIndex, 1);
     }
 };
-
 const moveField = (index, direction) => {
     const fields = formData.value.fields;
     const newIndex = direction === 'up' ? index - 1 : index + 1;
-
     if (newIndex >= 0 && newIndex < fields.length) {
         [fields[index], fields[newIndex]] = [fields[newIndex], fields[index]];
         fields.forEach((field, idx) => field.order = idx);
     }
 };
-
-// ==========================================
-// FORM SUBMISSION
-// ==========================================
-
 const saveForm = async (publish = false) => {
     saving.value = true;
-
     if (publish && formData.value.status !== 'ativo') {
         formData.value.status = 'ativo';
         formData.value.published_at = new Date().toISOString();
     }
-
     const routeParams = { form: props.form.id };
     const payload = new FormData();
-
-    // ✅ CORREÇÃO: Enviar todos os campos corretamente
     Object.keys(formData.value).forEach(key => {
         const value = formData.value[key];
-
         if (key === 'fields') {
-            // ✅ Envia como JSON string
             payload.append(key, JSON.stringify(value || []));
-
         } else if (key === 'settings') {
-            // ✅ Envia como JSON string
             const settingsValue = value && typeof value === 'object' ? value : {};
             payload.append(key, JSON.stringify(settingsValue));
-
         } else if (key === 'logo' && value instanceof File) {
-            // ✅ Envia arquivo de logo apenas se for novo
             payload.append(key, value);
-
         } else if (key === 'logo_posicao') {
-            // ✅ Sempre envia a posição se tiver logo (novo ou existente)
             if (formData.value.logo || formData.value.logo_url) {
                 payload.append(key, value || 'centro');
             }
-
         } else if (['logo_url'].includes(key)) {
-            // ❌ Não envia logo_url (é apenas para preview)
             return;
-
         } else if (value === true || value === false) {
-            // ✅ Converter booleanos para string '1' ou '0'
             payload.append(key, value ? '1' : '0');
-
         } else if (value !== null && value !== undefined) {
-            // ✅ Outros valores
             payload.append(key, value);
         }
     });
-
-    // ✅ Método PUT para update
     payload.append('_method', 'PUT');
-
     try {
         await router.post(route('forms.update', routeParams), payload, {
             preserveState: true,
             preserveScroll: true,
-            forceFormData: true, // ✅ Garante que envia como multipart/form-data
-
+            forceFormData: true,
             onSuccess: () => {
                 showToast('Formulário atualizado com sucesso!', 'success');
-
-                // ✅ Limpar o arquivo após salvar (manter apenas URL)
                 formData.value.logo = null;
             },
-
             onError: (errors) => {
                 console.error('Erros de validação:', errors);
-
-                // ✅ Extrair mensagens de erro de forma mais completa
                 let errorMessages = [];
-
                 Object.keys(errors).forEach(key => {
                     const errorValue = errors[key];
-
                     if (Array.isArray(errorValue)) {
                         errorMessages.push(...errorValue);
                     } else if (typeof errorValue === 'string') {
@@ -271,14 +194,11 @@ const saveForm = async (publish = false) => {
                         errorMessages.push(JSON.stringify(errorValue));
                     }
                 });
-
                 const message = errorMessages.length > 0
                     ? errorMessages[0]
                     : 'Erro ao atualizar formulário. Verifique os campos.';
-
                 showToast(message, 'error');
             },
-
             onFinish: () => {
                 saving.value = false;
             }
@@ -290,11 +210,9 @@ const saveForm = async (publish = false) => {
     }
 };
 </script>
-
 <template>
 
     <Head title="Editar Formulário" />
-
     <CentralAdminLayout>
         <!-- Header -->
         <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
@@ -307,24 +225,20 @@ const saveForm = async (publish = false) => {
                     ID: {{ props.form.id }} | Slug: {{ props.form.slug }}
                 </p>
             </div>
-
             <div class="flex gap-2">
                 <!-- ✅ Botão voltar -->
                 <Button variant="outline" :href="route('forms.index')" class="gap-2">
                     <ArrowLeft class="w-4 h-4" />
                     Voltar
                 </Button>
-
                 <Button variant="outline" @click="showPreview = !showPreview" class="gap-2">
                     <Eye class="w-4 h-4" />
                     {{ showPreview ? 'Editar' : 'Preview' }}
                 </Button>
-
                 <Button variant="outline" @click="saveForm(false)" :disabled="saving" class="gap-2">
                     <Save class="w-4 h-4" />
                     Salvar
                 </Button>
-
                 <Button variant="primary" @click="saveForm(true)"
                     :disabled="saving || !formData.title || formData.fields.length === 0" class="gap-2">
                     <Globe class="w-4 h-4" />
@@ -332,18 +246,15 @@ const saveForm = async (publish = false) => {
                 </Button>
             </div>
         </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Editor -->
             <div v-if="!showPreview" class="lg:col-span-2 space-y-6">
-
                 <!-- Informações Básicas -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                     <div class="flex items-center gap-2 mb-4 text-gray-900 font-semibold">
                         <Settings class="w-5 h-5" />
                         <h2>Informações do Formulário</h2>
                     </div>
-
                     <div class="space-y-4">
                         <!-- Título -->
                         <div>
@@ -355,7 +266,6 @@ const saveForm = async (publish = false) => {
                                 :class="inputClass" required />
                         </div>
 
-                        <!-- Descrição -->
                         <div>
                             <Label for="description" class="text-gray-700">Descrição</Label>
                             <textarea id="description" v-model="formData.description"
@@ -363,14 +273,13 @@ const saveForm = async (publish = false) => {
                                 rows="3"></textarea>
                         </div>
 
-                        <!-- ✅ Upload de Logo com posição -->
                         <div>
+
                             <ImageUpload v-model="formData.logo" v-model:posicao="formData.logo_posicao"
-                                label="Logo do Formulário"
+                                :posicao="formData.logo_posicao" label="Logo do Formulário"
                                 description="Arraste uma imagem ou clique para alterar o logo"
                                 :previewUrl="formData.logo_url" @error="(err) => showToast(err, 'error')" />
                         </div>
-
                         <!-- Categoria e Lei -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -389,7 +298,6 @@ const saveForm = async (publish = false) => {
                                     {{ selectedCategoria.description }}
                                 </p>
                             </div>
-
                             <div>
                                 <Label for="lei" class="flex items-center gap-2 text-gray-700 pb-1">
                                     <Scale class="w-4 h-4" />
@@ -406,7 +314,6 @@ const saveForm = async (publish = false) => {
                                 </p>
                             </div>
                         </div>
-
                         <!-- Status e Limite -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -417,14 +324,12 @@ const saveForm = async (publish = false) => {
                                     </option>
                                 </select>
                             </div>
-
                             <div>
                                 <Label for="response_limit" class="text-gray-700">Limite de Respostas</Label>
                                 <input id="response_limit" type="number" v-model="formData.response_limit"
                                     placeholder="Ilimitado" :class="inputClass" />
                             </div>
                         </div>
-
                         <!-- Datas -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -435,7 +340,6 @@ const saveForm = async (publish = false) => {
                                 <input id="published_at" type="datetime-local" v-model="formData.published_at"
                                     :class="inputClass" />
                             </div>
-
                             <div>
                                 <Label for="expires_at" class="text-gray-700 flex items-center gap-2">
                                     <Calendar class="w-4 h-4" />
@@ -445,7 +349,6 @@ const saveForm = async (publish = false) => {
                                     :class="inputClass" />
                             </div>
                         </div>
-
                         <!-- Cores -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -456,7 +359,6 @@ const saveForm = async (publish = false) => {
                                 <ColorPicker id="primary_color" v-model="formData.primary_color"
                                     description="Cor principal do formulário, usada em botões e destaques" />
                             </div>
-
                             <div>
                                 <Label for="secondary_color" class="text-gray-700 flex items-center gap-2">
                                     <Paintbrush class="w-4 h-4" />
@@ -466,7 +368,6 @@ const saveForm = async (publish = false) => {
                                     description="Cor secundária para detalhes e elementos de fundo" />
                             </div>
                         </div>
-
                         <!-- Visibilidade -->
                         <div class="border-t pt-4 mt-4">
                             <div class="flex items-center gap-3">
@@ -490,7 +391,6 @@ const saveForm = async (publish = false) => {
                         </div>
                     </div>
                 </div>
-
                 <!-- Campos Dinâmicos -->
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
@@ -499,7 +399,6 @@ const saveForm = async (publish = false) => {
                             {{ formData.fields.length }} campo(s)
                         </span>
                     </div>
-
                     <!-- Estado Vazio -->
                     <div v-if="formData.fields.length === 0"
                         class="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
@@ -509,7 +408,6 @@ const saveForm = async (publish = false) => {
                             Adicionar primeiro campo
                         </Button>
                     </div>
-
                     <!-- Lista de Campos -->
                     <div v-for="(field, index) in formData.fields" :key="field.id"
                         class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 relative group">
@@ -528,12 +426,10 @@ const saveForm = async (publish = false) => {
                                 <Trash2 class="w-4 h-4" />
                             </button>
                         </div>
-
                         <div class="flex items-start gap-4">
                             <div class="mt-2 text-gray-400">
                                 <GripVertical class="w-5 h-5" />
                             </div>
-
                             <div class="flex-1 space-y-4">
                                 <!-- Tipo e Obrigatório -->
                                 <div class="flex items-center gap-3">
@@ -542,18 +438,15 @@ const saveForm = async (publish = false) => {
                                             {{ type.label }}
                                         </option>
                                     </select>
-
                                     <label class="flex items-center gap-2 text-sm cursor-pointer">
                                         <input type="checkbox" v-model="field.required"
                                             class="w-5 h-5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500" />
                                         <span class="text-gray-700">Obrigatório</span>
                                     </label>
                                 </div>
-
                                 <!-- Label -->
                                 <input v-model="field.label" placeholder="Digite a pergunta"
                                     :class="inputClass + ' font-medium text-lg'" />
-
                                 <!-- Placeholder e Help -->
                                 <div class="grid grid-cols-2 gap-4">
                                     <input v-model="field.placeholder" placeholder="Texto de ajuda (placeholder)"
@@ -561,7 +454,6 @@ const saveForm = async (publish = false) => {
                                     <input v-model="field.help_text" placeholder="Descrição adicional"
                                         :class="inputClass" />
                                 </div>
-
                                 <!-- Opções -->
                                 <div v-if="['select', 'checkbox', 'radio'].includes(field.type)"
                                     class="space-y-2 pl-4 border-l-2 border-gray-200">
@@ -581,7 +473,6 @@ const saveForm = async (publish = false) => {
                                         Adicionar opção
                                     </Button>
                                 </div>
-
                                 <!-- Preview -->
                                 <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                     <p class="text-xs text-gray-500 mb-2">Preview:</p>
@@ -591,7 +482,6 @@ const saveForm = async (publish = false) => {
                         </div>
                     </div>
                 </div>
-
                 <!-- Botão Flutuante -->
                 <div v-if="formData.fields.length > 0" class="flex justify-center pt-4">
                     <div class="relative group">
@@ -600,7 +490,6 @@ const saveForm = async (publish = false) => {
                             <Plus class="w-5 h-5" />
                             Adicionar Campo
                         </Button>
-
                         <div
                             class="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 min-w-[200px]">
                             <p class="text-xs text-gray-500 px-2 py-1">Tipos de campo:</p>
@@ -613,7 +502,6 @@ const saveForm = async (publish = false) => {
                     </div>
                 </div>
             </div>
-
             <!-- Preview -->
             <div v-else class="lg:col-span-2">
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 max-w-2xl mx-auto">
@@ -628,14 +516,12 @@ const saveForm = async (publish = false) => {
                                 class="h-16 object-contain inline-block" />
                             <img :src="formData.logo_url" v-else class="h-16 object-contain inline-block" />
                         </div>
-
                         <h1 class="text-2xl font-bold text-gray-900 mb-2">
                             {{ formData.title || 'Sem título' }}
                         </h1>
                         <p class="text-gray-600">
                             {{ formData.description || 'Sem descrição' }}
                         </p>
-
                         <!-- Tags -->
                         <div v-if="selectedCategoria || selectedLei" class="flex flex-wrap gap-2 mt-3">
                             <span v-if="selectedCategoria"
@@ -649,7 +535,6 @@ const saveForm = async (publish = false) => {
                                 {{ selectedLei.label }}
                             </span>
                         </div>
-
                         <!-- Visibilidade -->
                         <div class="flex items-center gap-4 mt-4 text-sm text-gray-500">
                             <span v-if="formData.is_public" class="flex items-center gap-1 text-green-600">
@@ -660,21 +545,17 @@ const saveForm = async (publish = false) => {
                             </span>
                         </div>
                     </div>
-
                     <form class="space-y-6" @submit.prevent>
                         <FormField v-for="field in formData.fields" :key="field.id" :field="field" disabled />
-
                         <div v-if="formData.fields.length === 0" class="text-center text-gray-500 py-8">
                             Nenhum campo adicionado
                         </div>
-
                         <div class="mt-8 pt-6 border-t flex justify-end">
                             <Button type="submit" disabled>Enviar</Button>
                         </div>
                     </form>
                 </div>
             </div>
-
             <!-- Sidebar -->
             <div class="hidden lg:block space-y-6">
                 <div class="bg-blue-50 rounded-xl border border-blue-200 p-4">
@@ -686,7 +567,6 @@ const saveForm = async (publish = false) => {
                         <li>Defina uma data de expiração se for temporário</li>
                     </ul>
                 </div>
-
                 <!-- ✅ Info do formulário -->
                 <div class="bg-gray-50 rounded-xl border border-gray-200 p-4">
                     <h3 class="font-semibold text-gray-900 mb-2">Informações</h3>
