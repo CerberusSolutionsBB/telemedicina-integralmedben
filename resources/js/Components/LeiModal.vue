@@ -10,6 +10,15 @@ const props = defineProps({
     show: {
         type: Boolean,
         default: false
+    },
+    // ⭐ NOVO: Receber a cor primária do formulário
+    primaryColor: {
+        type: String,
+        default: '#06b6d4' // Default ciano (Integral Medben)
+    },
+    secondaryColor: {
+        type: String,
+        default: '#0891b2'
     }
 });
 
@@ -32,6 +41,11 @@ const typeLabel = computed(() => {
     };
     return types[props.lei?.type] || props.lei?.type || '—';
 });
+
+// ⭐ Computed para o gradiente do header
+const headerGradient = computed(() => {
+    return `linear-gradient(135deg, ${props.primaryColor} 0%, ${props.secondaryColor} 100%)`;
+});
 </script>
 
 <template>
@@ -53,9 +67,10 @@ const typeLabel = computed(() => {
                     leave-to-class="opacity-0 scale-95 translate-y-2">
                     <div v-if="show"
                         class="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
-                        <!-- Header -->
+
+                        <!-- ⭐ HEADER COM COR PRIMÁRIA -->
                         <div class="flex items-start justify-between p-6 border-b border-gray-100"
-                            :style="{ background: 'linear-gradient(135deg, var(--form-primary, #8B5CF6) 0%, var(--form-secondary, #10B981) 100%)' }">
+                            :style="{ background: headerGradient }">
                             <div class="flex items-start gap-3">
                                 <div
                                     class="flex-shrink-0 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -102,16 +117,16 @@ const typeLabel = computed(() => {
                             </span>
                         </div>
 
-                        <!-- Conteúdo (HTML do campo text) -->
+                        <!-- Conteúdo -->
                         <div class="flex-1 overflow-y-auto p-6">
                             <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed" v-html="lei.text" />
                         </div>
 
-                        <!-- Footer -->
+                        <!-- ⭐ FOOTER COM BOTÃO NA COR PRIMÁRIA -->
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
                             <button @click="emit('close')"
-                                class="px-5 py-2 rounded-lg text-sm font-medium text-white transition-all duration-150 hover:opacity-90"
-                                :style="{ backgroundColor: 'var(--form-primary, #8B5CF6)' }">
+                                class="px-5 py-2 rounded-lg text-sm font-medium text-white transition-all duration-150 hover:opacity-90 hover:scale-105"
+                                :style="{ backgroundColor: primaryColor }">
                                 Fechar
                             </button>
                         </div>
