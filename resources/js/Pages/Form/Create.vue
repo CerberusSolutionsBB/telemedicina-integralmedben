@@ -31,7 +31,7 @@ import {
     Home,
     Tag,
     Scale,
-    Palette, Paintbrush
+    Palette, Paintbrush, IdCard
 } from "lucide-vue-next";
 
 const breadcrumbs = computed(() => [
@@ -56,6 +56,10 @@ const props = defineProps({
         default: () => []
     },
     leis: {
+        type: Array,
+        default: () => []
+    },
+    credencias_clubles: {
         type: Array,
         default: () => []
     },
@@ -84,6 +88,7 @@ const formData = ref({
     btn_confirmar_descricao: props.form?.btn_confirmar_descricao ?? 'ENVIAR CADASTRO',
     sub_descricao: props.form?.sub_descricao ?? null,
     observacao: props.form?.observacao ?? null,
+    credencia_cluble_id: props.form?.credencia_cluble_id ?? null,
     logo: null,
     logo_url: props.form?.logo_url || null,
     logo_posicao: props.form?.logo_posicao || 'centro',
@@ -112,6 +117,10 @@ const selectedCategoria = computed(() => {
 
 const selectedLei = computed(() => {
     return props.leis.find(l => l.value === formData.value.lei_id);
+});
+
+const selectedCredencial = computed(() => {
+    return props.credencias_clubles.find(c => c.value === formData.value.credencia_cluble_id);
 });
 
 const addField = (type = 'text') => {
@@ -173,21 +182,17 @@ const saveForm = (publish = false) => {
         const value = formData.value[key];
 
         if (key === 'fields') {
-            // ✅ Sempre envia como JSON string válida
             payload.append(key, JSON.stringify(value || []));
         } else if (key === 'settings') {
-            // ✅ Sempre envia como JSON string válida (nunca vazio ou null)
             const settingsValue = value && typeof value === 'object' ? value : {};
             payload.append(key, JSON.stringify(settingsValue));
         } else if (key === 'logo' && value instanceof File) {
             payload.append(key, value);
         } else if (key === 'logo_posicao') {
-            // ✅ Só envia se tiver logo (novo ou existente)
             if (formData.value.logo || formData.value.logo_url) {
                 payload.append(key, value || 'centro');
             }
         } else if (!['logo_url'].includes(key)) {
-            // ✅ Converte null/undefined para string vazia para evitar erros
             payload.append(key, value !== null && value !== undefined ? value : '');
         }
     });
@@ -210,7 +215,7 @@ const saveForm = (publish = false) => {
             if (errors.categoria_id) errorMessages.push(errors.categoria_id);
             if (errors.lei_id) errorMessages.push(errors.lei_id);
             if (errors.fields) errorMessages.push(errors.fields);
-            if (errors.settings) errorMessages.push(errors.settings); // ✅ Adicionado
+            if (errors.settings) errorMessages.push(errors.settings);
 
             Object.keys(errors).forEach(key => {
                 if (key.startsWith('fields.')) {
@@ -315,16 +320,6 @@ const showPreview = ref(false);
                                 <input id="sub_descricao" v-model="formData.sub_descricao"
                                     placeholder="Ex: Preencha todos os campos obrigatórios" :class="inputClass" />
                             </div>
-
-                            <!-- Observação -->
-                            <!-- <div>
-                                <Label for="observacao" class="flex items-center gap-1 text-gray-700 pb-1">
-                                    Observação
-                                </Label>
-                                <textarea id="observacao" v-model="formData.observacao"
-                                    placeholder="Ex: Informações adicionais sobre o formulário..." :class="inputClass"
-                                    rows="3"></textarea>
-                            </div> -->
                         </div>
                         <div>
                             <ImageUpload v-model="formData.logo" v-model:posicao="formData.logo_posicao"
@@ -333,8 +328,8 @@ const showPreview = ref(false);
                                 :preview-url="formData.logo_url" @error="(err) => showToast(err, 'error')" />
                         </div>
 
-                        <!-- Categoria e Lei -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Categoria, Credencial e Lei -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <Label for="categoria" class="flex items-center gap-2 text-gray-700 pb-1">
                                     <Tag class="w-4 h-4" />
@@ -349,6 +344,25 @@ const showPreview = ref(false);
                                 </select>
                                 <p v-if="selectedCategoria?.description" class="text-xs text-gray-500 mt-1">
                                     {{ selectedCategoria.description }}
+                                </p>
+                            </div>
+
+                            <!-- Credencial Clube -->
+                            <div>
+                                <Label for="credencial_clube" class="flex items-center gap-2 text-gray-700 pb-1">
+                                    <IdCard class="w-4 h-4" />
+                                    Credencial Clube
+                                </Label>
+                                <select id="credencial_clube" v-model="formData.credencia_cluble_id"
+                                    :class="inputClass">
+                                    <option :value="null">Selecione uma credencial</option>
+                                    <option v-for="credencial in credencias_clubles" :key="credencial.value"
+                                        :value="credencial.value">
+                                        {{ credencial.label }}
+                                    </option>
+                                </select>
+                                <p v-if="selectedCredencial?.description" class="text-xs text-gray-500 mt-1">
+                                    {{ selectedCredencial.description }}
                                 </p>
                             </div>
 
@@ -590,12 +604,18 @@ const showPreview = ref(false);
                             {{ formData.description || 'Sem descrição' }}
                         </p>
 
-                        <!-- Info da Categoria e Lei no Preview -->
-                        <div v-if="selectedCategoria || selectedLei" class="flex flex-wrap gap-2 mt-3">
+                        <!-- Info da Categoria, Credencial e Lei no Preview -->
+                        <div v-if="selectedCategoria || selectedLei || selectedCredencial"
+                            class="flex flex-wrap gap-2 mt-3">
                             <span v-if="selectedCategoria"
                                 class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                 <Tag class="w-3 h-3" />
                                 {{ selectedCategoria.label }}
+                            </span>
+                            <span v-if="selectedCredencial"
+                                class="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                                <IdCard class="w-3 h-3" />
+                                {{ selectedCredencial.label }}
                             </span>
                             <span v-if="selectedLei"
                                 class="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">

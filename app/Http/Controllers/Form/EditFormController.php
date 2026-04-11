@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
+use App\Models\CredenciasCluble;
 use App\Models\Form;
 use App\Models\FormArquivo;
 use App\Models\FormCategory;
@@ -24,19 +25,35 @@ class EditFormController extends Controller
             'fields'   => fn($q)   => $q->orderBy('order'),
             'categoria:id,name,description',
             'lei:id,title,type',
+            'credenciaCluble:id,title',
             'arquivos' => fn($q) => $q->wherePivot('tipo', 'logo'),
         ]);
         return Inertia::render('Form/Edit', [
-            'form'          => $this->formatFormData($form),
-            'stats'         => $this->getStats($form),
-            'responses'     => $this->getResponses($form),
-            'statusOptions' => $this->getStatusOptions(),
-            'categorias'    => $this->getCategorias($request),
-            'leis'          => $this->getLeis($request),
-            'can'           => $this->getPermissions($user, $form),
+            'credencias_clubles' => $this->getCredenciasClubles($request),
+            'form'               => $this->formatFormData($form),
+            'stats'              => $this->getStats($form),
+            'responses'          => $this->getResponses($form),
+            'statusOptions'      => $this->getStatusOptions(),
+            'categorias'         => $this->getCategorias($request),
+            'leis'               => $this->getLeis($request),
+            'can'                => $this->getPermissions($user, $form),
         ]);
     }
-    private function canView($user, Form $form): bool
+    private function getCredenciasClubles(Request $request): array
+    {
+        $search = $request->input('categoria_search');
+
+        return CredenciasCluble::query()
+            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%"))
+            ->orderBy('title')
+            ->limit(50)
+            ->get(['id', 'title'])
+            ->map(fn(CredenciasCluble $c) => [
+                'value' => $c->id,
+                'label' => $c->title,
+            ])
+            ->toArray();
+    }private function canView($user, Form $form): bool
     {
         return $user->can('forms.view')
         || $form->user_id === $user->id
@@ -69,6 +86,7 @@ class EditFormController extends Controller
             'id'                      => $form->id,
             'code'                    => $form->code,
             'title'                   => $form->title,
+            'credencia_cluble_id'     => $form->credencia_cluble_id,
             'slug'                    => $form->slug,
             'description'             => $form->description,
             'status'                  => $form->status,

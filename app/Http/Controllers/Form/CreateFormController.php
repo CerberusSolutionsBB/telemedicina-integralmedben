@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
+use App\Models\CredenciasCluble;
 use App\Models\Form;
 use App\Models\FormCategory;
 use App\Models\Lei;
@@ -21,19 +22,33 @@ class CreateFormController extends Controller
         }
 
         return Inertia::render('Form/Create', [
-            'form'          => $form ? $this->loadForm($form) : null,
-            'isEdit'        => $form !== null,
-            'statusOptions' => $this->getStatusOptions(),
-            'categorias'    => $this->getCategorias($request),
-            'leis'          => $this->getLeis($request),
-            'can'           => [
+            'form'               => $form ? $this->loadForm($form) : null,
+            'isEdit'             => $form !== null,
+            'statusOptions'      => $this->getStatusOptions(),
+            'credencias_clubles' => $this->getCredenciasClubles($request),
+            'leis'               => $this->getLeis($request),
+            'can'                => [
                 'create' => $user->can('forms.create'),
                 'edit'   => $user->can('forms.edit'),
                 'manage' => $user->hasAnyRole(['Admin', 'Manager']),
             ],
         ]);
     }
+    private function getCredenciasClubles(Request $request): array
+    {
+        $search = $request->input('categoria_search');
 
+        return CredenciasCluble::query()
+            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%"))
+            ->orderBy('title')
+            ->limit(50)
+            ->get(['id', 'title'])
+            ->map(fn(CredenciasCluble $c) => [
+                'value' => $c->id,
+                'label' => $c->title,
+            ])
+            ->toArray();
+    }
     private function loadForm(Form $form): Form
     {
         return $form->load(['fields', 'categoria:id,name', 'lei:id,title,type']);

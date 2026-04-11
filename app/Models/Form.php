@@ -20,6 +20,7 @@ class Form extends Model
     protected $fillable           = [
         'code',
         'categoria_id',
+        'credencia_cluble_id',
         'lei_id',
         'user_id',
         'title',
@@ -128,5 +129,10 @@ class Form extends Model
     public function arquivos()
     {
         return $this->belongsToMany(Arquivo::class, 'form_arquivos', 'form_id', 'arquivo_id');
+    }
+
+    public function credenciaCluble(): BelongsTo
+    {
+        return $this->belongsTo(CredenciasCluble::class, 'credencia_cluble_id');
     }
 }

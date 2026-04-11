@@ -2,9 +2,11 @@
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
+use App\Models\CredenciasCluble;
 use App\Models\Form;
 use App\Models\FormArquivo;
 use App\Models\FormResponse;
+use App\Services\ClubleBeneficiarioService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +19,9 @@ use Throwable;
 
 class PublicFormController extends Controller
 {
+    public function __construct(
+        protected ClubleBeneficiarioService $beneficiarioService
+    ) {}
     private function canAcceptResponses(Form $form): bool
     {
         return $form->status === 'ativo';
@@ -107,6 +112,7 @@ class PublicFormController extends Controller
                         'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
                         'sub_descricao'           => $form->sub_descricao ?? null,
                         'observacao'              => $form->observacao ?? null,
+                        'credencia_cluble_id'     => $form->credencia_cluble_id ?? null,
                         'message'                 => "Este formulário está {$label} e não pode receber respostas no momento.",
                         'instruction' => 'Para permitir o preenchimento, altere o status para "Ativo" nas configurações.',
                         'canActivate' => true,
@@ -132,7 +138,7 @@ class PublicFormController extends Controller
                         'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
                         'sub_descricao'           => $form->sub_descricao ?? null,
                         'observacao'              => $form->observacao ?? null,
-
+                        'credencia_cluble_id'     => $form->credencia_cluble_id ?? null,
                         'message'                 => 'Este formulário expirou e não está mais disponível para respostas.',
                         'instruction'             => 'Renove a data de expiração nas configurações para reativá-lo.',
                         'canActivate'             => false,
@@ -155,6 +161,7 @@ class PublicFormController extends Controller
                         'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
                         'sub_descricao'           => $form->sub_descricao ?? null,
                         'observacao'              => $form->observacao ?? null,
+                        'credencia_cluble_id'     => $form->credencia_cluble_id ?? null,
                         'status'                  => 'limite_atingido',
                         'statusLabel'             => 'com limite atingido',
                         'message'                 => 'Este formulário atingiu o limite máximo de respostas.',
@@ -179,6 +186,7 @@ class PublicFormController extends Controller
                     'lei'                     => $form->lei,
                     'status'                  => $form->status,
                     'logo'                    => $logoData,
+                    'credencia_cluble_id'     => $form->credencia_cluble_id ?? null,
                     'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
                     'sub_descricao'           => $form->sub_descricao ?? null,
                     'observacao'              => $form->observacao ?? null,
@@ -292,7 +300,7 @@ class PublicFormController extends Controller
                 }
             }
 
-            FormResponse::create([
+            $formResponse = FormResponse::create([
                 'form_id'    => $form->id,
                 'user_id'    => auth()->id(),
                 'answers'    => $processedAnswers,
@@ -301,6 +309,10 @@ class PublicFormController extends Controller
             ]);
 
             $form->increment('responses_count');
+            if ($form->credencia_cluble_id) {
+                $this->sincronizarComClube($form, $formResponse, $validated['answers']);
+            }
+
             DB::commit();
 
             return redirect()
@@ -337,5 +349,255 @@ class PublicFormController extends Controller
                 'lei'             => $form->lei,
             ],
         ]);
+    }
+    private function sincronizarComClube(Form $form, FormResponse $formResponse, array $answers): void
+    {
+        $credencial = CredenciasCluble::find($form->credencia_cluble_id);
+
+        if (! $credencial || $credencial->isTokenExpired()) {
+            Log::warning('Credencial inválida ou expirada', [
+                'form_id'       => $form->id,
+                'credencial_id' => $form->credencia_cluble_id,
+            ]);
+            return;
+        }
+
+        // Busca campos do formulário em ordem
+        $fields = $form->fields()->orderBy('order')->get();
+
+        // Mapeia respostas
+        $dados = $this->mapearRespostasPorOrdem($fields, $answers);
+
+        Log::info('Dados mapeados para API Clube', [
+            'form_id' => $form->id,
+            'dados'   => $dados,
+        ]);
+
+        // Valida dados obrigatórios (name, email, cpf são required na API)
+        if (empty($dados['name']) || empty($dados['email']) || empty($dados['cpf'])) {
+            Log::warning('Dados obrigatórios faltando', [
+                'form_id'   => $form->id,
+                'dados'     => $dados,
+                'tem_name'  => ! empty($dados['name']),
+                'tem_email' => ! empty($dados['email']),
+                'tem_cpf'   => ! empty($dados['cpf']),
+            ]);
+            return;
+        }
+
+        $resultado = $this->beneficiarioService->cadastrarBeneficiario($dados, $credencial);
+
+        if ($resultado && $resultado['success']) {
+            $formResponse->update([
+                'external_beneficiario_id' => $resultado['data']['id'] ?? null,
+                'sincronizado_clube'       => true,
+                'sincronizado_em'          => now(),
+            ]);
+        } else {
+            $formResponse->update([
+                'erro_sincronizacao'       => $resultado['error']['message'] ?? 'Erro desconhecido',
+                'tentativas_sincronizacao' => ($formResponse->tentativas_sincronizacao ?? 0) + 1,
+            ]);
+
+            Log::error('Falha sincronização Clube', [
+                'form_id'     => $form->id,
+                'response_id' => $formResponse->id,
+                'error'       => $resultado['error'] ?? 'Sem resposta',
+            ]);
+        }
+    }
+
+    /**
+     * Mapeia respostas pela ordem dos campos
+     */
+    private function mapearRespostasPorOrdem($fields, array $answers): array
+    {
+        // Respostas em array indexado (0, 1, 2, 3, 4...)
+        $respostas = array_values($answers);
+
+        // Inicializa com valores padrão (todos opcionais exceto obrigatórios)
+        $dados = [
+            'name'            => null,  // required
+            'email'           => null,  // required
+            'cpf'             => null,  // required
+            'birth_date'      => null,  // nullable
+            'cellphone'       => null,  // nullable
+            'company_name'    => null,  // nullable
+            'expiration_date' => null,  // nullable
+            'password'        => null,  // opcional (gera se não informar)
+            'newsletter'      => false, // boolean
+            'sms'             => false, // boolean
+            'whatsapp'        => false, // boolean
+            'authorized'      => true,  // boolean (true = cadastra automaticamente)
+        ];
+
+        foreach ($fields as $index => $field) {
+            $valor = $respostas[$index] ?? null;
+
+            if (empty($valor)) {
+                continue;
+            }
+
+            $campoClube = $this->identificarCampoClube($field);
+
+            if (! $campoClube) {
+                continue;
+            }
+
+            $dados[$campoClube] = $this->formatarValor($valor, $campoClube, $field->type);
+        }
+
+        // Remove campos nulos (exceto booleanos já definidos)
+        return array_filter($dados, function ($v, $k) {
+            // Mantém booleanos mesmo se false
+            if (in_array($k, ['newsletter', 'sms', 'whatsapp', 'authorized'])) {
+                return true;
+            }
+            return $v !== null && $v !== '';
+        }, ARRAY_FILTER_USE_BOTH);
+    }
+
+    /**
+     * Identifica qual campo da API pelo label
+     */
+    private function identificarCampoClube($field): ?string
+    {
+        $label = mb_strtolower(trim($field->label));
+        $type  = $field->type;
+
+        // Mapeamento exato baseado nos labels comuns
+        return match (true) {
+            // Nome
+            str_contains($label, 'nome') && str_contains($label, 'completo')                     => 'name',
+
+            // Email
+            str_contains($label, 'e-mail') || str_contains($label, 'email') || $type === 'email' => 'email',
+
+            // CPF
+            str_contains($label, 'cpf')                                                          => 'cpf',
+
+            // Data de nascimento
+            str_contains($label, 'nascimento') ||
+            (str_contains($label, 'data') && str_contains($label, 'nasc')) ||
+            ($type === 'date' && str_contains($label, 'nasc'))                                   => 'birth_date',
+
+            // Celular
+            str_contains($label, 'celular') ||
+            str_contains($label, 'telefone') ||
+            str_contains($label, 'fone') ||
+            str_contains($label, 'tel') ||
+            str_contains($label, 'whatsapp')                                                     => 'cellphone',
+
+            // Empresa
+            str_contains($label, 'empresa') ||
+            str_contains($label, 'company') ||
+            str_contains($label, 'organização')                                                  => 'company_name',
+
+            // Data de expiração
+            str_contains($label, 'expiração') ||
+            str_contains($label, 'validade') ||
+            str_contains($label, 'vencimento')                                                   => 'expiration_date',
+
+            // Senha
+            str_contains($label, 'senha') ||
+            str_contains($label, 'password')                                                     => 'password',
+
+            default                                                                              => null,
+        };
+    }
+
+    /**
+     * Formata valor conforme regras da API
+     */
+    private function formatarValor(mixed $valor, string $campoClube, string $fieldType): mixed
+    {
+        $valor = is_string($valor) ? trim($valor) : $valor;
+
+        return match ($campoClube) {
+            // name: string, max 100
+            'name'            => mb_substr($valor, 0, 100),
+
+            // email: string, min 10, max 80
+            'email'           => mb_strtolower(mb_substr($valor, 0, 80)),
+
+            // cpf: string, max 11 (somente números)
+            'cpf'             => mb_substr(preg_replace('/[^0-9]/', '', $valor), 0, 11),
+
+            // birth_date: string, formato 01/01/2000
+            'birth_date'      => $this->formatarData($valor),
+
+            // cellphone: string, max 15, formato (99) 99999-9999
+            'cellphone'       => $this->formatarTelefone($valor),
+
+            // company_name: string, nullable
+            'company_name'    => mb_substr($valor, 0, 255) ?: null,
+
+            // expiration_date: string, nullable
+            'expiration_date' => $this->formatarData($valor),
+
+            // password: string
+            'password'        => $valor,
+
+            // booleanos
+            'newsletter', 'sms', 'whatsapp', 'authorized' => (bool) $valor,
+
+            default           => $valor,
+        };
+    }
+
+    /**
+     * Formata data para 01/01/2000
+     */
+    private function formatarData(?string $data): ?string
+    {
+        if (! $data) {
+            return null;
+        }
+
+        $data = trim($data);
+
+        // Já está no formato brasileiro?
+        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $data)) {
+            return $data;
+        }
+
+        // Formato ISO (YYYY-MM-DD)
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
+            return \Carbon\Carbon::createFromFormat('Y-m-d', $data)->format('d/m/Y');
+        }
+
+        // Timestamp ou outro formato
+        try {
+            return \Carbon\Carbon::parse($data)->format('d/m/Y');
+        } catch (\Exception $e) {
+            Log::warning('Não foi possível formatar data', ['data' => $data]);
+            return $data;
+        }
+    }
+
+    /**
+     * Formata telefone para (99) 99999-9999
+     */
+    private function formatarTelefone(?string $tel): ?string
+    {
+        if (! $tel) {
+            return null;
+        }
+
+        // Remove tudo exceto números
+        $n = preg_replace('/[^0-9]/', '', $tel);
+
+        // Celular com 9 dígitos: (99) 99999-9999
+        if (strlen($n) === 11) {
+            return '(' . substr($n, 0, 2) . ') ' . substr($n, 2, 5) . '-' . substr($n, 7);
+        }
+
+        // Fixo com 8 dígitos: (99) 9999-9999
+        if (strlen($n) === 10) {
+            return '(' . substr($n, 0, 2) . ') ' . substr($n, 2, 4) . '-' . substr($n, 6);
+        }
+
+        // Se não tiver formato esperado, retorna como veio (limitado a 15 chars)
+        return mb_substr($tel, 0, 15);
     }
 }
