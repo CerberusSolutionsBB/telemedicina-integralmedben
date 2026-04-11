@@ -44,7 +44,7 @@ const navLinks = [
         icon: Settings,
         children: [
             { label: "Categorias de Formulários", routeName: "configuracoes.categories.forms.index", icon: BookMarked },
-            // { label: "Geral", routeName: "configuracoes.geral.index", icon: Settings },
+            { label: "Credencias Cluble", routeName: "configuracoes.credencias_cluble.index", icon: BookMarked },
         ]
     },
 ];
