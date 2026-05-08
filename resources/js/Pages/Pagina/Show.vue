@@ -257,9 +257,9 @@ const syncFormsDataExpad = (selected) => {
                 </div>
             </div>
         </div>
-        <pre>
+        <!-- <pre>
             {{ fomrs_tenants }}
-        </pre>
+        </pre> -->
         <div class="space-y-6">
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
                 <Breadcrumb v-if="breadcrumbs.length" :items="breadcrumbs" class="mb-4" />
