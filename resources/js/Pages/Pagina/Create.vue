@@ -326,7 +326,6 @@ const breadcrumbs = computed(() => [
                 </div>
             </div>
         </div>
-        <!-- Diálogo de seleção de formulários -->
         <FormSelectorDialog v-model:open="dialogOpen" v-model="form.forms" :forms="props.forms"
             @confirm="(selected) => console.log('Selecionados:', selected)" />
     </CentralAdminLayout>

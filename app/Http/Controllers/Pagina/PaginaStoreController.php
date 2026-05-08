@@ -35,6 +35,8 @@ class PaginaStoreController extends Controller
                     'status'    => 'ativo',
                 ],
             ]);
+
+
             Domain::create([
                 'domain'    => $this->gerarDominio($tenantId),
                 'tenant_id' => $tenant->id,
