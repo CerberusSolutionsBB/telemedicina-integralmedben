@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Tenant\Configuracao;
 
 use App\Http\Controllers\Controller;
@@ -7,9 +8,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\Tenant\TenantConfigurationService;
+use App\Models\Tenant;
+use Illuminate\Support\Facades\Log;
+use App\Services\Tenant\TenantFormService;
+use App\Http\Requests\TenantFormsRequest;
+use App\Models\TenantForm;
+use App\Http\Requests\ExpiresAtRequest;
 
 class ConfiguracaoController extends Controller
 {
+    public function __construct(
+        private readonly TenantConfigurationService $configuracaoService,
+        private TenantFormService $tenantFormService,
+    ) {}
+
     private function tenantId(): string
     {
         return (string) tenant()->id;
@@ -93,5 +106,84 @@ class ConfiguracaoController extends Controller
         }
 
         return redirect()->back()->with('success', 'Logo atualizado com sucesso!');
+    }
+
+    public function detail(Request $request, Tenant $tenant)
+    {
+        try {
+
+            $this->configuracaoService->gerarTenantsDetail($tenant);
+
+            return redirect()
+                ->route('pagina.show', $tenant->id)
+                ->with('message', 'Configuração do tenant gerada com sucesso!')
+                ->with('type', 'success');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao gerar configuração do tenant', [
+                'message' => $e->getMessage(),
+                'tenant_id' => $tenant->id ?? null,
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('message', 'Não foi possível gerar as configurações do tenant.')
+                ->with('type', 'error');
+        }
+    }
+    public function createExpiresAt(ExpiresAtRequest $request, TenantForm $tenant)
+    {
+        try {
+            $validated = $request->validated();
+
+            $tenant->update([
+                'expires_at' => $validated['expires_at'] ?? null,
+            ]);
+
+            return redirect()
+                ->route('pagina.show', $tenant->tenant_id)
+                ->with('message', 'Data de expiração atualizada com sucesso.')
+                ->with('type', 'success');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao atualizar data de expiração do formulário do tenant', [
+                'message' => $e->getMessage(),
+                'tenant_form_id' => $tenant->id ?? null,
+                'tenant_id' => $tenant->tenant_id ?? null,
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('message', 'Não foi possível atualizar a data de expiração.')
+                ->with('type', 'error');
+        }
+    }
+    public function forms(TenantFormsRequest $request, Tenant $tenant)
+    {
+        try {
+            $validated = $request->validated();
+            $this->tenantFormService->sync(
+                tenantId: $tenant->id,
+                formIds: $validated['forms'] ?? [],
+                extraData: [
+                    'user_id' => auth()->id(),
+                    'origem'  => 'CENTRAL',
+                    'ativo'   => true,
+                ]
+            );
+
+            return redirect()
+                ->route('pagina.show', $tenant->id)
+                ->with('message', 'Configuração do tenant gerada com sucesso!')
+                ->with('type', 'success');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao gerar configuração do tenant', [
+                'message' => $e->getMessage(),
+                'tenant_id' => $tenant->id ?? null,
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('message', 'Não foi possível gerar as configurações do tenant.')
+                ->with('type', 'error');
+        }
     }
 }
