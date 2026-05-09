@@ -1,20 +1,19 @@
 <?php
-
 namespace App\Http\Controllers\Tenant\Configuracao;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ExpiresAtRequest;
+use App\Http\Requests\TenantFormsRequest;
+use App\Models\Tenant;
+use App\Models\TenantForm;
 use App\Models\TenantsDetail;
+use App\Services\Tenant\TenantConfigurationService;
+use App\Services\Tenant\TenantFormService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Services\Tenant\TenantConfigurationService;
-use App\Models\Tenant;
-use Illuminate\Support\Facades\Log;
-use App\Services\Tenant\TenantFormService;
-use App\Http\Requests\TenantFormsRequest;
-use App\Models\TenantForm;
-use App\Http\Requests\ExpiresAtRequest;
 
 class ConfiguracaoController extends Controller
 {
@@ -120,7 +119,7 @@ class ConfiguracaoController extends Controller
                 ->with('type', 'success');
         } catch (\Throwable $e) {
             Log::error('Erro ao gerar configuração do tenant', [
-                'message' => $e->getMessage(),
+                'message'   => $e->getMessage(),
                 'tenant_id' => $tenant->id ?? null,
             ]);
 
@@ -130,25 +129,34 @@ class ConfiguracaoController extends Controller
                 ->with('type', 'error');
         }
     }
-    public function createExpiresAt(ExpiresAtRequest $request, TenantForm $tenant)
-    {
+    public function createExpiresAt(
+        ExpiresAtRequest $request,
+        TenantForm $tenantForm
+    ) {
         try {
             $validated = $request->validated();
 
-            $tenant->update([
+            $tenantForm->update([
                 'expires_at' => $validated['expires_at'] ?? null,
             ]);
 
             return redirect()
-                ->route('pagina.show', $tenant->tenant_id)
+                ->route('pagina.show', [
+                    'tenant' => $tenantForm->tenant_id,
+                ])
                 ->with('message', 'Data de expiração atualizada com sucesso.')
                 ->with('type', 'success');
+
         } catch (\Throwable $e) {
-            Log::error('Erro ao atualizar data de expiração do formulário do tenant', [
-                'message' => $e->getMessage(),
-                'tenant_form_id' => $tenant->id ?? null,
-                'tenant_id' => $tenant->tenant_id ?? null,
-            ]);
+            Log::error(
+                'Erro ao atualizar data de expiração do formulário do tenant',
+                [
+                    'message'        => $e->getMessage(),
+                    'tenant_form_id' => $tenantForm->id ?? null,
+                    'tenant_id'      => $tenantForm->tenant_id ?? null,
+                    'payload'        => $request->all(),
+                ]
+            );
 
             return redirect()
                 ->back()
@@ -176,13 +184,41 @@ class ConfiguracaoController extends Controller
                 ->with('type', 'success');
         } catch (\Throwable $e) {
             Log::error('Erro ao gerar configuração do tenant', [
-                'message' => $e->getMessage(),
+                'message'   => $e->getMessage(),
                 'tenant_id' => $tenant->id ?? null,
             ]);
 
             return redirect()
                 ->back()
                 ->with('message', 'Não foi possível gerar as configurações do tenant.')
+                ->with('type', 'error');
+        }
+    }
+
+    public function removeVinculo(TenantForm $tenantForm)
+    {
+        try {
+            $tenantId = $tenantForm->tenant_id;
+
+            $tenantForm->delete();
+
+            return redirect()
+                ->route('pagina.show', [
+                    'tenant' => $tenantId,
+                ])
+                ->with('message', 'Formulário desvinculado com sucesso.')
+                ->with('type', 'success');
+
+        } catch (\Throwable $e) {
+            Log::error('Erro ao desvincular formulário do tenant', [
+                'message'        => $e->getMessage(),
+                'tenant_form_id' => $tenantForm->id ?? null,
+                'tenant_id'      => $tenantForm->tenant_id ?? null,
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('message', 'Não foi possível desvincular o formulário.')
                 ->with('type', 'error');
         }
     }

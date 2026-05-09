@@ -15,4 +15,6 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::get('/{tenant}', [ConfiguracaoController::class, 'detail'])->name('generate.detail');
     Route::post('/{tenant}', [ConfiguracaoController::class, 'forms'])->name('forms');
     Route::put('{tenantForm}/expires-at', [ConfiguracaoController::class, 'createExpiresAt'])->name('expires-at');
+    Route::delete('{tenantForm}/unlink', [ConfiguracaoController::class, 'removeVinculo'])->name('unlink');
+
 });
