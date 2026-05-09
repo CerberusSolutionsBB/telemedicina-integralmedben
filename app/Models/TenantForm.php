@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -22,21 +21,27 @@ class TenantForm extends Model
         'origem',
         'ativo',
         'principal',
-        'expires_at'
+        'expires_at',
     ];
 
     protected $casts = [
-        'ativo'     => 'boolean',
-        'principal' => 'boolean',
+        'ativo'      => 'boolean',
+        'principal'  => 'boolean',
+        'expires_at' => 'datetime',
+
     ];
 
     protected $appends = [
-        'expires_at_br'
+        'expires_at_br',
     ];
 
-    public function getExpiresAtBrAttribute()
+    public function getExpiresAtBrAttribute(): ?string
     {
-        return $this->expires_at ? $this->expires_at->format('d/m/Y H:i') : null;
+        if (! $this->expires_at) {
+            return null;
+        }
+
+        return \Carbon\Carbon::parse($this->expires_at)->format('d/m/Y H:i');
     }
 
     public function tenant()
