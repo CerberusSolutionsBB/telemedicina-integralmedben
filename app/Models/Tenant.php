@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -37,6 +36,11 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function details()
     {
         return $this->hasMany(TenantsDetail::class, 'tenant_id');
+    }
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
     }
 
     public function centralPatients()
