@@ -53,7 +53,7 @@ const colors = {
             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
         </svg>
 
-        <span class="font-mono truncate max-w-[180px]">
+        <span class="font-mono truncate ">
             {{ label || url }}
         </span>
 

@@ -1,7 +1,7 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database } from 'lucide-vue-next';
+import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
@@ -188,7 +188,7 @@ const navigateTo = (routeName, params = {}) => {
                     class="flex flex-col lg:flex-row gap-3 justify-between items-start lg:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                         <!-- Campo de busca -->
-                        <div class="relative w-full sm:w-80">
+                        <div class="relative w-full sm:w-100">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Search class="h-5 w-5 text-gray-400" />
                             </div>
@@ -201,11 +201,11 @@ const navigateTo = (routeName, params = {}) => {
                                 <X class="h-4 w-4" />
                             </button>
                         </div>
-                        <button v-if="hasActiveFilters" @click="clearSearch"
+                        <!-- <button v-if="hasActiveFilters" @click="clearSearch"
                             class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-cyan-700 bg-cyan-100 rounded-full hover:bg-cyan-200 transition-colors">
                             <X class="w-3 h-3" />
                             Limpar filtros
-                        </button>
+                        </button> -->
                     </div>
                     <Button v-if="can.create"
                         class="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 px-5 py-2.5 text-white font-semibold shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
@@ -285,6 +285,9 @@ const navigateTo = (routeName, params = {}) => {
                                                 </div>
                                             </div>
                                         </div>
+                                        <div v-else>
+                                            - - -
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 text-sm">
                                         <DetailCard v-for="detail in item.details" :key="detail.id" :detail="detail" />
@@ -312,7 +315,12 @@ const navigateTo = (routeName, params = {}) => {
                                                 title="Visualizar">
                                                 <Building2 class="w-4 h-4" />
                                             </button>
-                                            <button v-if="can.edit" @click="navigateTo('pagina.edit', item.id)"
+                                            <butto @click="navigateTo('pagina.users.index', item.id)"
+                                                class="p-2 cursor-pointer text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
+                                                title="Editar">
+                                                <User class="w-4 h-4" />
+                                            </butto>
+                                            <!-- <button v-if="can.edit" @click="navigateTo('pagina.edit', item.id)"
                                                 class="p-2 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
                                                 title="Editar">
                                                 <Pencil class="w-4 h-4" />
@@ -320,7 +328,7 @@ const navigateTo = (routeName, params = {}) => {
                                             <span v-else class="p-2 text-gray-300 cursor-not-allowed"
                                                 title="Sem permissão para editar">
                                                 <Pencil class="w-4 h-4" />
-                                            </span>
+                                            </span> -->
                                             <button v-if="can.delete" @click="openDeleteModal(item)"
                                                 class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all"
                                                 title="Excluir">
