@@ -49,10 +49,18 @@ jobs:
             echo "⚙️ Rodando seeds..."
             php artisan db:seed --force
 
+            echo "🏢 Rodando migrations dos tenants..."
+            php artisan tenants:migrate --force
+
+            echo "🌱 Rodando seeds dos tenants..."
+            php artisan tenants:seed --force
+
             echo "⚡ Otimizando aplicação..."
             php artisan optimize
             php artisan view:cache
             php artisan event:cache
+
+            php artisan tenants:migrate
 
             echo "🔓 Retirando aplicação de manutenção..."
             php artisan up
