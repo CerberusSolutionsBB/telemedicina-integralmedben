@@ -1,10 +1,11 @@
 <?php
-
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class TenantAuthController extends Controller
@@ -16,29 +17,62 @@ class TenantAuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+        try {
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            $credentials = $request->validate([
+                'email'    => ['required', 'email'],
+                'password' => ['required'],
+            ]);
+
+            Auth::guard('web')->logout();
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            if (! Auth::guard('web')->attempt($credentials, $request->boolean('remember'))) {
+                Log::warning('Falha no login tenant', [
+                    'email'     => $request->email,
+                    'tenant_id' => tenant('id'),
+                    'database'  => DB::connection()->getDatabaseName(),
+                ]);
+
+                return back()
+                    ->withErrors([
+                        'email' => 'Credenciais inválidas para este tenant ou usuário não encontrado.',
+                    ])
+                    ->onlyInput('email');
+            }
+
             $request->session()->regenerate();
 
-            return redirect()->intended(route('patients.index'));
-        }
+            return redirect()->intended(route('cpanel.patients.index'));
 
-        return back()->withErrors([
-            'email' => 'As credenciais fornecidas não correspondem aos nossos registros.',
-        ])->onlyInput('email');
+        } catch (\Throwable $e) {
+            Log::error('Erro no login tenant', [
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+                'tenant_id' => tenant('id'),
+                'email'     => $request->email,
+                'database'  => DB::connection()->getDatabaseName(),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'email' => 'Erro ao autenticar.',
+                ])
+                ->onlyInput('email');
+        }
     }
 
     public function logout(Request $request)
     {
-        Auth::logout();
+
+        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('public_form.show');
+        return redirect()->route('tenant.login');
     }
 }

@@ -15,157 +15,177 @@ class RolePermissionSeeder extends Seeder
 
     public function run(): void
     {
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // ─── Permissões de Usuários ───
-        $userPermissions = [
+        $permissions = $this->permissions();
+
+        $this->createPermissions($permissions);
+        $this->createRoles();
+        $this->createUsers();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->command->info('✅ Roles, permissões e usuários criados com sucesso!');
+        $this->command->line('   - Admin: admin@admin.com / password');
+        $this->command->line('   - Manager: manager@localhost / password');
+        $this->command->line('   - Editor: editor@localhost / password');
+        $this->command->line('   - User: user@localhost / password');
+    }
+
+    private function permissions(): array
+    {
+        return [
+            'users'   => [
+                'users.view',
+                'users.create',
+                'users.edit',
+                'users.delete',
+                'users.manage',
+            ],
+
+            'forms'   => [
+                'forms.view',
+                'forms.create',
+                'forms.edit',
+                'forms.delete',
+                'forms.update.status',
+                'forms.toggle.visibility',
+                'forms.manage.all',
+            ],
+
+            'paginas' => [
+                'paginas.view',
+                'paginas.create',
+                'paginas.edit',
+                'paginas.delete',
+                'paginas.show',
+                'paginas.manage',
+            ],
+
+            'leis'    => [
+                'leis.view',
+                'leis.create',
+                'leis.edit',
+                'leis.delete',
+            ],
+        ];
+    }
+
+    private function createPermissions(array $groups): void
+    {
+        foreach ($groups as $permissions) {
+            foreach ($permissions as $permission) {
+                Permission::firstOrCreate([
+                    'name'       => $permission,
+                    'guard_name' => 'web',
+                ]);
+            }
+        }
+    }
+
+    private function createRoles(): void
+    {
+        Role::firstOrCreate([
+            'name'       => 'Admin',
+            'guard_name' => 'web',
+        ])->syncPermissions(Permission::all());
+
+        Role::firstOrCreate([
+            'name'       => 'Manager',
+            'guard_name' => 'web',
+        ])->syncPermissions([
             'users.view',
             'users.create',
             'users.edit',
-            'users.delete',
-            'users.manage',
-        ];
-        foreach ($userPermissions as $permission) {
-            Permission::firstOrCreate(
-                ['name' => $permission],
-                ['guard_name' => 'web']
-            );
-        }
 
-        // ─── Permissões de Formulários ───
-        $formPermissions = [
             'forms.view',
             'forms.create',
             'forms.edit',
             'forms.delete',
             'forms.update.status',
             'forms.toggle.visibility',
-            'forms.manage.all',
-        ];
-        foreach ($formPermissions as $permission) {
-            Permission::firstOrCreate(
-                ['name' => $permission],
-                ['guard_name' => 'web']
-            );
-        }
 
-        // ─── Permissões de Páginas ───
-        $paginaPermissions = [
             'paginas.view',
             'paginas.create',
             'paginas.edit',
             'paginas.delete',
             'paginas.show',
-            'paginas.manage',
-        ];
-        foreach ($paginaPermissions as $permission) {
-            Permission::firstOrCreate(
-                ['name' => $permission],
-                ['guard_name' => 'web']
-            );
-        }
 
-        // ─── Permissões de Leis ───
-        $leisPermissions = [
             'leis.view',
             'leis.create',
             'leis.edit',
             'leis.delete',
-        ];
-        foreach ($leisPermissions as $permission) {
-            Permission::firstOrCreate(
-                ['name' => $permission],
-                ['guard_name' => 'web']
-            );
-        }
-
-        // ─── Roles ───
-        $adminRole = Role::firstOrCreate(
-            ['name' => 'Admin'],
-            ['guard_name' => 'web']
-        );
-        $adminRole->syncPermissions(Permission::all());
-
-        $managerRole = Role::firstOrCreate(
-            ['name' => 'Manager'],
-            ['guard_name' => 'web']
-        );
-        $managerRole->syncPermissions([
-            'users.view', 'users.create', 'users.edit',
-            'forms.view', 'forms.create', 'forms.edit', 'forms.delete',
-            'forms.update.status', 'forms.toggle.visibility',
-            'paginas.view', 'paginas.create', 'paginas.edit', 'paginas.delete',
-            'paginas.show',
-            'leis.view', 'leis.create', 'leis.edit', 'leis.delete',
         ]);
 
-        $editorRole = Role::firstOrCreate(
-            ['name' => 'Editor'],
-            ['guard_name' => 'web']
-        );
-        $editorRole->syncPermissions([
-            'forms.view', 'forms.create', 'forms.edit',
-            'forms.update.status', 'forms.toggle.visibility',
-            'paginas.view', 'paginas.show',
-            'leis.view', 'leis.create', 'leis.edit',
-        ]);
-
-        $userRole = Role::firstOrCreate(
-            ['name' => 'User'],
-            ['guard_name' => 'web']
-        );
-        $userRole->syncPermissions([
-            'forms.view', 'forms.create',
+        Role::firstOrCreate([
+            'name'       => 'Editor',
+            'guard_name' => 'web',
+        ])->syncPermissions([
+            'forms.view',
+            'forms.create',
+            'forms.edit',
+            'forms.update.status',
             'forms.toggle.visibility',
-            'paginas.view', 'paginas.show',
+
+            'paginas.view',
+            'paginas.show',
+
+            'leis.view',
+            'leis.create',
+            'leis.edit',
+        ]);
+
+        Role::firstOrCreate([
+            'name'       => 'User',
+            'guard_name' => 'web',
+        ])->syncPermissions([
+            'forms.view',
+            'forms.create',
+            'forms.toggle.visibility',
+
+            'paginas.view',
+            'paginas.show',
+
             'leis.view',
         ]);
+    }
 
-        // ─── Usuários ───
-        $admin = User::firstOrCreate(
-            ['email' => 'admin@admin.com'],
+    private function createUsers(): void
+    {
+        $users = [
             [
-                'name'              => 'Administrador',
-                'password'          => Hash::make('password'),
-                'email_verified_at' => now(),
-            ]
-        );
-        $admin->syncRoles(['Admin']);
-
-        $manager = User::firstOrCreate(
-            ['email' => 'manager@localhost'],
+                'name'  => 'Administrador',
+                'email' => 'admin@admin.com',
+                'role'  => 'Admin',
+            ],
             [
-                'name'              => 'Gerente',
-                'password'          => Hash::make('password'),
-                'email_verified_at' => now(),
-            ]
-        );
-        $manager->syncRoles(['Manager']);
-
-        $editor = User::firstOrCreate(
-            ['email' => 'editor@localhost'],
+                'name'  => 'Gerente',
+                'email' => 'manager@localhost',
+                'role'  => 'Manager',
+            ],
             [
-                'name'              => 'Editor',
-                'password'          => Hash::make('password'),
-                'email_verified_at' => now(),
-            ]
-        );
-        $editor->syncRoles(['Editor']);
-
-        $user = User::firstOrCreate(
-            ['email' => 'user@localhost'],
+                'name'  => 'Editor',
+                'email' => 'editor@localhost',
+                'role'  => 'Editor',
+            ],
             [
-                'name'              => 'Usuário',
-                'password'          => Hash::make('password'),
-                'email_verified_at' => now(),
-            ]
-        );
-        $user->syncRoles(['User']);
+                'name'  => 'Usuário',
+                'email' => 'user@localhost',
+                'role'  => 'User',
+            ],
+        ];
 
-        echo "✅ Roles, permissões e usuários criados com sucesso!\n";
-        echo "   - Admin: admin@admin.com / password\n";
-        echo "   - Manager: manager@localhost / password\n";
-        echo "   - Editor: editor@localhost / password\n";
-        echo "   - User: user@localhost / password\n";
+        foreach ($users as $data) {
+            $user = User::firstOrCreate(
+                ['email' => $data['email']],
+                [
+                    'name'              => $data['name'],
+                    'password'          => Hash::make('password'),
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            $user->syncRoles([$data['role']]);
+        }
     }
 }

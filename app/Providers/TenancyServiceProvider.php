@@ -116,7 +116,28 @@ class TenancyServiceProvider extends ServiceProvider
             }
         }
     }
+    // protected function mapRoutes(): void
+    // {
+    //     if (
+    //         ! $this->app->runningInConsole()
+    //         && in_array(request()->getHost(), config('tenancy.central_domains', []))
+    //     ) {
+    //         return;
+    //     }
 
+    //     $this->app->booted(function () {
+    //         if (file_exists(base_path('routes/tenant.php'))) {
+    //             Route::namespace(static::$controllerNamespace)
+    //                 ->middleware([
+    //                     'web',
+    //                     \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
+    //                     \Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains::class,
+    //                 ])
+    //                 ->group(base_path('routes/tenant.php'));
+
+    //         }
+    //     });
+    // }
     protected function mapRoutes(): void
     {
         if (
