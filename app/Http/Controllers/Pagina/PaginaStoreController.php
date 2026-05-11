@@ -36,7 +36,6 @@ class PaginaStoreController extends Controller
                 ],
             ]);
 
-
             Domain::create([
                 'domain'    => $this->gerarDominio($tenantId),
                 'tenant_id' => $tenant->id,
@@ -92,9 +91,10 @@ class PaginaStoreController extends Controller
     private function gerarDominio(string $tenantId): string
     {
         $centralDomains = config('tenancy.central_domains', ['localhost']);
-        $dominioCentral = app()->environment('production')
-            ? ($centralDomains[1] ?? $centralDomains[0])
-            : $centralDomains[0];
+        // $dominioCentral = app()->environment('production')
+        //     ? ($centralDomains[1] ?? $centralDomains[0])
+        //     : $centralDomains[0];
+        $dominioCentral = "telemedicinamedben.com.br";
         return "{$tenantId}.{$dominioCentral}";
     }
 }
