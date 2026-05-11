@@ -33,7 +33,7 @@ const submit = () => {
 
     isLoading.value = true;
 
-    form.post(route('tenant.login.store'), {
+    form.post(route('tenant.login'), {
         onFinish: () => {
             form.reset('password');
             isLoading.value = false;
