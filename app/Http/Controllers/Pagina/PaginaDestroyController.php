@@ -20,18 +20,26 @@ class PaginaDestroyController extends Controller
             ]);
             $detail = $tenant->details->first();
             $tenant->forms()->detach();
-            Domain::where('tenant_id', $tenant->id)->delete();
+            Domain::query()
+                ->where('tenant_id', $tenant->id)
+                ->delete();
             if ($detail?->path_arquivos) {
                 $basePath = storage_path('app/' . $detail->path_arquivos);
                 if (File::exists($basePath)) {
                     File::deleteDirectory($basePath);
                 }
             }
-            $tenant->details()->delete();
-            $tenant->delete();
+            foreach ($tenant->details as $detail) {
+                method_exists($detail, 'forceDelete')
+                    ? $detail->forceDelete()
+                    : $detail->delete();
+            }
+            method_exists($tenant, 'forceDelete')
+                ? $tenant->forceDelete()
+                : $tenant->delete();
             return redirect()
                 ->route('pagina.index')
-                ->with('message', 'Tenant removido com sucesso!')
+                ->with('message', 'Tenant removido permanentemente com sucesso!')
                 ->with('type', 'success');
         } catch (Throwable $e) {
             report($e);

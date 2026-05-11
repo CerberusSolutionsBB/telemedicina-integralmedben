@@ -161,7 +161,8 @@ const navigateTo = (routeName, params = {}) => {
 </script>
 <template>
     <CentralAdminLayout>
-        <div class="flex items-center justify-between w-full  ">
+        <div class="flex items-center justify-between w-full">
+
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 uppercase tracking-wide">
                     Gerenciar Páginas

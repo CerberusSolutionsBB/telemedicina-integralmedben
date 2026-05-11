@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -10,7 +10,7 @@ import PasswordInput from '@/Components/PasswordInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 
 const isLoading = ref(false);
-
+const page = usePage();
 const form = useForm({
     email: '',
     password: '',
@@ -26,12 +26,14 @@ const canSubmit = computed(() => {
     return form.email && form.password && isValidEmail.value && !form.processing;
 });
 
+const tenantPublic = computed(() => page.props.tenant_public ?? {})
+
 const submit = () => {
     if (!canSubmit.value) return;
 
     isLoading.value = true;
 
-    form.post(route('tenant.login'), {
+    form.post(route('tenant.login.store'), {
         onFinish: () => {
             form.reset('password');
             isLoading.value = false;
@@ -59,6 +61,9 @@ const submit = () => {
                 </svg>
             </div>
             <h1 class="text-2xl font-bold text-gray-900 tracking-tight">
+                <p v-if="tenantPublic && tenantPublic?.descricao != null">
+                    {{ tenantPublic.descricao }}
+                </p>
                 Área Administrativa
             </h1>
             <p class="mt-1 text-sm text-gray-500">

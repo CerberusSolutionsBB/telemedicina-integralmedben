@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Http\Services\Patient\PatientService;
@@ -21,11 +20,11 @@ class PatientController extends Controller
     public function index()
     {
         $patients = $this->patientService->getPatients();
-        $tenant = Tenant::find(tenant('id'));
+        $tenant   = Tenant::find(tenant('id'));
 
         return Inertia::render('Patient/Index', [
-            'patients' => $patients,
-            'tenantName' => $tenant->name,
+            'patients'    => $patients,
+            'tenantName'  => $tenant->name,
             'tenantPhoto' => $tenant->photo_url,
         ]);
     }
@@ -63,7 +62,7 @@ class PatientController extends Controller
 
         $questions = $patients->flatMap(fn($p) => $p->answers->pluck('question'))->unique('id')->values();
 
-        $tenant = Tenant::find(tenant('id'));
+        $tenant     = Tenant::find(tenant('id'));
         $logoBase64 = null;
         if ($tenant->photo_path) {
             $absolutePath = base_path('storage/app/public/' . $tenant->photo_path);
@@ -73,9 +72,9 @@ class PatientController extends Controller
         }
 
         $pdf = Pdf::loadView('pdf.patients-report', [
-            'patients' => $patients,
-            'questions' => $questions,
-            'tenant' => $tenant,
+            'patients'   => $patients,
+            'questions'  => $questions,
+            'tenant'     => $tenant,
             'logoBase64' => $logoBase64,
         ])->setPaper('a4', 'landscape');
 
@@ -86,21 +85,21 @@ class PatientController extends Controller
     {
         $this->patientService->update($patient, $request->input('answers', []));
 
-        return redirect()->route('patients.index');
+        return redirect()->route('cpanel.patients.index');
     }
 
     public function destroy(Patient $patient)
     {
         $this->patientService->delete($patient);
 
-        return redirect()->route('patients.index');
+        return redirect()->route('cpanel.patients.index');
     }
 
     public function downloadPdf(Patient $patient)
     {
         $patient = $this->patientService->getPatientDetails($patient);
 
-        $tenant = Tenant::find(tenant('id'));
+        $tenant     = Tenant::find(tenant('id'));
         $logoBase64 = null;
         if ($tenant->photo_path) {
             $absolutePath = base_path('storage/app/public/' . $tenant->photo_path);
@@ -110,8 +109,8 @@ class PatientController extends Controller
         }
 
         $pdf = Pdf::loadView('pdf.patient', [
-            'patient' => $patient,
-            'tenant' => $tenant,
+            'patient'    => $patient,
+            'tenant'     => $tenant,
             'logoBase64' => $logoBase64,
         ]);
 
