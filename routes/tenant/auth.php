@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
 
     if (Auth::check()) {
-        return redirect()->route('cpanel.patients.index');
+        return redirect()->route('patients.index');
     }
 
     return redirect()->route('login');

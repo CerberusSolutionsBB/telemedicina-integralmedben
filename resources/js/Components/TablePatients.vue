@@ -41,7 +41,7 @@ const getAnswer = (patient, questionId) => {
     <div class="p-3 sm:p-6 overflow-x-auto">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h1 class="text-xl sm:text-2xl font-bold">Pacientes Cadastrados</h1>
-            <a :href="route('cpanel.patients.report')" target="_blank"
+            <a :href="route('patients.report')" target="_blank"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded hover:bg-cyan-700 transition-colors">
                 <Download class="w-4 h-4" />
                 Relatório Geral
