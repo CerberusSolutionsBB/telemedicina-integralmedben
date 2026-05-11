@@ -57,4 +57,7 @@ jobs:
             echo "🔓 Retirando aplicação de manutenção..."
             php artisan up
 
+            echo "⚡ Otimizando Limpar..."
+            php artisan optimize:clear
+
             echo "✅ Deploy finalizado com sucesso!"
