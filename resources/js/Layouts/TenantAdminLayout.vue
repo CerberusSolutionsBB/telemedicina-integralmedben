@@ -3,9 +3,7 @@ import { Link, useForm, usePage } from "@inertiajs/vue3";
 import {
     Users,
     UserCircle,
-    FileText,
     LogOut,
-    ExternalLink,
     ChevronRight,
     ChevronDown,
     ClipboardList,
@@ -16,7 +14,7 @@ import {
 } from "lucide-vue-next";
 import { ref, computed } from "vue";
 
-defineProps({
+const props = defineProps({
     tenantName: {
         type: String,
         default: "",
@@ -49,8 +47,11 @@ const navLinks = [
         routeName: "meus-formularios.index",
         icon: ClipboardList,
     },
-    { label: "Configurações", routeName: "configuracao.index", icon: Settings },
-
+    {
+        label: "Configurações",
+        routeName: "configuracao.index",
+        icon: Settings,
+    },
 ];
 
 const userInitial = computed(() => {
@@ -58,10 +59,12 @@ const userInitial = computed(() => {
 });
 
 const tenantInitial = computed(() => {
-    return tenantPublic.value?.detail?.sigla
-        || tenantPublic.value?.slug?.charAt(0)?.toUpperCase()
-        || tenantName?.charAt(0)?.toUpperCase()
-        || "T";
+    return (
+        tenantPublic.value?.detail?.sigla ||
+        tenantPublic.value?.slug?.charAt(0)?.toUpperCase() ||
+        props.tenantName?.charAt(0)?.toUpperCase() ||
+        "T"
+    );
 });
 </script>
 
