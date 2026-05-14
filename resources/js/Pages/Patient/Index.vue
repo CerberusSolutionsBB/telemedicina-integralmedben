@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from "vue";
-import { Head, router } from "@inertiajs/vue3";
+import { Head, router, usePage } from "@inertiajs/vue3";
 import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import PatientsTable from "@/Components/TablePatients.vue";
 import PatientDialog from "@/Components/PatientDialog.vue";
@@ -19,7 +19,7 @@ defineProps({
         default: null,
     },
 });
-
+const page = usePage()
 const openDialog = ref(false);
 const selectedPatient = ref(null);
 
@@ -36,7 +36,6 @@ const deletePatient = (patient) => {
 
 <template>
 
-    <Head title="Pacientes Cadastrados" />
 
     <TenantAdminLayout :tenant-name="tenantName" :tenant-photo="tenantPhoto">
         <div class="bg-white rounded-lg shadow">

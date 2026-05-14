@@ -1,0 +1,2 @@
+/storage/app/tenants/*
+!/storage/app/tenants/.gitignore

@@ -1,24 +1,43 @@
 *.log
 .DS_Store
+
 .env
 .env.backup
 .env.production
+
 .phpactor.json
 .phpunit.result.cache
+
 /.fleet
 /.idea
 /.nova
 /.phpunit.cache
 /.vscode
 /.zed
+
 /auth.json
+
+# Dependências
 /node_modules
+/vendor
+
+# Lock files (se optar por ignorar)
+composer.lock
+package-lock.json
+
+# Build
 /public/build
 /public/hot
 /public/storage
+
+# Storage
 /storage/*.key
 /storage/pail
-/vendor
+
+# Tenants uploads/assets
+/storage/app/tenants/*
+!/storage/app/tenants/.gitignore
+
 Homestead.json
 Homestead.yaml
 Thumbs.db
