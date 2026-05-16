@@ -68,6 +68,15 @@ class RolePermissionSeeder extends Seeder
                 'leis.edit',
                 'leis.delete',
             ],
+
+            'siprov'  => [
+                'siprov.view',
+                'siprov.create',
+                'siprov.show',
+                'siprov.delete',
+                'siprov.retry',
+                'siprov.manage',
+            ],
         ];
     }
 
@@ -115,6 +124,11 @@ class RolePermissionSeeder extends Seeder
             'leis.create',
             'leis.edit',
             'leis.delete',
+
+            'siprov.view',
+            'siprov.create',
+            'siprov.show',
+            'siprov.retry',
         ]);
 
         Role::firstOrCreate([
@@ -133,6 +147,10 @@ class RolePermissionSeeder extends Seeder
             'leis.view',
             'leis.create',
             'leis.edit',
+
+            'siprov.view',
+            'siprov.create',
+            'siprov.show',
         ]);
 
         Role::firstOrCreate([
@@ -147,6 +165,9 @@ class RolePermissionSeeder extends Seeder
             'paginas.show',
 
             'leis.view',
+
+            'siprov.view',
+            'siprov.show',
         ]);
     }
 

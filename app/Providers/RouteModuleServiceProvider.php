@@ -53,6 +53,12 @@ class RouteModuleServiceProvider extends ServiceProvider
             'name'       => 'perfil.',
             'file'       => 'perfil.php',
         ],
+        'siprov'       => [
+            'middleware' => ['web', 'auth'],
+            'prefix'     => 'siprov',
+            'name'       => 'siprov.',
+            'file'       => 'siprov.php',
+        ],
         // 'api-custom' => [
         //     'middleware' => 'api',
         //     'prefix'     => 'v2',

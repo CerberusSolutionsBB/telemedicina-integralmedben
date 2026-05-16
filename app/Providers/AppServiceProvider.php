@@ -121,6 +121,12 @@ class AppServiceProvider extends ServiceProvider
                             'edit'   => $user->can('leis.edit'),
                             'delete' => $user->can('leis.delete'),
                         ],
+                        'siprov'  => [
+                            'view'   => $user->can('siprov.view'),
+                            'create' => $user->can('siprov.create'),
+                            'edit'   => $user->can('siprov.edit'),
+                            'delete' => $user->can('siprov.delete'),
+                        ],
 
                         // Geral
                         'manage'  => $user->hasRole('Admin') || $user->hasRole('Manager'),
