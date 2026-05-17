@@ -34,6 +34,8 @@ class Siprov extends Model
         'status',
         'error_message',
         'integrated_at',
+        'associado',
+        'beneficio',
     ];
 
     protected $casts = [
@@ -46,6 +48,8 @@ class Siprov extends Model
         'payload_beneficio'  => 'array',
         'response_associado' => 'array',
         'response_beneficio' => 'array',
+        'associado'          => 'array',
+        'beneficio'          => 'array',
     ];
 
     /*

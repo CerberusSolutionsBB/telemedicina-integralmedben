@@ -16,7 +16,7 @@ class SiprovAssociadoData
     public static function fromIntegrationData(SiprovIntegrationData $data): self
     {
         return new self(
-            codigoIntegracao: $data->codigoIntegracao,
+            codigoIntegracao: $data->codigoIntegracao ?: 'USR-' . self::onlyNumbers($data->cpfCnpj),
             nomePessoa: $data->nomePessoa,
             cpfCnpj: $data->cpfCnpj,
             email: $data->email,
@@ -30,15 +30,15 @@ class SiprovAssociadoData
     {
         $payload = [
             'codLoja'          => (int) config('siprov.cod_loja'),
-            'codigoIntegracao' => $this->codigoIntegracao,
+            'codigoIntegracao' => $this->codigoIntegracao ?: 'USR-' . $this->onlyNumbers($this->cpfCnpj),
             'nomePessoa'       => $this->nomePessoa,
-            'cpfCnpj'          => $this->cpfCnpj,
+            'cpfCnpj'          => $this->onlyNumbers($this->cpfCnpj),
             'email'            => $this->email,
             'natureza'         => 'F',
-            'sexo'             => $this->sexo,
+            'sexo'             => $this->normalizeSexo(),
             'recebeEmail'      => true,
             'recebeWhatsApp'   => true,
-            'telefones'        => $this->telefones,
+            'telefones'        => $this->normalizeTelefones(),
         ];
 
         if (! empty($this->dataNascimento)) {
@@ -46,5 +46,35 @@ class SiprovAssociadoData
         }
 
         return $payload;
+    }
+
+    private function normalizeSexo(): string
+    {
+        return match ($this->sexo) {
+            'M', 'Masculino' => 'Masculino',
+            'F', 'Feminino'  => 'Feminino',
+            'I', 'Outro'     => 'Outro',
+            default => 'Outro',
+        };
+    }
+
+    private function normalizeTelefones(): array
+    {
+        return collect($this->telefones)
+            ->filter(fn($telefone) => ! empty($telefone['numero']))
+            ->map(function ($telefone) {
+                return [
+                    'ddi'    => (int) ($telefone['ddi'] ?? 55),
+                    'numero' => $this->onlyNumbers($telefone['numero']),
+                    'tipo'   => $telefone['tipo'] ?? 'Celular',
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private static function onlyNumbers(?string $value): string
+    {
+        return preg_replace('/\D/', '', $value ?? '');
     }
 }

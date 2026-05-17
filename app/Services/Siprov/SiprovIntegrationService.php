@@ -15,6 +15,7 @@ class SiprovIntegrationService
     public function execute(SiprovIntegrationData $data): array
     {
         $associadoData = SiprovAssociadoData::fromIntegrationData($data);
+
         $beneficioData = SiprovBeneficioData::fromIntegrationData($data);
 
         $associado = $this->associadoService->create($associadoData);

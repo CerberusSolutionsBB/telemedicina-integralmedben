@@ -124,8 +124,10 @@ class AppServiceProvider extends ServiceProvider
                         'siprov'  => [
                             'view'   => $user->can('siprov.view'),
                             'create' => $user->can('siprov.create'),
-                            'edit'   => $user->can('siprov.edit'),
+                            'show'   => $user->can('siprov.show'),
                             'delete' => $user->can('siprov.delete'),
+                            'retry'  => $user->can('siprov.retry'),
+                            'manage' => $user->can('siprov.manage'),
                         ],
 
                         // Geral

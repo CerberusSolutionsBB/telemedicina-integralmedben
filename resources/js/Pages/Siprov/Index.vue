@@ -1,6 +1,11 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
+import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
+import Button from '@/Components/ui/button/Button.vue';
+
 import { Head, router, usePage } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+
 import {
     Trash2,
     Search,
@@ -12,10 +17,8 @@ import {
     Clock,
     Loader2,
     FileText,
+    Plus,
 } from 'lucide-vue-next';
-import { ref, computed, watch } from 'vue';
-import Button from '@/Components/ui/button/Button.vue';
-import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 
 const props = defineProps({
     siprovs: {
@@ -44,22 +47,14 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
-    can: {
-        type: Object,
-        default: () => ({
-            create: false,
-            edit: false,
-            delete: false,
-            view: false,
-            manage: false,
-        }),
-    },
 });
 
 const page = usePage();
 
 const flashMessage = computed(() => page.props.flash?.message);
 const flashType = computed(() => page.props.flash?.type);
+
+const can = computed(() => page.props?.authUser?.can?.siprov || {});
 
 const search = ref(props.filters.search || '');
 const selectedStatus = ref(props.filters.status || '');
@@ -79,7 +74,11 @@ const siprovList = computed(() => props.siprovs?.data || []);
 const hasSiprovs = computed(() => siprovList.value.length > 0);
 
 const hasActiveFilters = computed(() => {
-    return search.value.length > 0 || selectedStatus.value !== '' || selectedPlano.value !== '';
+    return (
+        search.value.length > 0 ||
+        selectedStatus.value !== '' ||
+        selectedPlano.value !== ''
+    );
 });
 
 const statusOptions = computed(() => [
@@ -105,9 +104,17 @@ const performSearch = () => {
     searchTimer = setTimeout(() => {
         const params = {};
 
-        if (search.value.trim()) params.search = search.value.trim();
-        if (selectedStatus.value) params.status = selectedStatus.value;
-        if (selectedPlano.value) params.plano = selectedPlano.value;
+        if (search.value.trim()) {
+            params.search = search.value.trim();
+        }
+
+        if (selectedStatus.value) {
+            params.status = selectedStatus.value;
+        }
+
+        if (selectedPlano.value) {
+            params.plano = selectedPlano.value;
+        }
 
         router.get(route('siprovs.index'), params, {
             preserveState: true,
@@ -118,28 +125,31 @@ const performSearch = () => {
     }, 300);
 };
 
-watch(search, (newVal, oldVal) => {
-    if (newVal !== oldVal) performSearch();
-});
-
-watch(selectedStatus, (newVal, oldVal) => {
-    if (newVal !== oldVal) performSearch();
-});
-
-watch(selectedPlano, (newVal, oldVal) => {
-    if (newVal !== oldVal) performSearch();
-});
+watch(search, performSearch);
+watch(selectedStatus, performSearch);
+watch(selectedPlano, performSearch);
 
 const clearSearch = () => {
     search.value = '';
     selectedStatus.value = '';
     selectedPlano.value = '';
+
     searchInput.value?.focus();
-    performSearch();
+
+    router.get(
+        route('siprovs.index'),
+        {},
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: ['siprovs', 'filters'],
+        },
+    );
 };
 
 const openDeleteModal = (siprov) => {
-    if (!props.can.delete) {
+    if (!can.value?.delete) {
         router.visit(route('unauthorized'));
         return;
     }
@@ -174,6 +184,12 @@ const confirmDelete = () => {
     });
 };
 
+const viewSiprov = (siprov) => {
+    if (!can.value?.view) return;
+
+    router.visit(route('siprovs.show', siprov.id));
+};
+
 const formatDate = (date) => {
     if (!date) return '-';
 
@@ -203,7 +219,9 @@ const getStatusLabel = (status) => {
 };
 
 const getPlanoLabel = (codPlano) => {
-    const found = planoOptions.value.find((item) => String(item.value) === String(codPlano));
+    const found = planoOptions.value.find(
+        (item) => String(item.value) === String(codPlano),
+    );
 
     return found?.label || 'Plano não identificado';
 };
@@ -227,11 +245,8 @@ const getStatusIcon = (status) => {
         failed: AlertCircle,
     }[status] || Activity;
 };
-
-const viewSiprov = (siprov) => {
-    if (!props.can.view) return;
-
-    router.visit(route('siprovs.show', siprov.id));
+const navigateTo = (routeName, params = {}) => {
+    router.visit(route(routeName, params));
 };
 </script>
 
@@ -241,20 +256,23 @@ const viewSiprov = (siprov) => {
 
     <CentralAdminLayout>
         <div class="flex items-center justify-between">
-            <pre>
-                {{ can }}
-            </pre>
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 uppercase tracking-wide">
                     Integrações SIPROV
                 </h2>
+
                 <p class="text-sm text-gray-500 mt-1">
                     Controle de associados, benefícios e status de integração.
                 </p>
             </div>
 
-            <div v-if="can.manage"
-                class="flex items-center gap-2 text-xs text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full">
+            <Button v-if="can.create"
+                class="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 px-5 py-2.5 text-white font-semibold shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                @click="navigateTo('siprov.create')">
+                <Plus class="w-4 h-4" />
+                Adicionar
+            </Button>
+            <div v-else class="flex items-center gap-2 text-xs text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full">
                 <ShieldAlert class="w-4 h-4" />
                 <span>Modo Administrador</span>
             </div>
@@ -284,7 +302,7 @@ const viewSiprov = (siprov) => {
                                 class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-shadow"
                                 @keyup.esc="clearSearch" />
 
-                            <button v-if="hasActiveFilters" @click="clearSearch"
+                            <button v-if="hasActiveFilters" type="button" @click="clearSearch"
                                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
                                 <X class="h-4 w-4" />
                             </button>
@@ -304,7 +322,7 @@ const viewSiprov = (siprov) => {
                             </option>
                         </select>
 
-                        <button v-if="hasActiveFilters" @click="clearSearch"
+                        <button v-if="hasActiveFilters" type="button" @click="clearSearch"
                             class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-cyan-700 bg-cyan-100 rounded-full hover:bg-cyan-200 transition-colors">
                             <X class="w-3 h-3" />
                             Limpar filtros
@@ -315,11 +333,14 @@ const viewSiprov = (siprov) => {
                 <div v-if="hasActiveFilters && hasSiprovs"
                     class="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                     <Search class="w-4 h-4 text-cyan-600" />
+
                     <span>
                         Mostrando {{ props.siprovs.total }} resultado(s)
+
                         <template v-if="search">
                             para "<span class="font-semibold text-cyan-700">{{ search }}</span>"
                         </template>
+
                         <template v-if="selectedStatus">
                             com status "<span class="font-semibold text-cyan-700">
                                 {{ getStatusLabel(selectedStatus) }}
@@ -337,30 +358,37 @@ const viewSiprov = (siprov) => {
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         ID
                                     </th>
+
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Associado
                                     </th>
+
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         CPF/CNPJ
                                     </th>
+
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Plano
                                     </th>
+
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Status
                                     </th>
+
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Usuário
                                     </th>
+
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Integrado em
                                     </th>
+
                                     <th
                                         class="px-6 py-3 text-right text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Ações
@@ -380,16 +408,18 @@ const viewSiprov = (siprov) => {
                                             class="font-medium text-gray-900 group-hover:text-cyan-600 transition-colors">
                                             {{ siprov.nome_pessoa }}
                                         </div>
+
                                         <div class="text-xs text-gray-500 truncate max-w-xs mt-0.5">
                                             {{ siprov.email || 'Sem e-mail' }}
                                         </div>
+
                                         <div class="text-xs text-gray-400 truncate max-w-xs mt-0.5">
                                             Código: {{ siprov.codigo_integracao }}
                                         </div>
                                     </td>
 
                                     <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-700">
-                                        {{ siprov.cpf_formatado || siprov.cpf_cnpj }}
+                                        {{ siprov.cpf_formatado || siprov.cpf_cnpj || '-' }}
                                     </td>
 
                                     <td class="whitespace-nowrap px-6 py-4 text-sm">
@@ -409,6 +439,7 @@ const viewSiprov = (siprov) => {
                                                 'w-3.5 h-3.5',
                                                 siprov.status === 'processing' ? 'animate-spin' : '',
                                             ]" />
+
                                             {{ siprov.status_label || getStatusLabel(siprov.status) }}
                                         </span>
                                     </td>
@@ -419,6 +450,7 @@ const viewSiprov = (siprov) => {
                                                 class="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
                                                 {{ siprov.user?.name?.charAt(0).toUpperCase() || 'S' }}
                                             </div>
+
                                             <span class="truncate max-w-[120px]">
                                                 {{ siprov.user?.name || 'Sistema' }}
                                             </span>
@@ -433,13 +465,13 @@ const viewSiprov = (siprov) => {
 
                                     <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
                                         <div class="flex justify-end gap-1">
-                                            <button v-if="can.view" @click="viewSiprov(siprov)"
+                                            <button v-if="can?.view" type="button" @click="viewSiprov(siprov)"
                                                 class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                                                 title="Visualizar">
                                                 <FileText class="w-4 h-4" />
                                             </button>
 
-                                            <button v-if="can.delete" @click="openDeleteModal(siprov)"
+                                            <button v-if="can?.delete" type="button" @click="openDeleteModal(siprov)"
                                                 class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all"
                                                 title="Excluir">
                                                 <Trash2 class="w-4 h-4" />
@@ -470,7 +502,7 @@ const viewSiprov = (siprov) => {
                                 Não encontramos integrações SIPROV para os filtros informados.
                             </p>
 
-                            <Button variant="outline" size="sm" @click="clearSearch" class="mt-2">
+                            <Button variant="outline" size="sm" class="mt-2" @click="clearSearch">
                                 <X class="w-4 h-4 mr-1" />
                                 Limpar filtros
                             </Button>
@@ -505,13 +537,13 @@ const viewSiprov = (siprov) => {
 
                         <div class="flex gap-1">
                             <template v-for="(link, index) in paginationLinks" :key="index">
-                                <button v-if="link.url" @click="router.visit(link.url, { preserveScroll: true })"
-                                    :class="[
-                                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-                                        link.active
-                                            ? 'bg-cyan-600 text-white shadow-sm'
-                                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200',
-                                    ]" v-html="link.label" :disabled="link.active" />
+                                <button v-if="link.url" type="button" :class="[
+                                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                                    link.active
+                                        ? 'bg-cyan-600 text-white shadow-sm'
+                                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200',
+                                ]" :disabled="link.active" @click="router.visit(link.url, { preserveScroll: true })"
+                                    v-html="link.label" />
 
                                 <span v-else
                                     class="px-3 py-1.5 rounded-lg text-sm text-gray-400 bg-gray-100 border border-gray-200 cursor-default"
