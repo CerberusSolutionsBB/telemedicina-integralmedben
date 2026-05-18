@@ -523,11 +523,11 @@ const navigateTo = (routeName, params = {}) => {
                             </div>
 
                             <p class="text-lg font-medium text-gray-900">
-                                Nenhuma integração SIPROV encontrada
+                                Ainda não há integrações de telemedicina
                             </p>
 
                             <p class="text-sm text-gray-500">
-                                As integrações aparecerão aqui após o envio de associados e benefícios.
+                                Quando associados e benefícios forem enviados, as integrações serão listadas aqui.
                             </p>
                         </div>
                     </div>

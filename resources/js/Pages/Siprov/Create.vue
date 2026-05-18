@@ -259,7 +259,7 @@ const breadcrumbs = computed(() => [
 
 <template>
 
-    <Head title="Nova Integração SIPROV" />
+    <Head title="Nova Telemedicina" />
 
     <CentralAdminLayout>
         <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
