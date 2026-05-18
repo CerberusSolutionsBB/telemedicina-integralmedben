@@ -252,7 +252,7 @@ const submit = () => {
 };
 
 const breadcrumbs = computed(() => [
-    { label: 'Integrações SIPROV', href: route('siprov.index'), icon: Home },
+    { label: 'Telemedicina', href: route('siprov.index'), icon: Home },
     { label: 'Adicionar', href: null },
 ]);
 </script>
@@ -267,7 +267,7 @@ const breadcrumbs = computed(() => [
                 <Breadcrumb :items="breadcrumbs" />
 
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-900">
-                    Adicionar Integração SIPROV
+                    Adicionar Telemedicina
                 </h1>
 
                 <p class="text-sm text-gray-500">
