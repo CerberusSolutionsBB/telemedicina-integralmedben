@@ -91,10 +91,10 @@ class PaginaStoreController extends Controller
     private function gerarDominio(string $tenantId): string
     {
         $centralDomains = config('tenancy.central_domains', ['localhost']);
-        // $dominioCentral = app()->environment('production')
-        //     ? ($centralDomains[1] ?? $centralDomains[0])
-        //     : $centralDomains[0];
-        $dominioCentral = "telemedicinamedben.com.br";
+        $dominioCentral = app()->environment('production')
+            ? "telemedicinamedben.com.br"
+            : $centralDomains[0];
+
         return "{$tenantId}.{$dominioCentral}";
     }
 }
