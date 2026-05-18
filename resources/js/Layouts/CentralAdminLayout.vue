@@ -39,7 +39,7 @@ const navLinks = [
     { label: "SMS Templates", routeName: "sms-templates.index", icon: MessageSquare },
     { label: "Logs de SMS", routeName: "admin.sms-logs.index", icon: ScrollText },
     { label: "Página de Vendas", routeName: "pagina.index", icon: AppWindowIcon },
-    { label: "Siprov", routeName: "siprov.index", icon: Activity },
+    { label: "Telemedicina", routeName: "siprov.index", icon: Activity },
     {
         label: "Configurações",
         key: "configuracoes",
@@ -200,7 +200,7 @@ const navLinks = [
                                 <div class="text-left hidden sm:block">
                                     <p class="text-sm font-medium text-gray-900 leading-tight">{{ authUser?.name }}</p>
                                     <p class="text-xs text-gray-500 leading-tight">{{ authUser?.roles?.[0] || 'Usuário'
-                                        }}</p>
+                                    }}</p>
                                 </div>
 
                                 <ChevronDown

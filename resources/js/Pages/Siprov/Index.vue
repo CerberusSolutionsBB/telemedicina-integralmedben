@@ -267,7 +267,7 @@ const navigateTo = (routeName, params = {}) => {
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 uppercase tracking-wide">
-                    Integrações SIPROV
+                    Telemedicina
                 </h2>
 
                 <p class="text-sm text-gray-500 mt-1">
