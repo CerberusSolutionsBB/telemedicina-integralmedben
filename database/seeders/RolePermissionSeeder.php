@@ -35,7 +35,7 @@ class RolePermissionSeeder extends Seeder
     private function permissions(): array
     {
         return [
-            'users'   => [
+            'users'     => [
                 'users.view',
                 'users.create',
                 'users.edit',
@@ -43,7 +43,7 @@ class RolePermissionSeeder extends Seeder
                 'users.manage',
             ],
 
-            'forms'   => [
+            'forms'     => [
                 'forms.view',
                 'forms.create',
                 'forms.edit',
@@ -53,7 +53,7 @@ class RolePermissionSeeder extends Seeder
                 'forms.manage.all',
             ],
 
-            'paginas' => [
+            'paginas'   => [
                 'paginas.view',
                 'paginas.create',
                 'paginas.edit',
@@ -62,20 +62,29 @@ class RolePermissionSeeder extends Seeder
                 'paginas.manage',
             ],
 
-            'leis'    => [
+            'leis'      => [
                 'leis.view',
                 'leis.create',
                 'leis.edit',
                 'leis.delete',
             ],
 
-            'siprov'  => [
+            'siprov'    => [
                 'siprov.view',
                 'siprov.create',
                 'siprov.show',
                 'siprov.delete',
                 'siprov.retry',
                 'siprov.manage',
+            ],
+
+            'pacientes' => [
+                'pacientes.view',
+                'pacientes.create',
+                'pacientes.edit',
+                'pacientes.delete',
+                'pacientes.show',
+                'pacientes.manage',
             ],
         ];
     }
@@ -103,10 +112,12 @@ class RolePermissionSeeder extends Seeder
             'name'       => 'Manager',
             'guard_name' => 'web',
         ])->syncPermissions([
+            // USERS
             'users.view',
             'users.create',
             'users.edit',
 
+            // FORMS
             'forms.view',
             'forms.create',
             'forms.edit',
@@ -114,60 +125,89 @@ class RolePermissionSeeder extends Seeder
             'forms.update.status',
             'forms.toggle.visibility',
 
+            // PAGINAS
             'paginas.view',
             'paginas.create',
             'paginas.edit',
             'paginas.delete',
             'paginas.show',
 
+            // LEIS
             'leis.view',
             'leis.create',
             'leis.edit',
             'leis.delete',
 
+            // SIPROV
             'siprov.view',
             'siprov.create',
             'siprov.show',
+            'siprov.delete',
             'siprov.retry',
+
+            // PACIENTES
+            'pacientes.view',
+            'pacientes.create',
+            'pacientes.edit',
+            'pacientes.delete',
+            'pacientes.show',
         ]);
 
         Role::firstOrCreate([
             'name'       => 'Editor',
             'guard_name' => 'web',
         ])->syncPermissions([
+            // FORMS
             'forms.view',
             'forms.create',
             'forms.edit',
             'forms.update.status',
             'forms.toggle.visibility',
 
+            // PAGINAS
             'paginas.view',
             'paginas.show',
 
+            // LEIS
             'leis.view',
             'leis.create',
             'leis.edit',
 
+            // SIPROV
             'siprov.view',
             'siprov.create',
             'siprov.show',
+
+            // PACIENTES
+            'pacientes.view',
+            'pacientes.create',
+            'pacientes.edit',
+            'pacientes.show',
         ]);
 
         Role::firstOrCreate([
             'name'       => 'User',
             'guard_name' => 'web',
         ])->syncPermissions([
+            // FORMS
             'forms.view',
             'forms.create',
             'forms.toggle.visibility',
 
+            // PAGINAS
             'paginas.view',
             'paginas.show',
 
+            // LEIS
             'leis.view',
 
+            // SIPROV
             'siprov.view',
             'siprov.show',
+
+            // PACIENTES
+            'pacientes.view',
+            'pacientes.show',
         ]);
     }
 

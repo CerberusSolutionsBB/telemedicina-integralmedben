@@ -2,12 +2,26 @@
 
 use App\Http\Controllers\Siprov\CreateSiprovIntegrationController;
 use App\Http\Controllers\Siprov\SiprovCreateController;
+use App\Http\Controllers\Siprov\SiprovDestroyController;
 use App\Http\Controllers\Siprov\SiprovIndexController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/create', SiprovCreateController::class)->name('create');
-Route::get('/', SiprovIndexController::class)->name('index');
-Route::post('/store', CreateSiprovIntegrationController::class)->name('store');
+Route::get('/', SiprovIndexController::class)
+    ->middleware('permission:siprov.view')
+    ->name('index');
+
+Route::get('/create', SiprovCreateController::class)
+    ->middleware('permission:siprov.create')
+    ->name('create');
+
+Route::post('/store', CreateSiprovIntegrationController::class)
+    ->middleware('permission:siprov.create')
+    ->name('store');
+
+Route::delete('/{siprov}', SiprovDestroyController::class)
+    ->middleware('permission:siprov.delete')
+    ->name('destroy');
+
 Route::get('/debug-siprov', function () {
     return [
         'base_url' => config('siprov.base_url'),

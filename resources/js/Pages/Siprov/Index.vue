@@ -2,7 +2,7 @@
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import Button from '@/Components/ui/button/Button.vue';
-
+import { showToast } from '@/Utils/toast';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 
@@ -116,7 +116,7 @@ const performSearch = () => {
             params.plano = selectedPlano.value;
         }
 
-        router.get(route('siprovs.index'), params, {
+        router.get(route('siprov.index'), params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -137,13 +137,13 @@ const clearSearch = () => {
     searchInput.value?.focus();
 
     router.get(
-        route('siprovs.index'),
+        route('siprov.index'),
         {},
         {
             preserveState: true,
             preserveScroll: true,
             replace: true,
-            only: ['siprovs', 'filters'],
+            only: ['siprov', 'filters'],
         },
     );
 };
@@ -175,9 +175,18 @@ const confirmDelete = () => {
 
     deleteModal.value.isProcessing = true;
 
-    router.delete(route('siprovs.destroy', deleteModal.value.siprov.id), {
+    router.delete(route('siprov.destroy', deleteModal.value.siprov.id), {
         preserveScroll: true,
-        onSuccess: () => closeDeleteModal(),
+
+        onSuccess: () => {
+            closeDeleteModal();
+            showToast('Integração SIPROV removida com sucesso.', 'success');
+        },
+
+        onError: () => {
+            showToast('Erro ao remover integração SIPROV.', 'error');
+        },
+
         onFinish: () => {
             deleteModal.value.isProcessing = false;
         },
@@ -374,10 +383,7 @@ const navigateTo = (routeName, params = {}) => {
                                         Plano
                                     </th>
 
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
-                                        Status
-                                    </th>
+
 
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
@@ -388,7 +394,10 @@ const navigateTo = (routeName, params = {}) => {
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Integrado em
                                     </th>
-
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Status
+                                    </th>
                                     <th
                                         class="px-6 py-3 text-right text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Ações
@@ -430,19 +439,7 @@ const navigateTo = (routeName, params = {}) => {
                                         </span>
                                     </td>
 
-                                    <td class="whitespace-nowrap px-6 py-4 text-sm">
-                                        <span :class="[
-                                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border',
-                                            getStatusClass(siprov.status),
-                                        ]">
-                                            <component :is="getStatusIcon(siprov.status)" :class="[
-                                                'w-3.5 h-3.5',
-                                                siprov.status === 'processing' ? 'animate-spin' : '',
-                                            ]" />
 
-                                            {{ siprov.status_label || getStatusLabel(siprov.status) }}
-                                        </span>
-                                    </td>
 
                                     <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
                                         <div class="flex items-center gap-2">
@@ -462,7 +459,19 @@ const navigateTo = (routeName, params = {}) => {
                                             {{ formatDate(siprov.integrated_at || siprov.created_at) }}
                                         </time>
                                     </td>
+                                    <td class="whitespace-nowrap px-6 py-4 text-sm">
+                                        <span :class="[
+                                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border',
+                                            getStatusClass(siprov.status),
+                                        ]">
+                                            <component :is="getStatusIcon(siprov.status)" :class="[
+                                                'w-3.5 h-3.5',
+                                                siprov.status === 'processing' ? 'animate-spin' : '',
+                                            ]" />
 
+                                            {{ siprov.status_label || getStatusLabel(siprov.status) }}
+                                        </span>
+                                    </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
                                         <div class="flex justify-end gap-1">
                                             <button v-if="can?.view" type="button" @click="viewSiprov(siprov)"
