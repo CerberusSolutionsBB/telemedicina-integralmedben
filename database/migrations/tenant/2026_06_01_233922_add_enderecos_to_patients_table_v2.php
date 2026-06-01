@@ -12,14 +12,7 @@ return new class extends Migration
 
             if (! Schema::hasColumn('patients', 'enderecos')) {
 
-                if (Schema::hasColumn('patients', 'status')) {
-                    $table->json('enderecos')
-                        ->nullable()
-                        ->after('status');
-                } else {
-                    $table->json('enderecos')
-                        ->nullable();
-                }
+                $table->json('enderecos')->nullable();
 
             }
 
