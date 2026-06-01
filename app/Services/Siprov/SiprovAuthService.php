@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Siprov;
 
 use App\Exceptions\SiprovException;
@@ -17,7 +18,7 @@ class SiprovAuthService
                     config('siprov.password')
                 )
                     ->acceptJson()
-                    ->post(config('siprov.base_url') . '/ext/autenticacao');
+                    ->post(config('siprov.base_url').'/ext/autenticacao');
 
                 if ($response->failed()) {
                     throw SiprovException::authFailed($response->body());

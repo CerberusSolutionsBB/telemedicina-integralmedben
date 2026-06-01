@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class ExternalApiLog extends Model
 {
     protected $connection = 'mysql';
-    protected $table      = 'external_api_logs';
+
+    protected $table = 'external_api_logs';
 
     protected $fillable = [
         'api',
@@ -20,7 +21,7 @@ class ExternalApiLog extends Model
     ];
 
     protected $casts = [
-        'payload'  => 'array',
+        'payload' => 'array',
         'response' => 'array',
     ];
 

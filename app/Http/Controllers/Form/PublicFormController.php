@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
@@ -9,6 +10,7 @@ use App\Models\FormResponse;
 use App\Services\ClubleBeneficiarioService;
 use App\Services\SimpleSmsService;
 use App\Services\Tenant\FormsResponseTenentService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,90 +29,101 @@ class PublicFormController extends Controller
         private FormsResponseTenentService $formsResponseTenentService
 
     ) {}
+
     private function canAcceptResponses(Form $form): bool
     {
         return $form->status === 'ativo';
     }
+
     private function getLogoData(Form $form): ?array
     {
         $logoArquivo = $form->arquivos->first();
         if (! $logoArquivo) {
             return null;
         }
+
         return [
-            'url'     => $logoArquivo->url,
+            'url' => $logoArquivo->url,
             'posicao' => $logoArquivo->pivot->posicao ?? 'centro',
         ];
     }
+
     private function convertBrazilianDateToISO(string $date): string
     {
         $parts = explode('/', $date);
         if (count($parts) === 3) {
             return "{$parts[2]}-{$parts[1]}-{$parts[0]}";
         }
+
         return $date;
     }
+
     private function isDateField($field): bool
     {
         $label = strtolower($field->label);
+
         return $field->type === 'date' ||
         str_contains($label, 'nascimento') ||
         str_contains($label, 'data') ||
         str_contains($label, 'birth');
     }
+
     private function isCPFField($field): bool
     {
         $label = strtolower($field->label);
+
         return $field->type === 'cpf' ||
         str_contains($label, 'cpf') ||
         str_contains($label, 'c.p.f');
     }
+
     public function show(string $slug): Response
     {
         try {
             $form = Form::where('slug', $slug)
                 ->where('is_public', true)
-                ->with(['fields' => fn($q) => $q->orderBy('order')])
-                ->with(['arquivos' => fn($q) => $q
-                        ->wherePivot('tipo', FormArquivo::TIPO_LOGO)
-                        ->withPivot('posicao', 'tipo'),
+                ->with(['fields' => fn ($q) => $q->orderBy('order')])
+                ->with(['arquivos' => fn ($q) => $q
+                    ->wherePivot('tipo', FormArquivo::TIPO_LOGO)
+                    ->withPivot('posicao', 'tipo'),
                 ])
                 ->first();
             if (! $form) {
                 Log::warning('Formulário não encontrado', [
                     'slug' => $slug,
-                    'ip'   => request()->ip(),
+                    'ip' => request()->ip(),
                 ]);
                 abort(404, 'Formulário não encontrado.');
             }
             $logoData = $this->getLogoData($form);
             if (! $this->canAcceptResponses($form)) {
                 $statusLabels = [
-                    'rascunho'  => 'em edição (rascunho)',
-                    'pausado'   => 'pausado',
+                    'rascunho' => 'em edição (rascunho)',
+                    'pausado' => 'pausado',
                     'encerrado' => 'encerrado',
                 ];
                 $label = $statusLabels[$form->status] ?? $form->status;
                 Log::info('Tentativa de acesso a formulário não ativo', [
                     'form_id' => $form->id,
-                    'slug'    => $slug,
-                    'status'  => $form->status,
-                    'ip'      => request()->ip(),
+                    'slug' => $slug,
+                    'status' => $form->status,
+                    'ip' => request()->ip(),
                 ]);
+
                 return Inertia::render('Form/Public/Show', [
-                    'form'        => [
-                        'title'                   => $form->title,
-                        'status'                  => $form->status,
-                        'statusLabel'             => $label,
-                        'primary_color'           => $form->primary_color,
-                        'secondary_color'         => $form->secondary_color,
-                        'lei'                     => $form->lei,
-                        'logo'                    => $logoData,
+                    'form' => [
+                        'title' => $form->title,
+                        'status' => $form->status,
+                        'statusLabel' => $label,
+                        'primary_color' => $form->primary_color,
+                        'secondary_color' => $form->secondary_color,
+                        'lei' => $form->lei,
+                        'logo' => $logoData,
                         'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
-                        'sub_descricao'           => $form->sub_descricao ?? null,
-                        'observacao'              => $form->observacao ?? null,
-                        'credencia_cluble_id'     => $form->credencia_cluble_id ?? null,
-                        'message'                 => "Este formulário está {$label} e não pode receber respostas no momento.",
+                        'sub_descricao' => $form->sub_descricao ?? null,
+                        'observacao' => $form->observacao ?? null,
+                        'credencia_cluble_id' => $form->credencia_cluble_id ?? null,
+                        'message' => "Este formulário está {$label} e não pode receber respostas no momento.",
                         'instruction' => 'Para permitir o preenchimento, altere o status para "Ativo" nas configurações.',
                         'canActivate' => true,
                     ],
@@ -118,85 +131,88 @@ class PublicFormController extends Controller
             }
             if ($form->expires_at && $form->expires_at <= now()) {
                 Log::info('Tentativa de acesso a formulário expirado', [
-                    'form_id'    => $form->id,
-                    'slug'       => $slug,
+                    'form_id' => $form->id,
+                    'slug' => $slug,
                     'expires_at' => $form->expires_at,
                 ]);
+
                 return Inertia::render('Form/Public/Show', [
                     'form' => [
-                        'title'                   => $form->title,
-                        'slug'                    => $slug,
-                        'status'                  => 'expirado',
-                        'statusLabel'             => 'expirado',
-                        'primary_color'           => $form->primary_color,
-                        'secondary_color'         => $form->secondary_color,
-                        'lei'                     => $form->lei,
-                        'logo'                    => $logoData,
+                        'title' => $form->title,
+                        'slug' => $slug,
+                        'status' => 'expirado',
+                        'statusLabel' => 'expirado',
+                        'primary_color' => $form->primary_color,
+                        'secondary_color' => $form->secondary_color,
+                        'lei' => $form->lei,
+                        'logo' => $logoData,
                         'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
-                        'sub_descricao'           => $form->sub_descricao ?? null,
-                        'observacao'              => $form->observacao ?? null,
-                        'credencia_cluble_id'     => $form->credencia_cluble_id ?? null,
-                        'message'                 => 'Este formulário expirou e não está mais disponível para respostas.',
-                        'instruction'             => 'Renove a data de expiração nas configurações para reativá-lo.',
-                        'canActivate'             => false,
+                        'sub_descricao' => $form->sub_descricao ?? null,
+                        'observacao' => $form->observacao ?? null,
+                        'credencia_cluble_id' => $form->credencia_cluble_id ?? null,
+                        'message' => 'Este formulário expirou e não está mais disponível para respostas.',
+                        'instruction' => 'Renove a data de expiração nas configurações para reativá-lo.',
+                        'canActivate' => false,
                     ],
                 ]);
             }
             if ($form->response_limit && $form->responses_count >= $form->response_limit) {
                 Log::info('Formulário atingiu limite de respostas', [
-                    'form_id'         => $form->id,
-                    'slug'            => $slug,
-                    'response_limit'  => $form->response_limit,
+                    'form_id' => $form->id,
+                    'slug' => $slug,
+                    'response_limit' => $form->response_limit,
                     'responses_count' => $form->responses_count,
                 ]);
+
                 return Inertia::render('Form/Public/Show', [
                     'form' => [
-                        'title'                   => $form->title,
-                        'primary_color'           => $form->primary_color,
-                        'secondary_color'         => $form->secondary_color,
-                        'lei'                     => $form->lei,
+                        'title' => $form->title,
+                        'primary_color' => $form->primary_color,
+                        'secondary_color' => $form->secondary_color,
+                        'lei' => $form->lei,
                         'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
-                        'sub_descricao'           => $form->sub_descricao ?? null,
-                        'observacao'              => $form->observacao ?? null,
-                        'credencia_cluble_id'     => $form->credencia_cluble_id ?? null,
-                        'status'                  => 'limite_atingido',
-                        'statusLabel'             => 'com limite atingido',
-                        'message'                 => 'Este formulário atingiu o limite máximo de respostas.',
-                        'instruction'             => 'Aumente o limite de respostas nas configurações ou crie um novo formulário.',
-                        'canActivate'             => false,
-                        'logo'                    => $logoData,
+                        'sub_descricao' => $form->sub_descricao ?? null,
+                        'observacao' => $form->observacao ?? null,
+                        'credencia_cluble_id' => $form->credencia_cluble_id ?? null,
+                        'status' => 'limite_atingido',
+                        'statusLabel' => 'com limite atingido',
+                        'message' => 'Este formulário atingiu o limite máximo de respostas.',
+                        'instruction' => 'Aumente o limite de respostas nas configurações ou crie um novo formulário.',
+                        'canActivate' => false,
+                        'logo' => $logoData,
                     ],
                 ]);
             }
+
             return Inertia::render('Form/Public/Show', [
                 'form' => [
-                    'id'                      => $form->id,
-                    'title'                   => $form->title,
-                    'slug'                    => $slug,
-                    'description'             => $form->description,
-                    'expires_at'              => $form->expires_at,
-                    'response_limit'          => $form->response_limit,
-                    'responses_count'         => $form->responses_count,
-                    'is_public'               => $form->is_public,
-                    'primary_color'           => $form->primary_color,
-                    'secondary_color'         => $form->secondary_color,
-                    'lei'                     => $form->lei,
-                    'status'                  => $form->status,
-                    'logo'                    => $logoData,
-                    'credencia_cluble_id'     => $form->credencia_cluble_id ?? null,
+                    'id' => $form->id,
+                    'title' => $form->title,
+                    'slug' => $slug,
+                    'description' => $form->description,
+                    'expires_at' => $form->expires_at,
+                    'response_limit' => $form->response_limit,
+                    'responses_count' => $form->responses_count,
+                    'is_public' => $form->is_public,
+                    'primary_color' => $form->primary_color,
+                    'secondary_color' => $form->secondary_color,
+                    'lei' => $form->lei,
+                    'status' => $form->status,
+                    'logo' => $logoData,
+                    'credencia_cluble_id' => $form->credencia_cluble_id ?? null,
                     'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
-                    'sub_descricao'           => $form->sub_descricao ?? null,
-                    'observacao'              => $form->observacao ?? null,
-                    'fields'                  => $form->fields->map(fn($f) => [
-                        'id'          => $f->id,
-                        'type'        => $f->type,
-                        'label'       => $f->label,
+                    'sub_descricao' => $form->sub_descricao ?? null,
+                    'observacao' => $form->observacao ?? null,
+                    'fields' => $form->fields->map(fn ($f) => [
+                        'id' => $f->id,
+                        'type' => $f->type,
+                        'label' => $f->label,
                         'placeholder' => $f->placeholder,
-                        'required'    => $f->required,
-                        'options'     => $f->options,
-                        'help_text'   => $f->help_text,
-                        'is_date'     => $this->isDateField($f),
-                        'is_cpf'      => $this->isCPFField($f),
+                        'required' => $f->required,
+                        'options' => $f->options,
+                        'help_text' => $f->help_text,
+                        'is_date' => $this->isDateField($f),
+                        'is_cpf' => $this->isCPFField($f),
                     ]),
                 ],
             ]);
@@ -204,13 +220,14 @@ class PublicFormController extends Controller
             throw $e;
         } catch (Throwable $e) {
             Log::error('Erro ao exibir formulário', [
-                'slug'  => $slug,
+                'slug' => $slug,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
             abort(500, 'Erro ao carregar o formulário. Tente novamente mais tarde.');
         }
     }
+
     public function store(Request $request, string $slug): RedirectResponse
     {
         DB::beginTransaction();
@@ -227,10 +244,11 @@ class PublicFormController extends Controller
                 DB::rollBack();
                 Log::warning('Tentativa de envio para formulário não ativo', [
                     'form_id' => $form->id,
-                    'slug'    => $slug,
-                    'status'  => $form->status,
-                    'ip'      => $request->ip(),
+                    'slug' => $slug,
+                    'status' => $form->status,
+                    'ip' => $request->ip(),
                 ]);
+
                 return redirect()
                     ->back()
                     ->with('error', "Este formulário está {$form->status} e não pode receber respostas. Entre em contato com o administrador.");
@@ -243,12 +261,12 @@ class PublicFormController extends Controller
                 DB::rollBack();
                 abort(403, 'Limite de respostas atingido.');
             }
-            $rules    = [];
+            $rules = [];
             $messages = [];
             foreach ($form->fields as $field) {
                 $fieldRules = [];
                 if ($field->required) {
-                    $fieldRules[]                              = 'required';
+                    $fieldRules[] = 'required';
                     $messages["answers.{$field->id}.required"] = "O campo \"{$field->label}\" é obrigatório.";
                 } else {
                     $fieldRules[] = 'nullable';
@@ -261,19 +279,19 @@ class PublicFormController extends Controller
                         $fieldRules[] = 'numeric';
                         break;
                     case 'date':
-                        $fieldRules[]                                 = 'date_format:d/m/Y';
+                        $fieldRules[] = 'date_format:d/m/Y';
                         $messages["answers.{$field->id}.date_format"] = "O campo \"{$field->label}\" deve estar no formato DD/MM/AAAA.";
                         break;
                     case 'cpf':
-                        $fieldRules[]                             = 'numeric';
-                        $fieldRules[]                             = 'digits:11';
+                        $fieldRules[] = 'numeric';
+                        $fieldRules[] = 'digits:11';
                         $messages["answers.{$field->id}.numeric"] = "O campo \"{$field->label}\" deve conter apenas números.";
-                        $messages["answers.{$field->id}.digits"]  = "O campo \"{$field->label}\" deve ter exatamente 11 dígitos.";
+                        $messages["answers.{$field->id}.digits"] = "O campo \"{$field->label}\" deve ter exatamente 11 dígitos.";
                         break;
                 }
                 $rules["answers.{$field->id}"] = $fieldRules;
             }
-            $validated        = $request->validate($rules, $messages);
+            $validated = $request->validate($rules, $messages);
             $processedAnswers = [];
             foreach ($form->fields as $field) {
                 $answer = $validated['answers'][$field->id] ?? null;
@@ -284,9 +302,9 @@ class PublicFormController extends Controller
                 }
             }
             $formResponse = FormResponse::create([
-                'form_id'    => $form->id,
-                'user_id'    => auth()->id(),
-                'answers'    => $processedAnswers,
+                'form_id' => $form->id,
+                'user_id' => auth()->id(),
+                'answers' => $processedAnswers,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
@@ -294,13 +312,14 @@ class PublicFormController extends Controller
             if ($form->credencia_cluble_id) {
                 $this->sincronizarComClube($form, $formResponse, $validated['answers']);
             }
-            $host          = request()->getHost();
+            $host = request()->getHost();
             $currentTenant = str($host)->before('.')->toString();
             if ($currentTenant != null) {
                 $this->formsResponseTenentService->create($currentTenant, $form->id, $formResponse->id);
             }
 
             DB::commit();
+
             return redirect()
                 ->route('forms.public.thanks', $slug)
                 ->with('success', 'Resposta enviada com sucesso!');
@@ -310,49 +329,54 @@ class PublicFormController extends Controller
         } catch (Throwable $e) {
             DB::rollBack();
             Log::error('Erro ao salvar resposta', [
-                'slug'  => $slug,
+                'slug' => $slug,
                 'error' => $e->getMessage(),
             ]);
+
             return redirect()
                 ->back()
                 ->withInput()
                 ->with('error', 'Erro ao enviar resposta. Tente novamente.');
         }
     }
+
     public function thanks(string $slug): Response
     {
         $form = Form::where('slug', $slug)
             ->where('is_public', true)
             ->firstOrFail();
+
         return Inertia::render('Form/Public/Thanks', [
             'form' => [
-                'title'           => $form->title,
-                'description'     => $form->description,
-                'slug'            => $form->slug,
-                'primary_color'   => $form->primary_color,
+                'title' => $form->title,
+                'description' => $form->description,
+                'slug' => $form->slug,
+                'primary_color' => $form->primary_color,
                 'secondary_color' => $form->secondary_color,
-                'lei'             => $form->lei,
+                'lei' => $form->lei,
             ],
         ]);
     }
+
     private function sincronizarComClube(Form $form, FormResponse $formResponse, array $answers): void
     {
         $credencial = CredenciasCluble::find($form->credencia_cluble_id);
         if (! $credencial || $credencial->isTokenExpired()) {
             Log::warning('Credencial inválida ou expirada', [
-                'form_id'       => $form->id,
+                'form_id' => $form->id,
                 'credencial_id' => $form->credencia_cluble_id,
             ]);
+
             return;
         }
         $fields = $form->fields()->orderBy('order')->get();
-        $dados  = $this->mapearRespostasPorOrdem($fields, $answers);
+        $dados = $this->mapearRespostasPorOrdem($fields, $answers);
         if (! empty($dados['cellphone'])) {
-            $empresa   = $form->title ?? 'Empresa';
-            $cliente   = $dados['name'] ?? 'Cliente';
-            $data      = now()->format('d/m/Y');
-            $hora      = now()->format('H:i');
-            $conteudo  = "$empresa, Olá $cliente! Seu cadastro foi confirmado no dia $data às $hora.";
+            $empresa = $form->title ?? 'Empresa';
+            $cliente = $dados['name'] ?? 'Cliente';
+            $data = now()->format('d/m/Y');
+            $hora = now()->format('H:i');
+            $conteudo = "$empresa, Olá $cliente! Seu cadastro foi confirmado no dia $data às $hora.";
             $resultado = $this->simpleSmsService->send(
                 $dados['cellphone'],
                 $conteudo,
@@ -360,53 +384,55 @@ class PublicFormController extends Controller
         }
         Log::info('Dados mapeados para API Clube', [
             'form_id' => $form->id,
-            'dados'   => $dados,
+            'dados' => $dados,
         ]);
         if (empty($dados['name']) || empty($dados['email']) || empty($dados['cpf'])) {
             Log::warning('Dados obrigatórios faltando', [
-                'form_id'   => $form->id,
-                'dados'     => $dados,
-                'tem_name'  => ! empty($dados['name']),
+                'form_id' => $form->id,
+                'dados' => $dados,
+                'tem_name' => ! empty($dados['name']),
                 'tem_email' => ! empty($dados['email']),
-                'tem_cpf'   => ! empty($dados['cpf']),
+                'tem_cpf' => ! empty($dados['cpf']),
             ]);
+
             return;
         }
         $resultado = $this->beneficiarioService->cadastrarBeneficiario($dados, $credencial);
         if ($resultado && $resultado['success']) {
             $formResponse->update([
                 'external_beneficiario_id' => $resultado['data']['id'] ?? null,
-                'sincronizado_clube'       => true,
-                'sincronizado_em'          => now(),
+                'sincronizado_clube' => true,
+                'sincronizado_em' => now(),
             ]);
         } else {
             $formResponse->update([
-                'erro_sincronizacao'       => $resultado['error']['message'] ?? 'Erro desconhecido',
+                'erro_sincronizacao' => $resultado['error']['message'] ?? 'Erro desconhecido',
                 'tentativas_sincronizacao' => ($formResponse->tentativas_sincronizacao ?? 0) + 1,
             ]);
             Log::error('Falha sincronização Clube', [
-                'form_id'     => $form->id,
+                'form_id' => $form->id,
                 'response_id' => $formResponse->id,
-                'error'       => $resultado['error'] ?? 'Sem resposta',
+                'error' => $resultado['error'] ?? 'Sem resposta',
             ]);
         }
     }
+
     private function mapearRespostasPorOrdem($fields, array $answers): array
     {
         $respostas = array_values($answers);
-        $dados     = [
-            'name'            => null,
-            'email'           => null,
-            'cpf'             => null,
-            'birth_date'      => null,
-            'cellphone'       => null,
-            'company_name'    => null,
+        $dados = [
+            'name' => null,
+            'email' => null,
+            'cpf' => null,
+            'birth_date' => null,
+            'cellphone' => null,
+            'company_name' => null,
             'expiration_date' => null,
-            'password'        => null,
-            'newsletter'      => false,
-            'sms'             => false,
-            'whatsapp'        => false,
-            'authorized'      => true,
+            'password' => null,
+            'newsletter' => false,
+            'sms' => false,
+            'whatsapp' => false,
+            'authorized' => true,
         ];
         foreach ($fields as $index => $field) {
             $valor = $respostas[$index] ?? null;
@@ -419,56 +445,63 @@ class PublicFormController extends Controller
             }
             $dados[$campoClube] = $this->formatarValor($valor, $campoClube, $field->type);
         }
+
         return array_filter($dados, function ($v, $k) {
             if (in_array($k, ['newsletter', 'sms', 'whatsapp', 'authorized'])) {
                 return true;
             }
+
             return $v !== null && $v !== '';
         }, ARRAY_FILTER_USE_BOTH);
     }
+
     private function identificarCampoClube($field): ?string
     {
         $label = mb_strtolower(trim($field->label));
-        $type  = $field->type;
+        $type = $field->type;
+
         return match (true) {
-            str_contains($label, 'nome') && str_contains($label, 'completo')                     => 'name',
+            str_contains($label, 'nome') && str_contains($label, 'completo') => 'name',
             str_contains($label, 'e-mail') || str_contains($label, 'email') || $type === 'email' => 'email',
-            str_contains($label, 'cpf')                                                          => 'cpf',
+            str_contains($label, 'cpf') => 'cpf',
             str_contains($label, 'nascimento') ||
             (str_contains($label, 'data') && str_contains($label, 'nasc')) ||
-            ($type === 'date' && str_contains($label, 'nasc'))                                   => 'birth_date',
+            ($type === 'date' && str_contains($label, 'nasc')) => 'birth_date',
             str_contains($label, 'celular') ||
             str_contains($label, 'telefone') ||
             str_contains($label, 'fone') ||
             str_contains($label, 'tel') ||
-            str_contains($label, 'whatsapp')                                                     => 'cellphone',
+            str_contains($label, 'whatsapp') => 'cellphone',
             str_contains($label, 'empresa') ||
             str_contains($label, 'company') ||
-            str_contains($label, 'organização')                                                  => 'company_name',
+            str_contains($label, 'organização') => 'company_name',
             str_contains($label, 'expiração') ||
             str_contains($label, 'validade') ||
-            str_contains($label, 'vencimento')                                                   => 'expiration_date',
+            str_contains($label, 'vencimento') => 'expiration_date',
             str_contains($label, 'senha') ||
-            str_contains($label, 'password')                                                     => 'password',
-            default                                                                              => null,
+            str_contains($label, 'password') => 'password',
+            default => null,
         };
     }
+
     private function formatarValor(mixed $valor, string $campoClube, string $fieldType): mixed
     {
         $valor = is_string($valor) ? trim($valor) : $valor;
+
         return match ($campoClube) {
-            'name'            => mb_substr($valor, 0, 100),
-            'email'           => mb_strtolower(mb_substr($valor, 0, 80)),
-            'cpf'             => mb_substr(preg_replace('/[^0-9]/', '', $valor), 0, 11),
-            'birth_date'      => $this->formatarData($valor),
-            'cellphone'       => $this->formatarTelefone($valor),
-            'company_name'    => mb_substr($valor, 0, 255) ?: null,
+            'name' => mb_substr($valor, 0, 100),
+            'email' => mb_strtolower(mb_substr($valor, 0, 80)),
+            'cpf' => mb_substr(preg_replace('/[^0-9]/', '', $valor), 0, 11),
+            'birth_date' => $this->formatarData($valor),
+            'cellphone' => $this->formatarTelefone($valor),
+            'company_name' => mb_substr($valor, 0, 255) ?: null,
             'expiration_date' => $this->formatarData($valor),
-            'password'        => $valor,
+            'password' => $valor,
             'newsletter', 'sms', 'whatsapp', 'authorized' => (bool) $valor,
-            default           => $valor,
+            default => $valor,
         };
     }
+
     private function formatarData(?string $data): ?string
     {
         if (! $data) {
@@ -479,15 +512,17 @@ class PublicFormController extends Controller
             return $data;
         }
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
-            return \Carbon\Carbon::createFromFormat('Y-m-d', $data)->format('d/m/Y');
+            return Carbon::createFromFormat('Y-m-d', $data)->format('d/m/Y');
         }
         try {
-            return \Carbon\Carbon::parse($data)->format('d/m/Y');
+            return Carbon::parse($data)->format('d/m/Y');
         } catch (\Exception $e) {
             Log::warning('Não foi possível formatar data', ['data' => $data]);
+
             return $data;
         }
     }
+
     private function formatarTelefone(?string $tel): ?string
     {
         if (! $tel) {
@@ -495,11 +530,12 @@ class PublicFormController extends Controller
         }
         $n = preg_replace('/[^0-9]/', '', $tel);
         if (strlen($n) === 11) {
-            return '(' . substr($n, 0, 2) . ') ' . substr($n, 2, 5) . '-' . substr($n, 7);
+            return '('.substr($n, 0, 2).') '.substr($n, 2, 5).'-'.substr($n, 7);
         }
         if (strlen($n) === 10) {
-            return '(' . substr($n, 0, 2) . ') ' . substr($n, 2, 4) . '-' . substr($n, 6);
+            return '('.substr($n, 0, 2).') '.substr($n, 2, 4).'-'.substr($n, 6);
         }
+
         return mb_substr($tel, 0, 15);
     }
 }

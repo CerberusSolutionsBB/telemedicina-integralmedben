@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Route;
@@ -11,53 +12,53 @@ class RouteModuleServiceProvider extends ServiceProvider
      * Módulos de rotas configuráveis
      */
     protected array $modules = [
-        'web'          => [
+        'web' => [
             'middleware' => 'web',
-            'prefix'     => '',
-            'name'       => '',
-            'file'       => 'web.php',
+            'prefix' => '',
+            'name' => '',
+            'file' => 'web.php',
         ],
-        'form'         => [
+        'form' => [
             'middleware' => ['web'],
-            'prefix'     => 'forms',
-            'name'       => 'forms.',
-            'file'       => 'form.php',
+            'prefix' => 'forms',
+            'name' => 'forms.',
+            'file' => 'form.php',
         ],
-        'lei'          => [
+        'lei' => [
             'middleware' => ['web'],
-            'prefix'     => 'leis',
-            'name'       => 'leis.',
-            'file'       => 'lei.php',
+            'prefix' => 'leis',
+            'name' => 'leis.',
+            'file' => 'lei.php',
         ],
         'configuracao' => [
             'middleware' => ['web'],
-            'prefix'     => 'configuracoes',
-            'name'       => 'configuracoes.',
-            'file'       => 'configuracao.php',
+            'prefix' => 'configuracoes',
+            'name' => 'configuracoes.',
+            'file' => 'configuracao.php',
         ],
-        'admin'        => [
+        'admin' => [
             'middleware' => ['web', 'auth', 'can:admin'],
-            'prefix'     => 'admin',
-            'name'       => 'admin.',
-            'file'       => 'admin.php',
+            'prefix' => 'admin',
+            'name' => 'admin.',
+            'file' => 'admin.php',
         ],
-        'pagina'       => [
+        'pagina' => [
             'middleware' => ['web'],
-            'prefix'     => 'pagina',
-            'name'       => 'pagina.',
-            'file'       => 'pagina.php',
+            'prefix' => 'pagina',
+            'name' => 'pagina.',
+            'file' => 'pagina.php',
         ],
-        'perfil'       => [
+        'perfil' => [
             'middleware' => ['web', 'auth'],
-            'prefix'     => 'perfil',
-            'name'       => 'perfil.',
-            'file'       => 'perfil.php',
+            'prefix' => 'perfil',
+            'name' => 'perfil.',
+            'file' => 'perfil.php',
         ],
-        'siprov'       => [
+        'siprov' => [
             'middleware' => ['web', 'auth'],
-            'prefix'     => 'siprov',
-            'name'       => 'siprov.',
-            'file'       => 'siprov.php',
+            'prefix' => 'siprov',
+            'name' => 'siprov.',
+            'file' => 'siprov.php',
         ],
         // 'api-custom' => [
         //     'middleware' => 'api',
@@ -96,6 +97,7 @@ class RouteModuleServiceProvider extends ServiceProvider
 
             if (! file_exists($filePath)) {
                 $this->app['log']->warning("Arquivo de rotas não encontrado: {$config['file']}");
+
                 continue;
             }
 
@@ -125,7 +127,7 @@ class RouteModuleServiceProvider extends ServiceProvider
         }
 
         $excluded = ['api.php', 'console.php', 'channels.php'];
-        $files    = Finder::create()
+        $files = Finder::create()
             ->files()
             ->in($routesPath)
             ->name('*.php')
@@ -139,8 +141,8 @@ class RouteModuleServiceProvider extends ServiceProvider
             }
 
             $middleware = str_starts_with($filename, 'api') ? 'api' : 'web';
-            $name       = str_replace('.php', '', $filename);
-            $prefix     = $name === 'web' ? '' : $name;
+            $name = str_replace('.php', '', $filename);
+            $prefix = $name === 'web' ? '' : $name;
 
             $route = Route::middleware($middleware);
 

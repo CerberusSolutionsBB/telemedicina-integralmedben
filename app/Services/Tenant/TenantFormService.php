@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Tenant;
 
 use App\Models\TenantForm;
@@ -6,27 +7,27 @@ use Illuminate\Support\Collection;
 
 class TenantFormService
 {
-    public function sync(string $tenantId, array | Collection $formIds, array $extraData = []): void
+    public function sync(string $tenantId, array|Collection $formIds, array $extraData = []): void
     {
         $formIds = collect($formIds)
             ->filter()
-            ->map(fn($id) => (int) $id)
+            ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
 
         TenantForm::where('tenant_id', $tenantId)
             ->whereNotIn('form_id', $formIds)
             ->update([
-                'ativo'     => false,
+                'ativo' => false,
                 'principal' => false,
             ]);
 
         foreach ($formIds as $index => $formId) {
             $this->attachOrUpdate($tenantId, $formId, [
-                'ativo'     => $extraData['ativo'] ?? true,
+                'ativo' => $extraData['ativo'] ?? true,
                 'principal' => $index === 0 && ($extraData['principal'] ?? true),
-                'origem'    => $extraData['origem'] ?? 'CENTRAL',
-                'user_id'   => $extraData['user_id'] ?? auth()->id(),
+                'origem' => $extraData['origem'] ?? 'CENTRAL',
+                'user_id' => $extraData['user_id'] ?? auth()->id(),
             ]);
         }
     }
@@ -41,7 +42,7 @@ class TenantFormService
         return TenantForm::where('tenant_id', $tenantId)
             ->where('form_id', $formId)
             ->update([
-                'ativo'     => false,
+                'ativo' => false,
                 'principal' => false,
             ]) > 0;
     }
@@ -56,7 +57,7 @@ class TenantFormService
             ->where('form_id', $formId)
             ->update([
                 'principal' => true,
-                'ativo'     => true,
+                'ativo' => true,
             ]);
     }
 
@@ -85,11 +86,11 @@ class TenantFormService
 
         $payload = array_merge([
             'tenant_id' => $tenantId,
-            'form_id'   => $formId,
-            'ativo'     => true,
+            'form_id' => $formId,
+            'ativo' => true,
             'principal' => false,
-            'origem'    => 'CENTRAL',
-            'user_id'   => auth()->id(),
+            'origem' => 'CENTRAL',
+            'user_id' => auth()->id(),
         ], $data);
 
         if ($tenantForm) {

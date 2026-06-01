@@ -6,6 +6,7 @@ use App\Enums\QuestionRoleEnum;
 use App\Events\PatientCreated;
 use App\Http\Services\ExternalApi\ClubeBeneficiosService;
 use App\Http\Services\ExternalApi\TelemedicinaService;
+use App\Interfaces\ExternalApiInterface;
 use App\Models\ExternalApiLog;
 use App\Models\Question;
 use App\Models\Tenant;
@@ -15,14 +16,14 @@ class RegisterPatientToExternalApis
 {
     public function __construct(
         private ClubeBeneficiosService $clubeService,
-        private TelemedicinaService    $telemedicinaService,
+        private TelemedicinaService $telemedicinaService,
     ) {}
 
     public function handle(PatientCreated $event): void
     {
         $tenant = Tenant::find($event->tenantId);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return;
         }
 
@@ -39,7 +40,7 @@ class RegisterPatientToExternalApis
             ->where('role', QuestionRoleEnum::Plan->value)
             ->exists();
 
-        if ($hasPlanQuestion && !empty($payload['plan'])) {
+        if ($hasPlanQuestion && ! empty($payload['plan'])) {
             $this->call('telemedicina', $this->telemedicinaService, $event, $payload);
         }
     }
@@ -55,14 +56,14 @@ class RegisterPatientToExternalApis
             ->keyBy('id');
 
         $payload = [
-            'tenant_id'  => $event->tenantId,
+            'tenant_id' => $event->tenantId,
             'patient_id' => $event->tenantPatientId,
         ];
 
         foreach ($event->answers as $questionId => $value) {
             $question = $questions[$questionId] ?? null;
 
-            if (!$question) {
+            if (! $question) {
                 continue;
             }
 
@@ -82,29 +83,29 @@ class RegisterPatientToExternalApis
      * Executa a chamada para uma API e persiste o log do resultado.
      */
     private function call(
-        string               $apiName,
-        \App\Interfaces\ExternalApiInterface $service,
-        PatientCreated       $event,
-        array                $payload,
+        string $apiName,
+        ExternalApiInterface $service,
+        PatientCreated $event,
+        array $payload,
     ): void {
         try {
             $response = $service->registerPatient($payload);
 
             ExternalApiLog::create([
-                'api'        => $apiName,
-                'tenant_id'  => $event->tenantId,
+                'api' => $apiName,
+                'tenant_id' => $event->tenantId,
                 'patient_id' => $event->tenantPatientId,
-                'status'     => 'success',
-                'payload'    => $payload,
-                'response'   => $response,
+                'status' => 'success',
+                'payload' => $payload,
+                'response' => $response,
             ]);
         } catch (\Throwable $e) {
             ExternalApiLog::create([
-                'api'           => $apiName,
-                'tenant_id'     => $event->tenantId,
-                'patient_id'    => $event->tenantPatientId,
-                'status'        => 'failed',
-                'payload'       => $payload,
+                'api' => $apiName,
+                'tenant_id' => $event->tenantId,
+                'patient_id' => $event->tenantPatientId,
+                'status' => 'failed',
+                'payload' => $payload,
                 'error_message' => $e->getMessage(),
             ]);
         }

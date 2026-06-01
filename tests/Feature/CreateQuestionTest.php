@@ -12,13 +12,13 @@ beforeEach(function () {
 it('cria uma question', function () {
     $response = $this->actingAs($this->user)->post(route('questions.store'), [
         'title' => 'Nome Completo',
-        'type' => 'text'
+        'type' => 'text',
     ]);
 
     $response->assertRedirect(route('dashboard'));
 
     $this->assertDatabaseHas('questions', [
         'title' => 'Nome Completo',
-        'type' => 'text'
+        'type' => 'text',
     ]);
 });

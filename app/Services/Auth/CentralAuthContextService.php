@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Auth;
 
 use Illuminate\Support\Facades\Auth;
@@ -21,10 +22,10 @@ class CentralAuthContextService extends BaseAuthContextService
         }
 
         return [
-            'user'  => $this->userContext($user),
-            'can'   => $this->permissions($user),
+            'user' => $this->userContext($user),
+            'can' => $this->permissions($user),
             'check' => true,
-            'type'  => 'central',
+            'type' => 'central',
         ];
     }
 

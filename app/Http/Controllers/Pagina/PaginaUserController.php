@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Pagina;
 
 use App\Http\Controllers\Controller;
@@ -17,7 +18,7 @@ class PaginaUserController extends Controller
     public function index(Request $request, Tenant $tenant): Response
     {
         $tenantData = $this->tenantData($tenant);
-        $search     = $request->string('search')->toString();
+        $search = $request->string('search')->toString();
 
         Tenancy::initialize($tenant);
 
@@ -33,15 +34,15 @@ class PaginaUserController extends Controller
                 ->orderBy('name')
                 ->paginate(15)
                 ->withQueryString()
-                ->through(fn($user) => $this->userPayload($user));
+                ->through(fn ($user) => $this->userPayload($user));
         } finally {
             Tenancy::end();
         }
 
         return Inertia::render('Pagina/Users/Index', [
-            'tenant'  => $tenantData,
+            'tenant' => $tenantData,
             'filters' => ['search' => $search],
-            'users'   => $users,
+            'users' => $users,
         ]);
     }
 
@@ -61,26 +62,26 @@ class PaginaUserController extends Controller
 
         return Inertia::render('Pagina/Users/Create', [
             'tenant' => $tenantData,
-            'roles'  => $roles,
+            'roles' => $roles,
         ]);
     }
 
     public function store(Request $request, Tenant $tenant): RedirectResponse
     {
         $validated = $request->validate([
-            'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'min:8'],
-            'roles'    => ['nullable', 'array'],
-            'roles.*'  => ['string'],
+            'roles' => ['nullable', 'array'],
+            'roles.*' => ['string'],
         ]);
 
         Tenancy::initialize($tenant);
 
         try {
             $user = User::create([
-                'name'     => $validated['name'],
-                'email'    => $validated['email'],
+                'name' => $validated['name'],
+                'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
             ]);
 
@@ -116,12 +117,12 @@ class PaginaUserController extends Controller
         }
 
         return Inertia::render('Pagina/Users/Edit', [
-            'tenant'        => $tenantData,
-            'roles'         => $roles,
+            'tenant' => $tenantData,
+            'roles' => $roles,
             'selectedRoles' => $selectedRoles,
-            'user'          => [
-                'id'    => $userModel->id,
-                'name'  => $userModel->name,
+            'user' => [
+                'id' => $userModel->id,
+                'name' => $userModel->name,
                 'email' => $userModel->email,
             ],
         ]);
@@ -130,10 +131,10 @@ class PaginaUserController extends Controller
     public function update(Request $request, Tenant $tenant, $user): RedirectResponse
     {
         $validated = $request->validate([
-            'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
             'password' => ['nullable', 'string', 'min:8'],
-            'role'     => ['required', 'string'],
+            'role' => ['required', 'string'],
         ]);
 
         Tenancy::initialize($tenant);
@@ -142,7 +143,7 @@ class PaginaUserController extends Controller
             $userModel = User::findOrFail($user);
 
             $data = [
-                'name'  => $validated['name'],
+                'name' => $validated['name'],
                 'email' => $validated['email'],
             ];
 
@@ -164,7 +165,7 @@ class PaginaUserController extends Controller
 
             return back()
                 ->withErrors([
-                    'general' => 'Erro ao atualizar usuário: ' . $e->getMessage(),
+                    'general' => 'Erro ao atualizar usuário: '.$e->getMessage(),
                 ])
                 ->withInput();
 
@@ -195,7 +196,7 @@ class PaginaUserController extends Controller
         $tenant->load('details');
 
         return [
-            'id'   => $tenant->id,
+            'id' => $tenant->id,
             'name' => $tenant->details->first()?->descricao ?? $tenant->name ?? $tenant->id,
         ];
     }
@@ -203,15 +204,15 @@ class PaginaUserController extends Controller
     private function userPayload(User $user): array
     {
         return [
-            'id'                 => $user->id,
-            'name'               => $user->name,
-            'email'              => $user->email,
-            'created_at'         => $user->created_at?->format('d/m/Y H:i'),
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'created_at' => $user->created_at?->format('d/m/Y H:i'),
 
-            'roles'              => $user->roles
-                ->map(fn($role) => [
-                    'id'          => $role->id,
-                    'name'        => $role->name,
+            'roles' => $user->roles
+                ->map(fn ($role) => [
+                    'id' => $role->id,
+                    'name' => $role->name,
                     'permissions' => $role->permissions->pluck('name')->values(),
                 ])
                 ->values(),
@@ -220,7 +221,7 @@ class PaginaUserController extends Controller
                 ->pluck('name')
                 ->values(),
 
-            'all_permissions'    => $user
+            'all_permissions' => $user
                 ->getAllPermissions()
                 ->pluck('name')
                 ->unique()

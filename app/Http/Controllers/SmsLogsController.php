@@ -19,7 +19,7 @@ class SmsLogsController extends Controller
     {
         $logs = SmsLogs::query()
             ->when($request->tenant_id, fn ($q) => $q->where('tenant_id', $request->tenant_id))
-            ->when($request->status,    fn ($q) => $q->where('status', $request->status))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->latest()
             ->paginate(30)
             ->withQueryString();
@@ -41,12 +41,12 @@ class SmsLogsController extends Controller
             ->get();
 
         return Inertia::render('SmsLogs/Index', [
-            'logs'          => $logs,
-            'quotaLogs'     => $quotaLogs,
-            'tenants'       => $tenants,
-            'filters'       => $request->only('tenant_id', 'status'),
+            'logs' => $logs,
+            'quotaLogs' => $quotaLogs,
+            'tenants' => $tenants,
+            'filters' => $request->only('tenant_id', 'status'),
             'globalBalance' => $globalBalance->balance,
-            'globalLogs'    => $globalLogs,
+            'globalLogs' => $globalLogs,
         ]);
     }
 
@@ -54,7 +54,7 @@ class SmsLogsController extends Controller
     {
         $request->validate([
             'amount' => 'required|integer|min:1|max:1000000',
-            'notes'  => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:255',
         ]);
 
         $this->addGlobalBalanceService->execute($request->amount, $request->notes);

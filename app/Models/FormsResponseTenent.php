@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,8 @@ class FormsResponseTenent extends Model
     use SoftDeletes;
 
     protected $connection = 'mysql';
-    protected $table      = 'forms_response_tenents';
+
+    protected $table = 'forms_response_tenents';
 
     protected $fillable = [
         'code',

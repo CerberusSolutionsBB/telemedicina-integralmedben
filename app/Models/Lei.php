@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -10,12 +11,17 @@ class Lei extends Model
 {
     use SoftDeletes;
 
-    public const TIPO_LGPD                 = 'lgpd';
-    public const TIPO_CONSOLIDADA          = 'consolidada';
-    public const TIPO_CODIGO_ETICA         = 'codigo_etica';
+    public const TIPO_LGPD = 'lgpd';
+
+    public const TIPO_CONSOLIDADA = 'consolidada';
+
+    public const TIPO_CODIGO_ETICA = 'codigo_etica';
+
     public const TIPO_POLITICA_PRIVACIDADE = 'politica_privacidade';
-    public const TIPO_TERMO_USO            = 'termo_uso';
-    public const TIPO_OUTRO                = 'outro';
+
+    public const TIPO_TERMO_USO = 'termo_uso';
+
+    public const TIPO_OUTRO = 'outro';
 
     public const TIPOS_VALIDOS = [
         self::TIPO_LGPD,
@@ -27,12 +33,12 @@ class Lei extends Model
     ];
 
     public const TIPOS_LABELS = [
-        self::TIPO_LGPD                 => 'LGPD (Lei Geral de Proteção de Dados)',
-        self::TIPO_CONSOLIDADA          => 'Normas Consolidadas',
-        self::TIPO_CODIGO_ETICA         => 'Código de Ética',
+        self::TIPO_LGPD => 'LGPD (Lei Geral de Proteção de Dados)',
+        self::TIPO_CONSOLIDADA => 'Normas Consolidadas',
+        self::TIPO_CODIGO_ETICA => 'Código de Ética',
         self::TIPO_POLITICA_PRIVACIDADE => 'Política de Privacidade',
-        self::TIPO_TERMO_USO            => 'Termo de Uso',
-        self::TIPO_OUTRO                => 'Outro',
+        self::TIPO_TERMO_USO => 'Termo de Uso',
+        self::TIPO_OUTRO => 'Outro',
     ];
 
     protected $fillable = [

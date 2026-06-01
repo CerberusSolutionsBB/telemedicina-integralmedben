@@ -22,7 +22,7 @@ class SmsLogs extends Model
     ];
 
     protected $casts = [
-        'status'  => SmsStatusEnum::class,
+        'status' => SmsStatusEnum::class,
         'sent_at' => 'datetime',
     ];
 

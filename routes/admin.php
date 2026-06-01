@@ -24,7 +24,7 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth'])->group(funct
 
         return Inertia::render('Dashboard', [
             'tenants' => $tenants,
-            'questions' => $questions
+            'questions' => $questions,
         ]);
     })->name('dashboard');
 

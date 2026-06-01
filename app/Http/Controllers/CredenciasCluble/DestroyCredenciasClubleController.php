@@ -1,8 +1,10 @@
 <?php
+
 namespace App\Http\Controllers\CredenciasCluble;
 
 use App\Http\Controllers\Controller;
 use App\Models\CredenciasCluble;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 
 class DestroyCredenciasClubleController extends Controller
@@ -11,7 +13,7 @@ class DestroyCredenciasClubleController extends Controller
     {
         try {
             $credencial = CredenciasCluble::findOrFail($id);
-            $title      = $credencial->title ?? 'Sem título';
+            $title = $credencial->title ?? 'Sem título';
 
             $credencial->delete();
 
@@ -19,7 +21,7 @@ class DestroyCredenciasClubleController extends Controller
                 ->route('configuracoes.credencias_cluble.index')
                 ->with('success', "Credencial '{$title}' excluída com sucesso!");
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return redirect()
                 ->route('configuracoes.credencias_cluble.index')
                 ->with('error', 'Credencial não encontrada.');

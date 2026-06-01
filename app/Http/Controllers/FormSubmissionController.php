@@ -7,7 +7,6 @@ use App\Models\FormSubmission;
 use App\Models\Question;
 use App\Models\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class FormSubmissionController extends Controller
@@ -31,7 +30,7 @@ class FormSubmissionController extends Controller
         $submission = $this->formSubmissionService->getSubmissionDetails($submission);
 
         return Inertia::render('FormSubmissions/Show', [
-            'submission' => $submission
+            'submission' => $submission,
         ]);
     }
 
@@ -51,9 +50,9 @@ class FormSubmissionController extends Controller
         $tenant = Tenant::find(tenant('id'));
         $logoBase64 = null;
         if ($tenant->photo_path) {
-            $absolutePath = base_path('storage/app/public/' . $tenant->photo_path);
+            $absolutePath = base_path('storage/app/public/'.$tenant->photo_path);
             if (file_exists($absolutePath)) {
-                $logoBase64 = 'data:' . mime_content_type($absolutePath) . ';base64,' . base64_encode(file_get_contents($absolutePath));
+                $logoBase64 = 'data:'.mime_content_type($absolutePath).';base64,'.base64_encode(file_get_contents($absolutePath));
             }
         }
 
@@ -74,9 +73,9 @@ class FormSubmissionController extends Controller
         $tenant = Tenant::find(tenant('id'));
         $logoBase64 = null;
         if ($tenant->photo_path) {
-            $absolutePath = base_path('storage/app/public/' . $tenant->photo_path);
+            $absolutePath = base_path('storage/app/public/'.$tenant->photo_path);
             if (file_exists($absolutePath)) {
-                $logoBase64 = 'data:' . mime_content_type($absolutePath) . ';base64,' . base64_encode(file_get_contents($absolutePath));
+                $logoBase64 = 'data:'.mime_content_type($absolutePath).';base64,'.base64_encode(file_get_contents($absolutePath));
             }
         }
 
@@ -86,6 +85,6 @@ class FormSubmissionController extends Controller
             'logoBase64' => $logoBase64,
         ]);
 
-        return $pdf->download('submissao-' . $submission->id . '.pdf');
+        return $pdf->download('submissao-'.$submission->id.'.pdf');
     }
 }

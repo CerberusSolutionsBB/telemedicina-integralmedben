@@ -10,6 +10,7 @@ import {
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
+import AppSwitch from "@/Components/ui/switch/Switch.vue";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -18,7 +19,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:open"]);
 
-const form = useForm({ answers: {} });
+const form = useForm({ answers: {}, status: true });
 
 watch(
   () => props.patient,
@@ -29,6 +30,7 @@ watch(
       answers[a.question_id] = a.answer ?? "";
     });
     form.answers = answers;
+    form.status = Boolean(patient.status);
   },
   { immediate: true }
 );
@@ -38,8 +40,6 @@ const submit = () => {
     onSuccess: () => emit("update:open", false),
   });
 };
-
-const getQuestion = (answer) => answer.question ?? null;
 </script>
 
 <template>
@@ -51,6 +51,36 @@ const getQuestion = (answer) => answer.question ?? null;
 
       <form @submit.prevent="submit" class="space-y-4 mt-2">
         <template v-if="patient">
+          <!-- Dados do paciente -->
+          <div class="rounded-lg border bg-gray-50 p-4 space-y-3">
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span class="text-xs text-gray-500">Nome</span>
+                <p class="font-medium">{{ patient.nome }}</p>
+              </div>
+              <div>
+                <span class="text-xs text-gray-500">Email</span>
+                <p class="font-medium">{{ patient.email || '-' }}</p>
+              </div>
+              <div>
+                <span class="text-xs text-gray-500">CPF</span>
+                <p class="font-medium">{{ patient.cpf || '-' }}</p>
+              </div>
+              <div>
+                <span class="text-xs text-gray-500">Sexo</span>
+                <p class="font-medium">{{ patient.sexo || '-' }}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2 border-t border-gray-200">
+              <AppSwitch v-model="form.status" />
+              <span class="text-sm font-medium" :class="form.status ? 'text-green-700' : 'text-red-700'">
+                {{ form.status ? 'Ativo' : 'Inativo' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Respostas dos formulários -->
           <div
             v-for="answer in patient.answers"
             :key="answer.question_id"

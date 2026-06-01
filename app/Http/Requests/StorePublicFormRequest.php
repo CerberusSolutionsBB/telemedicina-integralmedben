@@ -25,11 +25,11 @@ class StorePublicFormRequest extends FormRequest
         $answers = $this->input('answers', []);
         $questionIds = array_keys($answers);
 
-        if (!empty($questionIds)) {
+        if (! empty($questionIds)) {
             $uniqueQuestions = Question::whereIn('id', $questionIds)
                 ->where(function ($query) {
                     $query->where('is_unique', true)
-                          ->orWhere('role', QuestionRoleEnum::Cpf->value);
+                        ->orWhere('role', QuestionRoleEnum::Cpf->value);
                 })
                 ->pluck('id');
 

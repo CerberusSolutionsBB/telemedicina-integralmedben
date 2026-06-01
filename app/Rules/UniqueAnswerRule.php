@@ -12,7 +12,7 @@ class UniqueAnswerRule implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (!$value || trim((string) $value) === '') {
+        if (! $value || trim((string) $value) === '') {
             return;
         }
 

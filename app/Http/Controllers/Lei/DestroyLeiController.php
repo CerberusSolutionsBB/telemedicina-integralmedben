@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Lei;
 
 use App\Http\Controllers\Controller;
@@ -24,19 +25,21 @@ class DestroyLeiController extends Controller
             DB::commit();
             Log::info('Lei excluída (soft delete)', [
                 'lei_id' => $lei->id,
-                'title'  => $leiTitle,
-                'user'   => auth()->id(),
+                'title' => $leiTitle,
+                'user' => auth()->id(),
             ]);
+
             return redirect()
                 ->route('leis.index')
-                ->with('success', 'Lei "' . $leiTitle . '" excluída com sucesso!');
+                ->with('success', 'Lei "'.$leiTitle.'" excluída com sucesso!');
         } catch (Throwable $e) {
             DB::rollBack();
             Log::error('Erro ao excluir lei', [
-                'error'  => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'lei_id' => $lei->id,
-                'user'   => auth()->id(),
+                'user' => auth()->id(),
             ]);
+
             return redirect()
                 ->back()
                 ->with('error', 'Erro ao excluir lei. Tente novamente.');

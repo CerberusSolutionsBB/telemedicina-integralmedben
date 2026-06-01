@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Pagina;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +13,7 @@ class PaginaCreateController extends Controller
     public function __invoke(Request $request): Response
     {
         $forms = Form::orderBy('title', 'asc')->get();
+
         return Inertia::render('Pagina/Create', [
             'forms' => $forms,
         ]);

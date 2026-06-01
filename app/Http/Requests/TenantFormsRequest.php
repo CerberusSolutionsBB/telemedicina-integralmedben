@@ -14,17 +14,17 @@ class TenantFormsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'forms'     => 'nullable|array',
-            'forms.*'   => 'integer|exists:forms,id',
+            'forms' => 'nullable|array',
+            'forms.*' => 'integer|exists:forms,id',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'forms.array'        => 'O campo formulários deve ser uma lista.',
-            'forms.*.integer'    => 'O Id do formulário deve ser um número inteiro.',
-            'forms.*.exists'     => 'O formulário selecionado não existe.',
+            'forms.array' => 'O campo formulários deve ser uma lista.',
+            'forms.*.integer' => 'O Id do formulário deve ser um número inteiro.',
+            'forms.*.exists' => 'O formulário selecionado não existe.',
         ];
     }
 

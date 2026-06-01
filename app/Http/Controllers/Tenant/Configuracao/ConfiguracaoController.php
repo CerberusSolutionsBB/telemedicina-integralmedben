@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Tenant\Configuracao;
 
 use App\Http\Controllers\Controller;
@@ -29,7 +30,7 @@ class ConfiguracaoController extends Controller
 
     private function logoPath(string $fileName): string
     {
-        return $this->tenantId() . '/' . $fileName;
+        return $this->tenantId().'/'.$fileName;
     }
 
     /**
@@ -41,7 +42,7 @@ class ConfiguracaoController extends Controller
         $relativePath = parse_url(Storage::disk('tenants')->url($path), PHP_URL_PATH);
 
         // Monta com o host atual do request (inclui subdomínio e porta)
-        return request()->getSchemeAndHttpHost() . $relativePath;
+        return request()->getSchemeAndHttpHost().$relativePath;
     }
 
     public function index(): Response
@@ -53,7 +54,7 @@ class ConfiguracaoController extends Controller
         $logoUrl = null;
         if ($tenantDetail->logo) {
             $fileName = basename($tenantDetail->logo);
-            $logoUrl  = $this->tenantUrl(
+            $logoUrl = $this->tenantUrl(
                 $this->logoPath($fileName)
             );
         }
@@ -61,14 +62,14 @@ class ConfiguracaoController extends Controller
         return Inertia::render('Tenant/Configuracao/Index', [
             'configurations' => [
                 [
-                    'key'         => 'logo',
-                    'label'       => 'Logo do Sistema',
+                    'key' => 'logo',
+                    'label' => 'Logo do Sistema',
                     'description' => 'Imagem exibida no painel e telas públicas.',
-                    'type'        => 'image',
-                    'icon'        => 'image',
-                    'category'    => 'Aparência',
-                    'value'       => $logoUrl,
-                    'updated_at'  => $tenantDetail->updated_at?->format('d/m/Y H:i'),
+                    'type' => 'image',
+                    'icon' => 'image',
+                    'category' => 'Aparência',
+                    'value' => $logoUrl,
+                    'updated_at' => $tenantDetail->updated_at?->format('d/m/Y H:i'),
                 ],
             ],
         ]);
@@ -85,14 +86,14 @@ class ConfiguracaoController extends Controller
         ]);
 
         if ($request->hasFile('logo')) {
-            $file     = $request->file('logo');
-            $fileName = 'logo_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file = $request->file('logo');
+            $fileName = 'logo_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
 
             $file->storeAs($this->tenantId(), $fileName, 'tenants');
 
             if ($tenantDetail->logo) {
                 $oldFileName = basename($tenantDetail->logo);
-                $oldPath     = $this->logoPath($oldFileName);
+                $oldPath = $this->logoPath($oldFileName);
 
                 if (Storage::disk('tenants')->exists($oldPath)) {
                     Storage::disk('tenants')->delete($oldPath);
@@ -119,7 +120,7 @@ class ConfiguracaoController extends Controller
                 ->with('type', 'success');
         } catch (\Throwable $e) {
             Log::error('Erro ao gerar configuração do tenant', [
-                'message'   => $e->getMessage(),
+                'message' => $e->getMessage(),
                 'tenant_id' => $tenant->id ?? null,
             ]);
 
@@ -129,6 +130,7 @@ class ConfiguracaoController extends Controller
                 ->with('type', 'error');
         }
     }
+
     public function createExpiresAt(
         ExpiresAtRequest $request,
         TenantForm $tenantForm
@@ -151,10 +153,10 @@ class ConfiguracaoController extends Controller
             Log::error(
                 'Erro ao atualizar data de expiração do formulário do tenant',
                 [
-                    'message'        => $e->getMessage(),
+                    'message' => $e->getMessage(),
                     'tenant_form_id' => $tenantForm->id ?? null,
-                    'tenant_id'      => $tenantForm->tenant_id ?? null,
-                    'payload'        => $request->all(),
+                    'tenant_id' => $tenantForm->tenant_id ?? null,
+                    'payload' => $request->all(),
                 ]
             );
 
@@ -164,6 +166,7 @@ class ConfiguracaoController extends Controller
                 ->with('type', 'error');
         }
     }
+
     public function forms(TenantFormsRequest $request, Tenant $tenant)
     {
         try {
@@ -173,8 +176,8 @@ class ConfiguracaoController extends Controller
                 formIds: $validated['forms'] ?? [],
                 extraData: [
                     'user_id' => auth()->id(),
-                    'origem'  => 'CENTRAL',
-                    'ativo'   => true,
+                    'origem' => 'CENTRAL',
+                    'ativo' => true,
                 ]
             );
 
@@ -184,7 +187,7 @@ class ConfiguracaoController extends Controller
                 ->with('type', 'success');
         } catch (\Throwable $e) {
             Log::error('Erro ao gerar configuração do tenant', [
-                'message'   => $e->getMessage(),
+                'message' => $e->getMessage(),
                 'tenant_id' => $tenant->id ?? null,
             ]);
 
@@ -211,9 +214,9 @@ class ConfiguracaoController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('Erro ao desvincular formulário do tenant', [
-                'message'        => $e->getMessage(),
+                'message' => $e->getMessage(),
                 'tenant_form_id' => $tenantForm->id ?? null,
-                'tenant_id'      => $tenantForm->tenant_id ?? null,
+                'tenant_id' => $tenantForm->tenant_id ?? null,
             ]);
 
             return redirect()

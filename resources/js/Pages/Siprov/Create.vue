@@ -158,6 +158,12 @@ const validateBeforeSubmit = () => {
         return false;
     }
 
+    if (!form.dataNascimento) {
+        form.setError('dataNascimento', 'A data de nascimento é obrigatória.');
+        showToast('Informe a data de nascimento.', 'error');
+        return false;
+    }
+
     if (!form.plano) {
         form.setError('plano', 'O plano é obrigatório.');
         showToast('Selecione um plano.', 'error');
@@ -364,6 +370,7 @@ const breadcrumbs = computed(() => [
                                 <input v-model="form.cpfCnpj" @input="applyCpfCnpjMask" type="text" inputmode="numeric"
                                     maxlength="18" placeholder="000.000.000-00 ou 00.000.000/0000-00"
                                     :class="getInputClass('cpfCnpj', form.cpfCnpj)" :disabled="form.processing" />
+
                             </div>
 
                             <InputError :message="form.errors.cpfCnpj" class="mt-1" />
@@ -401,7 +408,7 @@ const breadcrumbs = computed(() => [
 
                         <div>
                             <label class="text-gray-700 font-medium flex items-center gap-2 pb-2">
-                                Data de nascimento
+                                Data de nascimento <span class="text-red-500">*</span>
                             </label>
 
                             <div class="relative">

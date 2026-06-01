@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Data;
 
 use App\Http\Requests\Siprov\CreateSiprovIntegrationRequest;
@@ -14,7 +15,7 @@ class SiprovIntegrationData
         public readonly string $cpfCnpj,
         public readonly string $email,
         public readonly string $sexo,
-        public readonly ?string $dataNascimento,
+        public readonly string $dataNascimento,
         public readonly array $telefones,
         public readonly string $plano,
         public readonly bool $ativo,
@@ -28,7 +29,7 @@ class SiprovIntegrationData
             $cpfCnpj = self::onlyNumbers($request->input('cpfCnpj'));
 
             $data = new self(
-                codigoIntegracao: 'USR-' . $cpfCnpj,
+                codigoIntegracao: 'USR-'.$cpfCnpj,
                 nomePessoa: $request->string('nomePessoa')->toString(),
                 cpfCnpj: $cpfCnpj,
                 email: $request->string('email')->toString(),
@@ -43,9 +44,9 @@ class SiprovIntegrationData
 
             Log::info('SIPROV | DTO integração criado', [
                 'codigoIntegracao' => $data->codigoIntegracao,
-                'cpfCnpj'          => $data->cpfCnpj,
-                'plano'            => $data->plano,
-                'codPlano'         => $data->codPlano(),
+                'cpfCnpj' => $data->cpfCnpj,
+                'plano' => $data->plano,
+                'codPlano' => $data->codPlano(),
             ]);
 
             return $data;
@@ -57,8 +58,8 @@ class SiprovIntegrationData
                     'token',
                     '_token',
                 ]),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             throw $e;
@@ -67,11 +68,11 @@ class SiprovIntegrationData
 
     public function codPlano(): int
     {
-        $codPlano = config('siprov.planos.' . $this->plano);
+        $codPlano = config('siprov.planos.'.$this->plano);
 
         if (! $codPlano) {
             Log::error('SIPROV | Plano inválido ou não configurado', [
-                'plano'               => $this->plano,
+                'plano' => $this->plano,
                 'planos_configurados' => config('siprov.planos'),
             ]);
 

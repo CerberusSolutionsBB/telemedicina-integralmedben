@@ -1,14 +1,18 @@
 <?php
+
 namespace App\Http\Requests;
+
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
+
 class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true;
     }
+
     public function rules(): array
     {
         return [
@@ -31,6 +35,7 @@ class StoreUserRequest extends FormRequest
             ],
         ];
     }
+
     public function messages(): array
     {
         return [
@@ -48,6 +53,7 @@ class StoreUserRequest extends FormRequest
             'password.letters' => 'A senha deve conter pelo menos uma letra.',
         ];
     }
+
     public function attributes(): array
     {
         return [

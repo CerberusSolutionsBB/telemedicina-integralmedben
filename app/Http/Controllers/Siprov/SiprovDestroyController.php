@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Siprov;
 
 use App\Http\Controllers\Controller;
@@ -20,13 +21,13 @@ class SiprovDestroyController extends Controller
 
         } catch (Throwable $e) {
             Log::error('Erro ao remover integração SIPROV.', [
-                'siprov_id'         => $siprov->id,
+                'siprov_id' => $siprov->id,
                 'codigo_integracao' => $siprov->codigo_integracao,
-                'cpf_cnpj'          => $siprov->cpf_cnpj,
-                'cod_plano'         => $siprov->cod_plano,
-                'message'           => $e->getMessage(),
-                'file'              => $e->getFile(),
-                'line'              => $e->getLine(),
+                'cpf_cnpj' => $siprov->cpf_cnpj,
+                'cod_plano' => $siprov->cod_plano,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             return back()

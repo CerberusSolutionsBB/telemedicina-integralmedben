@@ -1,4 +1,5 @@
 <?php
+
 namespace Database\Seeders;
 
 use App\Models\User;
@@ -35,7 +36,7 @@ class RolePermissionSeeder extends Seeder
     private function permissions(): array
     {
         return [
-            'users'     => [
+            'users' => [
                 'users.view',
                 'users.create',
                 'users.edit',
@@ -43,7 +44,7 @@ class RolePermissionSeeder extends Seeder
                 'users.manage',
             ],
 
-            'forms'     => [
+            'forms' => [
                 'forms.view',
                 'forms.create',
                 'forms.edit',
@@ -53,7 +54,7 @@ class RolePermissionSeeder extends Seeder
                 'forms.manage.all',
             ],
 
-            'paginas'   => [
+            'paginas' => [
                 'paginas.view',
                 'paginas.create',
                 'paginas.edit',
@@ -62,14 +63,14 @@ class RolePermissionSeeder extends Seeder
                 'paginas.manage',
             ],
 
-            'leis'      => [
+            'leis' => [
                 'leis.view',
                 'leis.create',
                 'leis.edit',
                 'leis.delete',
             ],
 
-            'siprov'    => [
+            'siprov' => [
                 'siprov.view',
                 'siprov.create',
                 'siprov.show',
@@ -94,7 +95,7 @@ class RolePermissionSeeder extends Seeder
         foreach ($groups as $permissions) {
             foreach ($permissions as $permission) {
                 Permission::firstOrCreate([
-                    'name'       => $permission,
+                    'name' => $permission,
                     'guard_name' => 'web',
                 ]);
             }
@@ -104,12 +105,12 @@ class RolePermissionSeeder extends Seeder
     private function createRoles(): void
     {
         Role::firstOrCreate([
-            'name'       => 'Admin',
+            'name' => 'Admin',
             'guard_name' => 'web',
         ])->syncPermissions(Permission::all());
 
         Role::firstOrCreate([
-            'name'       => 'Manager',
+            'name' => 'Manager',
             'guard_name' => 'web',
         ])->syncPermissions([
             // USERS
@@ -154,7 +155,7 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         Role::firstOrCreate([
-            'name'       => 'Editor',
+            'name' => 'Editor',
             'guard_name' => 'web',
         ])->syncPermissions([
             // FORMS
@@ -186,7 +187,7 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         Role::firstOrCreate([
-            'name'       => 'User',
+            'name' => 'User',
             'guard_name' => 'web',
         ])->syncPermissions([
             // FORMS
@@ -215,24 +216,24 @@ class RolePermissionSeeder extends Seeder
     {
         $users = [
             [
-                'name'  => 'Administrador',
+                'name' => 'Administrador',
                 'email' => 'admin@admin.com',
-                'role'  => 'Admin',
+                'role' => 'Admin',
             ],
             [
-                'name'  => 'Gerente',
+                'name' => 'Gerente',
                 'email' => 'manager@localhost',
-                'role'  => 'Manager',
+                'role' => 'Manager',
             ],
             [
-                'name'  => 'Editor',
+                'name' => 'Editor',
                 'email' => 'editor@localhost',
-                'role'  => 'Editor',
+                'role' => 'Editor',
             ],
             [
-                'name'  => 'Usuário',
+                'name' => 'Usuário',
                 'email' => 'user@localhost',
-                'role'  => 'User',
+                'role' => 'User',
             ],
         ];
 
@@ -240,8 +241,8 @@ class RolePermissionSeeder extends Seeder
             $user = User::firstOrCreate(
                 ['email' => $data['email']],
                 [
-                    'name'              => $data['name'],
-                    'password'          => Hash::make('password'),
+                    'name' => $data['name'],
+                    'password' => Hash::make('password'),
                     'email_verified_at' => now(),
                 ]
             );

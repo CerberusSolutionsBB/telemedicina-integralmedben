@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreTenantQuestionsRequest;
 use App\Http\Requests\StoreQuestionRequest;
+use App\Http\Requests\StoreTenantQuestionsRequest;
 use App\Http\Requests\UpdateQuestionRequest;
 use App\Http\Services\Question\QuestionService;
 use App\Models\Question;
@@ -18,7 +18,7 @@ class QuestionController extends Controller
         $questions = $this->questionService->getAllQuestions();
 
         return Inertia::render('Registros/Index', [
-            'questions' => $questions
+            'questions' => $questions,
         ]);
     }
 
@@ -39,7 +39,7 @@ class QuestionController extends Controller
     public function edit(Question $question)
     {
         return Inertia::render('Questions/Edit', [
-            'question' => $question
+            'question' => $question,
         ]);
     }
 
@@ -59,7 +59,7 @@ class QuestionController extends Controller
     public function show(Question $question)
     {
         return Inertia::render('Questions/Show', [
-            'question' => $question->load('tenants')
+            'question' => $question->load('tenants'),
         ]);
     }
 

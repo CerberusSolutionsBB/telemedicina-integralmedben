@@ -23,34 +23,36 @@ class CreateFormController extends Controller
         }
 
         return Inertia::render('Form/Create', [
-            'form'               => $form ? $this->loadForm($form) : null,
-            'isEdit'             => $form !== null,
-            'statusOptions'      => $this->getStatusOptions(),
+            'form' => $form ? $this->loadForm($form) : null,
+            'isEdit' => $form !== null,
+            'statusOptions' => $this->getStatusOptions(),
             'categorias' => $this->getCategorias($request),
             'credencias_clubles' => $this->getCredenciasClubles($request),
-            'leis'               => $this->getLeis($request),
-            'can'                => [
+            'leis' => $this->getLeis($request),
+            'can' => [
                 'create' => $user->can('forms.create'),
-                'edit'   => $user->can('forms.edit'),
+                'edit' => $user->can('forms.edit'),
                 'manage' => $user->hasAnyRole(['Admin', 'Manager']),
             ],
         ]);
     }
+
     private function getCredenciasClubles(Request $request): array
     {
         $search = $request->input('categoria_search');
 
         return CredenciasCluble::query()
-            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where('title', 'like', "%{$search}%"))
             ->orderBy('title')
             ->limit(50)
             ->get(['id', 'title'])
-            ->map(fn(CredenciasCluble $c) => [
+            ->map(fn (CredenciasCluble $c) => [
                 'value' => $c->id,
                 'label' => $c->title,
             ])
             ->toArray();
     }
+
     private function loadForm(Form $form): Form
     {
         return $form->load(['fields', 'categoria:id,name', 'lei:id,title,type']);
@@ -74,13 +76,13 @@ class CreateFormController extends Controller
         $search = $request->input('categoria_search');
 
         return FormCategory::query()
-            ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->orderBy('name')
             ->limit(50)
             ->get(['id', 'name', 'description'])
-            ->map(fn(FormCategory $c) => [
-                'value'       => $c->id,
-                'label'       => $c->name,
+            ->map(fn (FormCategory $c) => [
+                'value' => $c->id,
+                'label' => $c->name,
                 'description' => $c->description,
             ])
             ->toArray();
@@ -101,11 +103,11 @@ class CreateFormController extends Controller
             ->orderBy('created_at', 'desc')
             ->limit(50)
             ->get(['id', 'title', 'type'])
-            ->map(fn(Lei $l) => [
+            ->map(fn (Lei $l) => [
                 'value' => $l->id,
-                'label' => "[{$l->tipo_label}] " . Str::limit($l->title, 60),
-                'type'           => $l->type,
-                'title'          => $l->title,
+                'label' => "[{$l->tipo_label}] ".Str::limit($l->title, 60),
+                'type' => $l->type,
+                'title' => $l->title,
             ])
             ->toArray();
     }

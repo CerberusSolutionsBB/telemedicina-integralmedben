@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -21,12 +24,12 @@ class LoginRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'email'    => ['required', 'string', 'email'],
+            'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
     }
@@ -40,8 +43,8 @@ class LoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'email.required'    => 'O campo email é obrigatório.',
-            'email.email'       => 'Por favor, insira um email válido (ex: seu@email.com).',
+            'email.required' => 'O campo email é obrigatório.',
+            'email.email' => 'Por favor, insira um email válido (ex: seu@email.com).',
             'password.required' => 'O campo senha é obrigatório.',
         ];
     }
@@ -55,7 +58,7 @@ class LoginRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'email'    => 'email',
+            'email' => 'email',
             'password' => 'senha',
         ];
     }
@@ -64,7 +67,7 @@ class LoginRequest extends FormRequest
      * Attempt to authenticate the request's credentials.
      * Autenticação com mensagens de erro personalizadas
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
     public function authenticate(): void
     {
@@ -74,7 +77,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             // Verifica se o email existe para dar mensagem mais específica
-            $userExists = \App\Models\User::where('email', $this->input('email'))->exists();
+            $userExists = User::where('email', $this->input('email'))->exists();
 
             if (! $userExists) {
                 throw ValidationException::withMessages([
@@ -94,7 +97,7 @@ class LoginRequest extends FormRequest
      * Ensure the login request is not rate limited.
      * Proteção contra tentativas excessivas com mensagem clara
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
     public function ensureIsNotRateLimited(): void
     {
@@ -109,7 +112,7 @@ class LoginRequest extends FormRequest
 
         $timeMessage = $minutes > 1
             ? "aproximadamente {$minutes} minutos"
-            : "alguns segundos";
+            : 'alguns segundos';
 
         throw ValidationException::withMessages([
             'email' => "Muitas tentativas de login. Por segurança, aguarde {$timeMessage} antes de tentar novamente.",
@@ -121,6 +124,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')) . '|' . $this->ip());
+        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
     }
 }

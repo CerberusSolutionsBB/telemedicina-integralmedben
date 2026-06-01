@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Siprov;
 
 use App\Data\SiprovAssociadoData;
@@ -21,19 +22,19 @@ class SiprovAssociadoService
         try {
             Log::info('SIPROV | Consultando associados', [
                 'endpoint' => '/ext/associado',
-                'params'   => $params,
+                'params' => $params,
             ]);
 
             $response = Http::withToken($this->authService->token())
                 ->acceptJson()
                 ->get(
-                    config('siprov.base_url') . '/ext/associado',
+                    config('siprov.base_url').'/ext/associado',
                     $params
                 );
 
             if ($response->unauthorized()) {
                 Log::warning('SIPROV | Token expirado, renovando token', [
-                    'status'   => $response->status(),
+                    'status' => $response->status(),
                     'response' => $response->body(),
                 ]);
 
@@ -42,16 +43,16 @@ class SiprovAssociadoService
                 $response = Http::withToken($this->authService->token())
                     ->acceptJson()
                     ->get(
-                        config('siprov.base_url') . '/ext/associado',
+                        config('siprov.base_url').'/ext/associado',
                         $params
                     );
             }
 
             if ($response->failed()) {
                 Log::error('SIPROV | Erro ao consultar associados', [
-                    'status'   => $response->status(),
+                    'status' => $response->status(),
                     'response' => $response->body(),
-                    'params'   => $params,
+                    'params' => $params,
                 ]);
 
                 throw SiprovException::associadoFailed(
@@ -60,7 +61,7 @@ class SiprovAssociadoService
             }
 
             Log::info('SIPROV | Associados consultados com sucesso', [
-                'status'   => $response->status(),
+                'status' => $response->status(),
                 'response' => $response->json(),
             ]);
 
@@ -69,10 +70,10 @@ class SiprovAssociadoService
         } catch (Throwable $e) {
             Log::critical('SIPROV | Exception ao consultar associados', [
                 'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-                'params'  => $params,
-                'trace'   => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'params' => $params,
+                'trace' => $e->getTraceAsString(),
             ]);
 
             throw SiprovException::associadoFailed(
@@ -88,19 +89,19 @@ class SiprovAssociadoService
         try {
             Log::info('SIPROV | Enviando associado', [
                 'endpoint' => '/ext/associado',
-                'payload'  => $payload,
+                'payload' => $payload,
             ]);
 
             $response = Http::withToken($this->authService->token())
                 ->acceptJson()
                 ->post(
-                    config('siprov.base_url') . '/ext/associado',
+                    config('siprov.base_url').'/ext/associado',
                     $payload
                 );
 
             if ($response->unauthorized()) {
                 Log::warning('SIPROV | Token expirado, renovando token', [
-                    'status'   => $response->status(),
+                    'status' => $response->status(),
                     'response' => $response->body(),
                 ]);
 
@@ -109,16 +110,16 @@ class SiprovAssociadoService
                 $response = Http::withToken($this->authService->token())
                     ->acceptJson()
                     ->post(
-                        config('siprov.base_url') . '/ext/associado',
+                        config('siprov.base_url').'/ext/associado',
                         $payload
                     );
             }
 
             if ($response->failed()) {
                 Log::error('SIPROV | Erro ao cadastrar associado', [
-                    'status'   => $response->status(),
+                    'status' => $response->status(),
                     'response' => $response->body(),
-                    'payload'  => $payload,
+                    'payload' => $payload,
                 ]);
 
                 throw SiprovException::associadoFailed(
@@ -127,7 +128,7 @@ class SiprovAssociadoService
             }
 
             Log::info('SIPROV | Associado cadastrado com sucesso', [
-                'status'   => $response->status(),
+                'status' => $response->status(),
                 'response' => $response->json(),
             ]);
 
@@ -136,10 +137,10 @@ class SiprovAssociadoService
         } catch (Throwable $e) {
             Log::critical('SIPROV | Exception ao integrar associado', [
                 'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'payload' => $payload,
-                'trace'   => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             throw SiprovException::associadoFailed(

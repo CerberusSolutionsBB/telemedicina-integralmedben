@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\CredenciasCluble;
@@ -16,13 +17,13 @@ class ClubleAuthService
     {
         try {
             $response = Http::withHeaders([
-                'Accept'       => 'application/json',
+                'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}/auth", [
-                'grant_type'    => $grantType,
-                'client_id'     => $clientId,
+                'grant_type' => $grantType,
+                'client_id' => $clientId,
                 'client_secret' => $clientSecret,
-                'scope'         => $scope,
+                'scope' => $scope,
             ]);
 
             if ($response->successful()) {
@@ -31,7 +32,7 @@ class ClubleAuthService
 
             Log::error('Falha na autenticação Clube', [
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
 
             return null;
@@ -67,15 +68,15 @@ class ClubleAuthService
 
         // Cria registro no banco com todos os dados
         return CredenciasCluble::create([
-            'user_id'          => $data['user_id'] ?? null,
-            'title'            => $data['title'] ?? null,
-            'grant_type'       => $data['grant_type'] ?? 'client_credentials',
-            'client_id'        => $data['client_id'],
-            'client_secret'    => $data['client_secret'],
-            'scope'            => $data['scope'] ?? '*',
-            'token_type'       => $authResponse['token_type'],
-            'expires_in'       => $authResponse['expires_in'],
-            'access_token'     => $authResponse['access_token'],
+            'user_id' => $data['user_id'] ?? null,
+            'title' => $data['title'] ?? null,
+            'grant_type' => $data['grant_type'] ?? 'client_credentials',
+            'client_id' => $data['client_id'],
+            'client_secret' => $data['client_secret'],
+            'scope' => $data['scope'] ?? '*',
+            'token_type' => $authResponse['token_type'],
+            'expires_in' => $authResponse['expires_in'],
+            'access_token' => $authResponse['access_token'],
             'token_expires_at' => $expiresAt,
         ]);
     }
@@ -86,12 +87,12 @@ class ClubleAuthService
     public function refreshToken(CredenciasCluble $credencial): ?CredenciasCluble
     {
         return $this->createAndAuthenticate([
-            'user_id'       => $credencial->user_id,
-            'title'         => $credencial->title,
-            'grant_type'    => $credencial->grant_type,
-            'client_id'     => $credencial->client_id,
+            'user_id' => $credencial->user_id,
+            'title' => $credencial->title,
+            'grant_type' => $credencial->grant_type,
+            'client_id' => $credencial->client_id,
             'client_secret' => $credencial->client_secret,
-            'scope'         => $credencial->scope,
+            'scope' => $credencial->scope,
         ]);
     }
 }

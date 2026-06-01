@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
@@ -11,7 +12,7 @@ class IndexFormController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $user  = $request->user();
+        $user = $request->user();
         $forms = Form::query()
             ->with('user:id,name')
             ->when($user, function ($query) use ($user) {
@@ -36,24 +37,25 @@ class IndexFormController extends Controller
             ->withQueryString();
         $formsMapped = $forms->through(function ($form) {
             return [
-                'id'              => $form->id,
-                'code'            => $form->code,
-                'title'           => $form->title,
-                'slug'            => $form->slug,
-                'description'     => $form->description,
-                'status'          => $form->status,
-                'is_public'       => $form->is_public,
+                'id' => $form->id,
+                'code' => $form->code,
+                'title' => $form->title,
+                'slug' => $form->slug,
+                'description' => $form->description,
+                'status' => $form->status,
+                'is_public' => $form->is_public,
                 'responses_count' => $form->responses_count,
-                'created_by'      => $form->user->name ?? 'Desconhecido',
-                'updated_at'      => $form->updated_at->format('d/m/Y H:i'),
-                'public_url'      => $form->is_public && $form->status === 'ativo'
+                'created_by' => $form->user->name ?? 'Desconhecido',
+                'updated_at' => $form->updated_at->format('d/m/Y H:i'),
+                'public_url' => $form->is_public && $form->status === 'ativo'
                     ? route('forms.public.show', $form->slug)
                     : null,
             ];
         });
+
         return Inertia::render('Form/Index', [
-            'forms'         => $formsMapped,
-            'filters'       => $request->only(['status', 'search']),
+            'forms' => $formsMapped,
+            'filters' => $request->only(['status', 'search']),
             'statusOptions' => [
                 ['value' => '', 'label' => 'Todos'],
                 ['value' => 'rascunho', 'label' => 'Rascunho'],
@@ -61,11 +63,11 @@ class IndexFormController extends Controller
                 ['value' => 'pausado', 'label' => 'Pausado'],
                 ['value' => 'encerrado', 'label' => 'Encerrado'],
             ],
-            'can'           => [
-                'create'           => $user->can('forms.create'),
-                'edit'             => $user->can('forms.edit'),
-                'delete'           => $user->can('forms.delete'),
-                'manage'           => $user->hasAnyRole(['Admin', 'Manager']),
+            'can' => [
+                'create' => $user->can('forms.create'),
+                'edit' => $user->can('forms.edit'),
+                'delete' => $user->can('forms.delete'),
+                'manage' => $user->hasAnyRole(['Admin', 'Manager']),
                 'toggleVisibility' => $request->user()->can('forms.toggle.visibility'),
             ],
         ]);

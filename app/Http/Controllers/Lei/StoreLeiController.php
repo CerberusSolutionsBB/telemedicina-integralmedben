@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Lei;
 
 use App\Http\Controllers\Controller;
@@ -18,16 +19,18 @@ class StoreLeiController extends Controller
             $request->merge(['user_id' => auth()->id()]);
             $lei = Lei::create($request->validated());
             DB::commit();
+
             return redirect()
                 ->route('leis.index')
-                ->with('success', 'Lei "' . $lei->title . '" criada com sucesso!');
+                ->with('success', 'Lei "'.$lei->title.'" criada com sucesso!');
         } catch (Throwable $e) {
             DB::rollBack();
             Log::error('Erro ao criar lei', [
                 'error' => $e->getMessage(),
-                'data'  => $request->validated(),
-                'user'  => auth()->id(),
+                'data' => $request->validated(),
+                'user' => auth()->id(),
             ]);
+
             return redirect()
                 ->back()
                 ->withInput()

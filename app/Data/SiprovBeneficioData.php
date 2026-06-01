@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Data;
 
 use Illuminate\Support\Facades\Log;
@@ -26,11 +27,11 @@ class SiprovBeneficioData
             );
 
             Log::info('SIPROV | DTO benefício criado', [
-                'ativo'         => $instance->ativo,
-                'codPlano'      => $instance->codPlano,
-                'cpfCnpj'       => $instance->cpfCnpj,
+                'ativo' => $instance->ativo,
+                'codPlano' => $instance->codPlano,
+                'cpfCnpj' => $instance->cpfCnpj,
                 'diaVencimento' => $instance->diaVencimento,
-                'situacao'      => $instance->situacao,
+                'situacao' => $instance->situacao,
             ]);
 
             return $instance;
@@ -38,15 +39,15 @@ class SiprovBeneficioData
         } catch (Throwable $e) {
             Log::error('SIPROV | Erro ao criar DTO de benefício', [
                 'message' => $e->getMessage(),
-                'data'    => [
-                    'ativo'         => $data->ativo ?? null,
-                    'plano'         => $data->plano ?? null,
-                    'cpfCnpj'       => $data->cpfCnpj ?? null,
+                'data' => [
+                    'ativo' => $data->ativo ?? null,
+                    'plano' => $data->plano ?? null,
+                    'cpfCnpj' => $data->cpfCnpj ?? null,
                     'diaVencimento' => $data->diaVencimento ?? null,
-                    'situacao'      => $data->situacao ?? null,
+                    'situacao' => $data->situacao ?? null,
                 ],
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             throw $e;
@@ -57,12 +58,12 @@ class SiprovBeneficioData
     {
         try {
             $payload = [
-                'ativo'         => $this->ativo,
-                'codLoja'       => (int) config('siprov.cod_loja'),
-                'codPlano'      => $this->codPlano,
-                'cpfCnpj'       => $this->cpfCnpj,
+                'ativo' => $this->ativo,
+                'codLoja' => (int) config('siprov.cod_loja'),
+                'codPlano' => $this->codPlano,
+                'cpfCnpj' => $this->cpfCnpj,
                 'diaVencimento' => $this->diaVencimento,
-                'situacao'      => $this->situacao,
+                'situacao' => $this->situacao,
             ];
 
             Log::info('SIPROV | Payload benefício montado', [
@@ -74,15 +75,15 @@ class SiprovBeneficioData
         } catch (Throwable $e) {
             Log::critical('SIPROV | Erro ao montar payload benefício', [
                 'message' => $e->getMessage(),
-                'dto'     => [
-                    'ativo'         => $this->ativo,
-                    'codPlano'      => $this->codPlano,
-                    'cpfCnpj'       => $this->cpfCnpj,
+                'dto' => [
+                    'ativo' => $this->ativo,
+                    'codPlano' => $this->codPlano,
+                    'cpfCnpj' => $this->cpfCnpj,
                     'diaVencimento' => $this->diaVencimento,
-                    'situacao'      => $this->situacao,
+                    'situacao' => $this->situacao,
                 ],
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             throw $e;

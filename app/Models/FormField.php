@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,8 +24,8 @@ class FormField extends Model
 
     protected $casts = [
         'required' => 'boolean',
-        'options'  => 'array',
-        'order'    => 'integer',
+        'options' => 'array',
+        'order' => 'integer',
     ];
 
     public function form(): BelongsTo

@@ -7,9 +7,7 @@ use App\Interfaces\NotificationChannelInterface;
 
 class SmsChannel implements NotificationChannelInterface
 {
-    public function __construct(private SmsService $smsService)
-    {
-    }
+    public function __construct(private SmsService $smsService) {}
 
     public function send(string $recipient, string $message): void
     {

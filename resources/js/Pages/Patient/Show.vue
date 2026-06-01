@@ -11,7 +11,9 @@ import {
   TableRow,
 } from "@/Components/ui/table";
 import { Button } from "@/Components/ui/button";
-import { RefreshCw, CheckCircle2, Clock, XCircle, ArrowLeft } from "lucide-vue-next";
+import AppSwitch from "@/Components/ui/switch/Switch.vue";
+import Breadcrumb from "@/Components/Breadcrumb.vue";
+import { RefreshCw, CheckCircle2, Clock, XCircle, MapPin, Users } from "lucide-vue-next";
 import { computed } from "vue";
 
 const props = defineProps({
@@ -19,9 +21,35 @@ const props = defineProps({
   smsLogs: { type: Array, default: () => [] },
 });
 
+const breadcrumbs = computed(() => [
+  { label: "Pacientes", href: route("patients.index"), icon: Users },
+  { label: `Detalhes do Paciente #${props.patient.id}`, href: null },
+]);
+
+const isActive = computed(() => Boolean(props.patient.status));
+
 const hasPendingOrFailed = computed(() =>
   props.smsLogs.some((l) => l.status === "pending" || l.status === "failed")
 );
+
+const enderecoFormatado = computed(() => {
+  const e = props.patient.enderecos;
+  if (!e) return null;
+  const partes = [];
+  if (e.logradouro) {
+    let linha = e.logradouro;
+    if (e.numero) linha += `, ${e.numero}`;
+    if (e.complemento) linha += ` - ${e.complemento}`;
+    partes.push(linha);
+  }
+  if (e.bairro) partes.push(e.bairro);
+  const cidadeEstado = [];
+  if (e.cidade) cidadeEstado.push(e.cidade);
+  if (e.estado) cidadeEstado.push(e.estado);
+  if (cidadeEstado.length) partes.push(cidadeEstado.join("/"));
+  if (e.cep) partes.push(`CEP: ${e.cep}`);
+  return partes.length ? partes.join(", ") : null;
+});
 
 const statusConfig = {
   sent:    { label: "Enviado",  icon: CheckCircle2, class: "text-green-600" },
@@ -40,8 +68,22 @@ const formatDate = (date) => {
   });
 };
 
+const formatCpf = (cpf) => {
+  if (!cpf) return "-";
+  const cleaned = cpf.replace(/\D/g, "");
+  if (cleaned.length !== 11) return cpf;
+  return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
 const resendSms = () => {
   router.post(route("patients.resend-sms", props.patient.id));
+};
+
+const toggleStatus = () => {
+  router.patch(route("patients.toggle-status", props.patient.id), {}, {
+    preserveScroll: true,
+    preserveState: true,
+  });
 };
 </script>
 
@@ -51,16 +93,57 @@ const resendSms = () => {
   <TenantAdminLayout>
     <div class="space-y-6">
 
+      <Breadcrumb :items="breadcrumbs" />
+
       <div class="flex items-center gap-3">
-        <Button variant="ghost" size="sm" @click="router.visit(route('patients.index'))">
-          <ArrowLeft class="w-4 h-4 mr-1" />
-          Voltar
-        </Button>
-        <h1 class="text-xl font-bold">Paciente #{{ patient.id }}</h1>
+        <h1 class="text-xl font-bold">Detalhes do Paciente #{{ patient.id }}</h1>
       </div>
 
       <!-- Dados do paciente -->
       <Card>
+        <CardHeader>
+          <CardTitle class="text-base flex items-center justify-between">
+            <span>Dados do Paciente</span>
+            <div class="flex items-center gap-2">
+              <AppSwitch :model-value="isActive" @update:model-value="toggleStatus" />
+              <span class="text-sm font-medium" :class="isActive ? 'text-green-700' : 'text-red-700'">
+                {{ isActive ? 'Ativo' : 'Inativo' }}
+              </span>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            <div>
+              <dt class="text-xs text-muted-foreground font-medium">Nome</dt>
+              <dd class="text-sm mt-0.5">{{ patient.nome || '-' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted-foreground font-medium">CPF</dt>
+              <dd class="text-sm mt-0.5">{{ formatCpf(patient.cpf) }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted-foreground font-medium">Email</dt>
+              <dd class="text-sm mt-0.5">{{ patient.email || '-' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted-foreground font-medium">Sexo</dt>
+              <dd class="text-sm mt-0.5">{{ patient.sexo || '-' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted-foreground font-medium">Data de Nascimento</dt>
+              <dd class="text-sm mt-0.5">{{ patient.data_nascimento ? formatDate(patient.data_nascimento) : '-' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-muted-foreground font-medium">RG</dt>
+              <dd class="text-sm mt-0.5">{{ patient.rg || '-' }}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
+      <!-- Respostas dos formulários -->
+      <Card v-if="patient.answers && patient.answers.length">
         <CardHeader>
           <CardTitle class="text-base">Respostas</CardTitle>
         </CardHeader>
@@ -73,6 +156,19 @@ const resendSms = () => {
               <dd class="text-sm mt-0.5">{{ answer.answer || "-" }}</dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+
+      <!-- Endereço -->
+      <Card v-if="enderecoFormatado">
+        <CardHeader>
+          <CardTitle class="text-base flex items-center gap-2">
+            <MapPin class="w-4 h-4 text-cyan-600" />
+            Endereço
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p class="text-sm text-gray-700">{{ enderecoFormatado }}</p>
         </CardContent>
       </Card>
 

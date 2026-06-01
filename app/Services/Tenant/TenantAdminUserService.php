@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Tenant;
 
 use App\Models\Tenant;
@@ -17,13 +18,13 @@ class TenantAdminUserService
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
             $roleAdmin = Role::firstOrCreate([
-                'name'       => 'Admin',
+                'name' => 'Admin',
                 'guard_name' => 'web',
             ]);
 
             $user = User::create([
-                'name'     => $data['nome'],
-                'email'    => $data['email'],
+                'name' => $data['nome'],
+                'email' => $data['email'],
                 'password' => Hash::make($data['senha']),
             ]);
 

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Providers;
 
 use App\Events\PatientCreated;
@@ -52,86 +53,86 @@ class AppServiceProvider extends ServiceProvider
         // $currentTenant = str($host)->before('.')->toString();
         // $current       = Tenant::with(['details'])->where('slug', $currentTenant)->first();
         Inertia::share([
-            'tenant_public' => fn() => app(TenantPublicService::class)->current(),
-            'authUser'      => function () {
+            'tenant_public' => fn () => app(TenantPublicService::class)->current(),
+            'authUser' => function () {
                 $user = auth()->user();
 
                 if (! $user) {
                     return [
-                        'user'  => null,
+                        'user' => null,
                         'check' => false,
                     ];
                 }
 
                 return [
-                    'user'  => [
-                        'id'                => $user->id,
-                        'name'              => $user->name,
-                        'email'             => $user->email,
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
                         'email_verified_at' => $user->email_verified_at,
-                        'avatar'            => $user->avatar ?? null,
-                        'created_at'        => $user->created_at?->format('d/m/Y H:i'),
+                        'avatar' => $user->avatar ?? null,
+                        'created_at' => $user->created_at?->format('d/m/Y H:i'),
 
                         // Roles e Permissions brutas
-                        'roles'             => $user->getRoleNames()->toArray(),
-                        'permissions'       => $user->getPermissionNames()->toArray(),
+                        'roles' => $user->getRoleNames()->toArray(),
+                        'permissions' => $user->getPermissionNames()->toArray(),
 
                         // Verificações rápidas
-                        'is_admin'          => $user->hasRole('Admin'),
-                        'is_manager'        => $user->hasRole('Manager'),
-                        'is_editor'         => $user->hasRole('Editor'),
+                        'is_admin' => $user->hasRole('Admin'),
+                        'is_manager' => $user->hasRole('Manager'),
+                        'is_editor' => $user->hasRole('Editor'),
                     ],
 
                     // ✅ CAN - Permissões organizadas para o frontend
-                    'can'   => [
+                    'can' => [
                         // Users
-                        'users'   => [
-                            'view'   => $user->can('users.view'),
+                        'users' => [
+                            'view' => $user->can('users.view'),
                             'create' => $user->can('users.create'),
-                            'edit'   => $user->can('users.edit'),
+                            'edit' => $user->can('users.edit'),
                             'delete' => $user->can('users.delete'),
                             'manage' => $user->can('users.manage'),
                         ],
 
                         // Forms
-                        'forms'   => [
-                            'view'              => $user->can('forms.view'),
-                            'create'            => $user->can('forms.create'),
-                            'edit'              => $user->can('forms.edit'),
-                            'delete'            => $user->can('forms.delete'),
-                            'update_status'     => $user->can('forms.update.status'),
+                        'forms' => [
+                            'view' => $user->can('forms.view'),
+                            'create' => $user->can('forms.create'),
+                            'edit' => $user->can('forms.edit'),
+                            'delete' => $user->can('forms.delete'),
+                            'update_status' => $user->can('forms.update.status'),
                             'toggle_visibility' => $user->can('forms.toggle.visibility'),
-                            'manage_all'        => $user->can('forms.manage.all'),
+                            'manage_all' => $user->can('forms.manage.all'),
                         ],
 
                         // Paginas (Tenants)
                         'paginas' => [
-                            'view'   => $user->can('paginas.view'),
+                            'view' => $user->can('paginas.view'),
                             'create' => $user->can('paginas.create'),
-                            'edit'   => $user->can('paginas.edit'),
+                            'edit' => $user->can('paginas.edit'),
                             'delete' => $user->can('paginas.delete'),
-                            'show'   => $user->can('paginas.show'),
+                            'show' => $user->can('paginas.show'),
                             'manage' => $user->can('paginas.manage'),
                         ],
 
                         // Leis
-                        'leis'    => [
-                            'view'   => $user->can('leis.view'),
+                        'leis' => [
+                            'view' => $user->can('leis.view'),
                             'create' => $user->can('leis.create'),
-                            'edit'   => $user->can('leis.edit'),
+                            'edit' => $user->can('leis.edit'),
                             'delete' => $user->can('leis.delete'),
                         ],
-                        'siprov'  => [
-                            'view'   => $user->can('siprov.view'),
+                        'siprov' => [
+                            'view' => $user->can('siprov.view'),
                             'create' => $user->can('siprov.create'),
-                            'show'   => $user->can('siprov.show'),
+                            'show' => $user->can('siprov.show'),
                             'delete' => $user->can('siprov.delete'),
-                            'retry'  => $user->can('siprov.retry'),
+                            'retry' => $user->can('siprov.retry'),
                             'manage' => $user->can('siprov.manage'),
                         ],
 
                         // Geral
-                        'manage'  => $user->hasRole('Admin') || $user->hasRole('Manager'),
+                        'manage' => $user->hasRole('Admin') || $user->hasRole('Manager'),
                     ],
 
                     'check' => true,
@@ -139,22 +140,22 @@ class AppServiceProvider extends ServiceProvider
             },
 
             // App info
-            'app'           => [
+            'app' => [
                 'name' => config('app.name'),
-                'env'  => config('app.env'),
-                'url'  => config('app.url'),
+                'env' => config('app.env'),
+                'url' => config('app.url'),
             ],
 
             // Flash messages
-            'flash'         => function () {
+            'flash' => function () {
                 return [
                     'message' => session('message'),
-                    'type'    => session('type'),
+                    'type' => session('type'),
                 ];
             },
 
             // CSRF
-            'csrf_token'    => fn()    => csrf_token(),
+            'csrf_token' => fn () => csrf_token(),
         ]);
     }
 }

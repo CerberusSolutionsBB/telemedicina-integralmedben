@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Enums\QuestionRoleEnum;
-use Illuminate\Database\Seeder;
 use App\Models\Question;
+use Illuminate\Database\Seeder;
 
 class QuestionSeeder extends Seeder
 {
@@ -59,9 +59,9 @@ class QuestionSeeder extends Seeder
             Question::updateOrCreate(
                 ['title' => $data['title']],
                 [
-                    'type'    => $data['type'],
+                    'type' => $data['type'],
                     'options' => $data['options'] ?? null,
-                    'role'    => $data['role'] ?? null,
+                    'role' => $data['role'] ?? null,
                 ]
             );
         }

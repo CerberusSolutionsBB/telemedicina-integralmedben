@@ -3,7 +3,6 @@
 namespace App\Http\Services\ExternalApi;
 
 use App\Interfaces\ExternalApiInterface;
-use Illuminate\Support\Facades\Http;
 
 class TelemedicinaService implements ExternalApiInterface
 {

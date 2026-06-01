@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Lei;
 
 use App\Http\Controllers\Controller;
