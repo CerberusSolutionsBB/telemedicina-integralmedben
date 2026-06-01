@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Pagina;
 
 use App\Http\Controllers\Controller;
@@ -20,24 +21,25 @@ class PaginaStoreController extends Controller
         private TenantAdminUserService $tenantAdminUserService,
 
     ) {}
+
     public function __invoke(PaginaStoreRequest $request)
     {
         $validated = $request->validated();
         try {
             $tenantId = $this->gerarTenantIdUnico($validated['descricao']);
-            $tenant   = Tenant::create([
-                'id'   => $tenantId,
+            $tenant = Tenant::create([
+                'id' => $tenantId,
                 'data' => [
                     'descricao' => $validated['descricao'],
-                    'nome'      => $validated['nome'],
-                    'email'     => $validated['email'],
-                    'senha'     => Hash::make($validated['senha']),
-                    'status'    => 'ativo',
+                    'nome' => $validated['nome'],
+                    'email' => $validated['email'],
+                    'senha' => Hash::make($validated['senha']),
+                    'status' => 'ativo',
                 ],
             ]);
 
             Domain::create([
-                'domain'    => $this->gerarDominio($tenantId),
+                'domain' => $this->gerarDominio($tenantId),
                 'tenant_id' => $tenant->id,
             ]);
 
@@ -48,8 +50,8 @@ class PaginaStoreController extends Controller
                 formIds: $validated['forms'] ?? [],
                 extraData: [
                     'user_id' => auth()->id(),
-                    'origem'  => 'CENTRAL',
-                    'ativo'   => true,
+                    'origem' => 'CENTRAL',
+                    'ativo' => true,
                 ]
             );
 
@@ -61,38 +63,44 @@ class PaginaStoreController extends Controller
                 ->with('type', 'success');
         } catch (Throwable $e) {
             report($e);
+
             return back()
                 ->withErrors([
-                    'general' => 'Erro ao criar tenant: ' . $e->getMessage(),
+                    'general' => 'Erro ao criar tenant: '.$e->getMessage(),
                 ])
                 ->withInput();
         }
     }
+
     private function gerarTenantId(string $descricao): string
     {
         $slug = Str::slug($descricao, '_');
         $slug = Str::limit($slug, 50, '');
         $slug = ltrim($slug, '0123456789');
+
         return empty($slug)
-            ? 'tenant_' . time()
+            ? 'tenant_'.time()
             : strtolower($slug);
     }
+
     private function gerarTenantIdUnico(string $descricao): string
     {
-        $base     = $this->gerarTenantId($descricao);
-        $id       = $base;
+        $base = $this->gerarTenantId($descricao);
+        $id = $base;
         $contador = 1;
         while (Tenant::whereKey($id)->exists()) {
             $id = "{$base}_{$contador}";
             $contador++;
         }
+
         return $id;
     }
+
     private function gerarDominio(string $tenantId): string
     {
         $centralDomains = config('tenancy.central_domains', ['localhost']);
         $dominioCentral = app()->environment('production')
-            ? "telemedicinamedben.com.br"
+            ? 'telemedicinamedben.com.br'
             : $centralDomains[0];
 
         return "{$tenantId}.{$dominioCentral}";

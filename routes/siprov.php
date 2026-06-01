@@ -25,7 +25,7 @@ Route::delete('/{siprov}', SiprovDestroyController::class)
 Route::get('/debug-siprov', function () {
     return [
         'base_url' => config('siprov.base_url'),
-        'user'     => config('siprov.user'),
+        'user' => config('siprov.user'),
         'password' => config('siprov.password'),
         'cod_loja' => config('siprov.cod_loja'),
     ];

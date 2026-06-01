@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests\Siprov;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -17,59 +18,59 @@ class CreateSiprovIntegrationRequest extends FormRequest
         $telefones = collect($this->input('telefones', []))
             ->map(function ($telefone) {
                 return [
-                    'ddi'    => (int) ($telefone['ddi'] ?? 55),
+                    'ddi' => (int) ($telefone['ddi'] ?? 55),
                     'numero' => $this->onlyNumbers($telefone['numero'] ?? ''),
-                    'tipo'   => $telefone['tipo'] ?? 'Celular',
+                    'tipo' => $telefone['tipo'] ?? 'Celular',
                 ];
             })
-            ->filter(fn($telefone) => ! empty($telefone['numero']))
+            ->filter(fn ($telefone) => ! empty($telefone['numero']))
             ->values()
             ->toArray();
 
         $this->merge([
-            'cpfCnpj'          => $cpfCnpj,
-            'codigoIntegracao' => 'USR-' . $cpfCnpj,
-            'telefones'        => $telefones,
+            'cpfCnpj' => $cpfCnpj,
+            'codigoIntegracao' => 'USR-'.$cpfCnpj,
+            'telefones' => $telefones,
         ]);
     }
 
     public function rules(): array
     {
         return [
-            'codigoIntegracao'   => ['required', 'string', 'max:255'],
+            'codigoIntegracao' => ['required', 'string', 'max:255'],
 
-            'nomePessoa'         => ['required', 'string', 'max:255'],
+            'nomePessoa' => ['required', 'string', 'max:255'],
 
-            'cpfCnpj'            => [
+            'cpfCnpj' => [
                 'required',
                 'string',
                 'min:11',
                 'max:14',
             ],
 
-            'email'              => [
+            'email' => [
                 'required',
                 'email',
                 'max:255',
             ],
 
-            'sexo'               => [
+            'sexo' => [
                 'required',
                 'in:M,F,I',
             ],
 
-            'dataNascimento'     => [
-                'nullable',
+            'dataNascimento' => [
+                'required',
                 'date',
             ],
 
-            'telefones'          => [
+            'telefones' => [
                 'required',
                 'array',
                 'min:1',
             ],
 
-            'telefones.*.ddi'    => [
+            'telefones.*.ddi' => [
                 'required',
                 'integer',
             ],
@@ -79,28 +80,28 @@ class CreateSiprovIntegrationRequest extends FormRequest
                 'string',
             ],
 
-            'telefones.*.tipo'   => [
+            'telefones.*.tipo' => [
                 'required',
                 'in:Celular,Fixo',
             ],
 
-            'plano'              => [
+            'plano' => [
                 'required',
                 'in:clinica_familiar,clinica_individual,saude_mental',
             ],
 
-            'diaVencimento'      => [
+            'diaVencimento' => [
                 'required',
                 'integer',
                 'between:1,31',
             ],
 
-            'ativo'              => [
+            'ativo' => [
                 'required',
                 'boolean',
             ],
 
-            'situacao'           => [
+            'situacao' => [
                 'required',
                 'string',
                 'max:50',
@@ -111,12 +112,13 @@ class CreateSiprovIntegrationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nomePessoa.required'    => 'Nome é obrigatório.',
-            'cpfCnpj.required'       => 'CPF/CNPJ é obrigatório.',
-            'email.required'         => 'E-mail é obrigatório.',
-            'sexo.required'          => 'Sexo é obrigatório.',
-            'telefones.required'     => 'Informe ao menos um telefone.',
-            'plano.required'         => 'Selecione um plano.',
+            'nomePessoa.required' => 'Nome é obrigatório.',
+            'cpfCnpj.required' => 'CPF/CNPJ é obrigatório.',
+            'email.required' => 'E-mail é obrigatório.',
+            'dataNascimento.required' => 'Data de nascimento é obrigatória.',
+            'sexo.required' => 'Sexo é obrigatório.',
+            'telefones.required' => 'Informe ao menos um telefone.',
+            'plano.required' => 'Selecione um plano.',
             'diaVencimento.required' => 'Informe o dia de vencimento.',
         ];
     }

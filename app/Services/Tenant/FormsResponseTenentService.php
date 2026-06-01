@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Tenant;
 
 use App\Models\FormsResponseTenent;
@@ -23,31 +24,30 @@ class FormsResponseTenentService
             }
 
             FormsResponseTenent::create([
-                'code'        => Str::uuid(),
-                'form_id'     => $formId,
-                'tenant_id'   => $resolvedTenantId,
+                'code' => Str::uuid(),
+                'form_id' => $formId,
+                'tenant_id' => $resolvedTenantId,
                 'response_id' => $responseId,
             ]);
 
         } catch (\RuntimeException $e) {
             Log::error('[FormsResponseTenentService] Erro de validação', [
-                'mensagem'  => $e->getMessage(),
+                'mensagem' => $e->getMessage(),
                 'tenant_id' => $resolvedTenantId,
             ]);
             throw $e;
-
         } catch (Throwable $e) {
             Log::error('[FormsResponseTenentService] Erro inesperado', [
-                'mensagem'  => $e->getMessage(),
-                'classe'    => get_class($e),
-                'arquivo'   => $e->getFile(),
-                'linha'     => $e->getLine(),
+                'mensagem' => $e->getMessage(),
+                'classe' => get_class($e),
+                'arquivo' => $e->getFile(),
+                'linha' => $e->getLine(),
                 'tenant_id' => $resolvedTenantId,
-                'trace'     => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             throw new \RuntimeException(
-                'Falha ao registrar resposta no banco central: ' . $e->getMessage()
+                'Falha ao registrar resposta no banco central: '.$e->getMessage()
             );
         }
     }

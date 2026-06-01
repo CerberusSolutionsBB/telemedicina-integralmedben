@@ -5,10 +5,8 @@ namespace App\Http\Services\Tenant;
 use App\Enums\EnvironmentEnum;
 use App\Models\Question;
 use App\Models\Tenant;
-use Illuminate\Support\Facades\Storage;
-use Stancl\Tenancy\Database\Models\Domain;
-
 use Normalizer;
+use Stancl\Tenancy\Database\Models\Domain;
 
 class TenantCreateService
 {
@@ -18,7 +16,7 @@ class TenantCreateService
             throw new \Exception('Já existe uma clínica com este nome.');
         }
 
-        $subdomain = $data['subdomain'] . '.' . EnvironmentEnum::currentDomains()[0];
+        $subdomain = $data['subdomain'].'.'.EnvironmentEnum::currentDomains()[0];
 
         if (Domain::where('domain', $subdomain)->exists()) {
             throw new \Exception('Subdomínio em uso.');
@@ -27,8 +25,8 @@ class TenantCreateService
         //
 
         $tenantData = [
-            'id'        => $data['name'],
-            'name'      => $data['name'],
+            'id' => $data['name'],
+            'name' => $data['name'],
             'subdomain' => $data['subdomain'],
             'sms_quota' => 50,
         ];
@@ -58,7 +56,7 @@ class TenantCreateService
         $subdomainNormalized = preg_replace('/[\x{0300}-\x{036F}]/u', '', $subdomainNormalized);
 
         $tenant->domains()->create([
-            'domain' => $subdomainNormalized . '.' . EnvironmentEnum::currentDomains()[0],
+            'domain' => $subdomainNormalized.'.'.EnvironmentEnum::currentDomains()[0],
         ]);
 
         $systemQuestionIds = Question::whereNotNull('role')->pluck('id')->toArray();
@@ -67,5 +65,3 @@ class TenantCreateService
         return $tenant;
     }
 }
-
-

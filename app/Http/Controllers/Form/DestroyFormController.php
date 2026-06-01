@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
@@ -12,7 +13,7 @@ use Inertia\Response;
 
 class DestroyFormController extends Controller
 {
-    public function __invoke(Request $request, Form $form): RedirectResponse | Response
+    public function __invoke(Request $request, Form $form): RedirectResponse|Response
     {
         Gate::authorize('forms.delete');
 
@@ -28,8 +29,8 @@ class DestroyFormController extends Controller
             });
 
             Log::info('Formulário excluído', [
-                'form_id'    => $form->id,
-                'user_id'    => auth()->id(),
+                'form_id' => $form->id,
+                'user_id' => auth()->id(),
                 'deleted_at' => now(),
             ]);
 
@@ -40,7 +41,7 @@ class DestroyFormController extends Controller
         } catch (\Exception $e) {
             Log::error('Erro ao excluir formulário', [
                 'form_id' => $form->id,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return back()->with('error', 'Erro ao excluir formulário. Tente novamente.');

@@ -38,6 +38,7 @@ enum EnvironmentEnum: string
     public static function current(): self
     {
         $env = env('APP_ENV', 'local');
+
         return self::tryFrom($env) ?? self::LOCAL;
     }
 
@@ -48,7 +49,7 @@ enum EnvironmentEnum: string
     {
         return array_merge(
             ...array_map(
-                fn(self $env) => $env->domains(),
+                fn (self $env) => $env->domains(),
                 self::cases()
             )
         );

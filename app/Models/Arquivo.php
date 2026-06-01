@@ -1,10 +1,11 @@
 <?php
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
@@ -37,6 +38,7 @@ class Arquivo extends Model
     {
         return Storage::url($this->caminho);
     }
+
     public function getDataBrAttribute()
     {
         return $this->created_at?->format('d/m/Y H:i');
@@ -45,20 +47,20 @@ class Arquivo extends Model
     /**
      * ⭐ Accessor: Tamanho formatado (KB, MB, etc)
      */
-    protected function tamanhoFormatado(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function tamanhoFormatado(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             get: function (): string {
                 $bytes = $this->tamanho;
 
                 if ($bytes >= 1073741824) {
-                    return number_format($bytes / 1073741824, 2) . ' GB';
+                    return number_format($bytes / 1073741824, 2).' GB';
                 } elseif ($bytes >= 1048576) {
-                    return number_format($bytes / 1048576, 2) . ' MB';
+                    return number_format($bytes / 1048576, 2).' MB';
                 } elseif ($bytes >= 1024) {
-                    return number_format($bytes / 1024, 2) . ' KB';
+                    return number_format($bytes / 1024, 2).' KB';
                 } elseif ($bytes > 1) {
-                    return $bytes . ' bytes';
+                    return $bytes.' bytes';
                 } elseif ($bytes == 1) {
                     return '1 byte';
                 } else {
@@ -71,26 +73,26 @@ class Arquivo extends Model
     /**
      * ⭐ Accessor: Ícone baseado na extensão
      */
-    protected function icone(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function icone(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             get: function (): string {
                 $icones = [
-                    'pdf'  => 'file-text',
-                    'doc'  => 'file-text',
+                    'pdf' => 'file-text',
+                    'doc' => 'file-text',
                     'docx' => 'file-text',
-                    'xls'  => 'table',
+                    'xls' => 'table',
                     'xlsx' => 'table',
-                    'jpg'  => 'image',
+                    'jpg' => 'image',
                     'jpeg' => 'image',
-                    'png'  => 'image',
-                    'gif'  => 'image',
+                    'png' => 'image',
+                    'gif' => 'image',
                     'webp' => 'image',
-                    'svg'  => 'image',
-                    'mp4'  => 'video',
-                    'mp3'  => 'audio',
-                    'zip'  => 'archive',
-                    'rar'  => 'archive',
+                    'svg' => 'image',
+                    'mp4' => 'video',
+                    'mp3' => 'audio',
+                    'zip' => 'archive',
+                    'rar' => 'archive',
                 ];
 
                 return $icones[strtolower($this->extensao)] ?? 'file';
@@ -129,7 +131,6 @@ class Arquivo extends Model
     /**
      * Forms associados a este arquivo
      */
-
     public function forms()
     {
         return $this->belongsToMany(Form::class, 'form_arquivos', 'arquivo_id', 'form_id');

@@ -1,13 +1,14 @@
 <?php
+
 namespace App\Http\Controllers\Pagina;
 
 use App\Http\Controllers\Controller;
+use App\Models\Form;
 use App\Models\Tenant;
-use Illuminate\Http\Request;
+use App\Models\TenantForm;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Models\Form;
-use App\Models\TenantForm;
+
 class PaginaShowController extends Controller
 {
     public function __invoke(Tenant $tenant): Response

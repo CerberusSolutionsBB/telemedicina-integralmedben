@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -67,7 +68,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 
     public static function generateDatabaseName(string $tenantName): string
     {
-        return 'tenant_' . str_replace('-', '_', $tenantName);
+        return 'tenant_'.str_replace('-', '_', $tenantName);
     }
 
     public function getTenantDomainAttribute()
@@ -78,7 +79,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function getPhotoUrlAttribute()
     {
         if ($this->photo_path) {
-            return '/storage/' . $this->photo_path;
+            return '/storage/'.$this->photo_path;
         }
 
         return null;
@@ -93,10 +94,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         $domain = $this->tenant_domain;
 
         if (str_contains($domain, 'localhost')) {
-            return 'http://' . $domain . ':8000';
+            return 'http://'.$domain.':8000';
         }
 
-        return 'https://' . $domain;
+        return 'https://'.$domain;
     }
 
     public function forms()

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Siprov;
 
 use App\Data\SiprovBeneficioData;
@@ -17,14 +18,14 @@ class SiprovBeneficioService
         try {
             $response = Http::withToken($this->authService->token())
                 ->acceptJson()
-                ->post(config('siprov.base_url') . '/ext/beneficio', $data->toPayload());
+                ->post(config('siprov.base_url').'/ext/beneficio', $data->toPayload());
 
             if ($response->unauthorized()) {
                 $this->authService->forgetToken();
 
                 $response = Http::withToken($this->authService->token())
                     ->acceptJson()
-                    ->post(config('siprov.base_url') . '/ext/beneficio', $data->toPayload());
+                    ->post(config('siprov.base_url').'/ext/beneficio', $data->toPayload());
             }
 
             if ($response->failed()) {

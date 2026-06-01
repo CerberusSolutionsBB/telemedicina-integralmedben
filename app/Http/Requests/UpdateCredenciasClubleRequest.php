@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,18 +16,18 @@ class UpdateCredenciasClubleRequest extends FormRequest
         $credencialId = $this->route('credencias_cluble') ?? $this->route('id');
 
         return [
-            'title'         => 'nullable|string|max:255',
+            'title' => 'nullable|string|max:255',
             'client_secret' => 'nullable|string|max:1000',
-            'scope'         => 'nullable|string|max:500',
+            'scope' => 'nullable|string|max:500',
         ];
     }
 
     public function attributes(): array
     {
         return [
-            'title'         => 'título',
+            'title' => 'título',
             'client_secret' => 'segredo do cliente',
-            'scope'         => 'escopo',
+            'scope' => 'escopo',
         ];
     }
 }

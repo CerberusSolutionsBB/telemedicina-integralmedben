@@ -33,9 +33,9 @@ class SendNotificationOnPatientCreated
             ->keyBy('id');
 
         $data = [
-            'tenant_id'  => $event->tenantId,
+            'tenant_id' => $event->tenantId,
             'patient_id' => $event->tenantPatientId,
-            'tenant'     => $event->tenantId,
+            'tenant' => $event->tenantId,
         ];
 
         $patientPlan = null;
@@ -43,7 +43,7 @@ class SendNotificationOnPatientCreated
         foreach ($event->answers as $questionId => $value) {
             $question = $questions[$questionId] ?? null;
 
-            if (!$question) {
+            if (! $question) {
                 continue;
             }
 

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Category\Form;
 
 use App\Http\Controllers\Controller;

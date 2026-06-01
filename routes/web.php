@@ -51,5 +51,5 @@ Route::middleware([PreventAccessFromTenantDomains::class])->group(function () {
     Route::delete('/delete', [TenantController::class, 'destroy'])->name('tenants.destroy');
 });
 
-require __DIR__ . '/auth.php';
-require __DIR__ . '/admin.php';
+require __DIR__.'/auth.php';
+require __DIR__.'/admin.php';

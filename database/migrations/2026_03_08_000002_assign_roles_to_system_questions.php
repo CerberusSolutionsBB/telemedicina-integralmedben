@@ -13,9 +13,9 @@ return new class extends Migration
     {
         // Mapeia o título exato → role
         $roleMap = [
-            'Nome Completo'       => 'nome',
-            'E-mail'              => 'email',
-            'Data de Nascimento'  => 'birth_date',
+            'Nome Completo' => 'nome',
+            'E-mail' => 'email',
+            'Data de Nascimento' => 'birth_date',
         ];
 
         foreach ($roleMap as $title => $role) {
@@ -44,18 +44,18 @@ return new class extends Migration
                 ->toArray();
 
             foreach ($systemQuestionIds as $questionId) {
-                if (!in_array($questionId, $existing)) {
+                if (! in_array($questionId, $existing)) {
                     $rows[] = [
-                        'tenant_id'   => $tenantId,
+                        'tenant_id' => $tenantId,
                         'question_id' => $questionId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                 }
             }
         }
 
-        if (!empty($rows)) {
+        if (! empty($rows)) {
             DB::table('tenant_questions')->insert($rows);
         }
     }

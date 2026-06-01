@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Tenant;
 
 use App\Models\Tenant;
@@ -16,7 +17,7 @@ class TenantConfigurationService
             $slug = tenant_slug($tenant->name ?? $tenant->id);
 
             $relativePath = "tenants/{$slug}";
-            $basePath     = storage_path("app/{$relativePath}");
+            $basePath = storage_path("app/{$relativePath}");
 
             $this->ensureTenantDirectories($basePath);
 
@@ -25,16 +26,16 @@ class TenantConfigurationService
                     'tenant_id' => $tenant->id,
                 ],
                 [
-                    'code'           => TenantsDetail::where('tenant_id', $tenant->id)->value('code') ?? Str::upper(Str::random(8)),
+                    'code' => TenantsDetail::where('tenant_id', $tenant->id)->value('code') ?? Str::upper(Str::random(8)),
 
-                    'descricao'      => $tenant->name ?? $tenant->id,
-                    'slug'           => Str::slug($tenant->name ?? $tenant->id),
-                    'path_arquivos'  => $relativePath,
-                    'user_id'        => Auth::id(),
+                    'descricao' => $tenant->name ?? $tenant->id,
+                    'slug' => Str::slug($tenant->name ?? $tenant->id),
+                    'path_arquivos' => $relativePath,
+                    'user_id' => Auth::id(),
 
-                    'logo'           => null,
-                    'favicon'        => null,
-                    'cor_primaria'   => $tenant->bg_color ?? null,
+                    'logo' => null,
+                    'favicon' => null,
+                    'cor_primaria' => $tenant->bg_color ?? null,
                     'cor_secundaria' => $tenant->button_color ?? null,
                 ]
             );

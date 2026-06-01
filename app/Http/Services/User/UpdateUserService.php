@@ -13,7 +13,7 @@ class UpdateUserService
             'email' => $data['email'],
         ];
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $payload['password'] = $data['password'];
         }
 

@@ -24,14 +24,14 @@ class UpdateCentralPatientService
 
         $tenant = Tenant::find($centralPatient->tenant_id);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return;
         }
 
         $tenant->run(function () use ($centralPatient, $answers) {
             $patient = Patient::where('central_patient_id', $centralPatient->id)->first();
 
-            if (!$patient) {
+            if (! $patient) {
                 return;
             }
 

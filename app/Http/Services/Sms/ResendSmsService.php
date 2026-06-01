@@ -15,7 +15,7 @@ class ResendSmsService
     {
         $tenant = Tenant::findOrFail($tenantId);
 
-        if (!$tenant->hasSmsQuota()) {
+        if (! $tenant->hasSmsQuota()) {
             return ['success' => false, 'message' => 'Cota de SMS esgotada para este tenant.'];
         }
 
@@ -31,7 +31,7 @@ class ResendSmsService
         $sent = 0;
 
         foreach ($pendingLogs as $log) {
-            if (!$tenant->hasSmsQuota()) {
+            if (! $tenant->hasSmsQuota()) {
                 break;
             }
 
@@ -39,8 +39,8 @@ class ResendSmsService
                 $this->smsService->send($log->recipient, $log->message);
 
                 $log->update([
-                    'status'        => SmsStatusEnum::Sent,
-                    'sent_at'       => now(),
+                    'status' => SmsStatusEnum::Sent,
+                    'sent_at' => now(),
                     'error_message' => null,
                 ]);
 
@@ -48,7 +48,7 @@ class ResendSmsService
                 $sent++;
             } catch (\Throwable $e) {
                 $log->update([
-                    'status'        => SmsStatusEnum::Failed,
+                    'status' => SmsStatusEnum::Failed,
                     'error_message' => $e->getMessage(),
                 ]);
             }

@@ -8,8 +8,8 @@ class StoreSmsTemplateService
 {
     public function execute(array $data): SmsTemplate
     {
-        $data['recipient_variable'] = match($data['channel']) {
-            'sms'   => 'tel',
+        $data['recipient_variable'] = match ($data['channel']) {
+            'sms' => 'tel',
             default => 'tel',
         };
 

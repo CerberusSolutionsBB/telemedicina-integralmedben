@@ -3,12 +3,20 @@
 declare(strict_types=1);
 
 use App\Enums\EnvironmentEnum;
+use Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper;
+use Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper;
+use Stancl\Tenancy\Bootstrappers\FilesystemTenancyBootstrapper;
+use Stancl\Tenancy\Bootstrappers\QueueTenancyBootstrapper;
 use Stancl\Tenancy\Database\Models\Domain;
 use Stancl\Tenancy\Database\Models\Tenant;
+use Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager;
+use Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager;
+use Stancl\Tenancy\TenantDatabaseManagers\SQLiteDatabaseManager;
+use Stancl\Tenancy\UUIDGenerator;
 
 return [
-    'tenant_model' => \App\Models\Tenant::class,
-    'id_generator' => Stancl\Tenancy\UUIDGenerator::class,
+    'tenant_model' => App\Models\Tenant::class,
+    'id_generator' => UUIDGenerator::class,
 
     'domain_model' => Domain::class,
 
@@ -17,7 +25,7 @@ return [
      *
      * Only relevant if you're using the domain or subdomain identification middleware.
      */
-   'central_domains' => EnvironmentEnum::currentDomains(),
+    'central_domains' => EnvironmentEnum::currentDomains(),
 
     // /**
     //  * The central domain used for subdomain identification.
@@ -35,10 +43,10 @@ return [
      * To configure their behavior, see the config keys below.
      */
     'bootstrappers' => [
-        Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class,
-        Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class,
-        Stancl\Tenancy\Bootstrappers\FilesystemTenancyBootstrapper::class,
-        Stancl\Tenancy\Bootstrappers\QueueTenancyBootstrapper::class,
+        DatabaseTenancyBootstrapper::class,
+        CacheTenancyBootstrapper::class,
+        FilesystemTenancyBootstrapper::class,
+        QueueTenancyBootstrapper::class,
         // Stancl\Tenancy\Bootstrappers\RedisTenancyBootstrapper::class, // Note: phpredis is needed
     ],
 
@@ -48,7 +56,6 @@ return [
     'database' => [
         'central_connection' => env('DB_CONNECTION', 'central'),
         'tenant_connection' => 'tenant',
-
 
         'migrations' => [
             'run_on_creation' => true,
@@ -67,7 +74,8 @@ return [
         'prefix' => (function () {
             $dbName = env('DB_DATABASE', 'epublic_local');
             $parts = explode('_', $dbName);
-            return (count($parts) > 1 ? $parts[1] : $parts[0]) . '_';
+
+            return (count($parts) > 1 ? $parts[1] : $parts[0]).'_';
         })(),
         'suffix' => '',
 
@@ -75,9 +83,9 @@ return [
          * TenantDatabaseManagers are classes that handle the creation & deletion of tenant databases.
          */
         'managers' => [
-            'sqlite' => Stancl\Tenancy\TenantDatabaseManagers\SQLiteDatabaseManager::class,
-            'mysql' => Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
-            'pgsql' => Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager::class,
+            'sqlite' => SQLiteDatabaseManager::class,
+            'mysql' => MySQLDatabaseManager::class,
+            'pgsql' => PostgreSQLDatabaseManager::class,
 
         /**
          * Use this database manager for MySQL to have a DB user created for each tenant database.

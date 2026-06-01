@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Category\Form;
 
 use App\Http\Controllers\Controller;
@@ -13,18 +14,19 @@ class UpdateFormCategoryController extends Controller
     {
         $category = FormCategory::findOrFail($id);
         $baseSlug = Str::slug($request->name);
-        $slug     = $baseSlug;
-        $count    = 1;
+        $slug = $baseSlug;
+        $count = 1;
         while (FormCategory::where('slug', $slug)
             ->where('id', '!=', $id)
             ->exists()) {
-            $slug = $baseSlug . '-' . $count++;
+            $slug = $baseSlug.'-'.$count++;
         }
         $category->update([
-            'name'        => $request->name,
+            'name' => $request->name,
             'description' => $request->description,
-            'slug'        => $slug,
+            'slug' => $slug,
         ]);
+
         return redirect()
             ->route('configuracoes.categories.forms.index')
             ->with('success', "Categoria '{$category->name}' atualizada com sucesso!");

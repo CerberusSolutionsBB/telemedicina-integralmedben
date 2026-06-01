@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,12 +11,13 @@ class StoreCredenciasClubleRequest extends FormRequest
     {
         return true;
     }
+
     public function rules(): array
     {
         return [
-            'title'         => 'nullable|string|max:255',
-            'grant_type'    => 'required|string|in:client_credentials,password,authorization_code,refresh_token',
-            'client_id'     => [
+            'title' => 'nullable|string|max:255',
+            'grant_type' => 'required|string|in:client_credentials,password,authorization_code,refresh_token',
+            'client_id' => [
                 'required',
                 'string',
                 'max:255',
@@ -23,26 +25,29 @@ class StoreCredenciasClubleRequest extends FormRequest
                     ->whereNull('deleted_at'),
             ],
             'client_secret' => 'required|string|max:1000',
-            'scope'         => 'nullable|string|max:500',
+            'scope' => 'nullable|string|max:500',
         ];
     }
+
     protected function prepareForValidation(): void
     {
         $this->merge([
             'grant_type' => $this->input('grant_type', 'client_credentials'),
-            'scope'      => $this->input('scope', '*'),
+            'scope' => $this->input('scope', '*'),
         ]);
     }
+
     public function attributes(): array
     {
         return [
-            'title'         => 'título',
-            'grant_type'    => 'tipo de concessão',
-            'client_id'     => 'ID do cliente',
+            'title' => 'título',
+            'grant_type' => 'tipo de concessão',
+            'client_id' => 'ID do cliente',
             'client_secret' => 'segredo do cliente',
-            'scope'         => 'escopo',
+            'scope' => 'escopo',
         ];
     }
+
     public function messages(): array
     {
         return [

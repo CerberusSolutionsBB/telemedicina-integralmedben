@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Category\Form;
 
 use App\Http\Controllers\Controller;
@@ -11,7 +12,7 @@ class IndexFormCategoryController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $search     = $request->input('search');
+        $search = $request->input('search');
         $categories = FormCategory::query()
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
@@ -20,9 +21,10 @@ class IndexFormCategoryController extends Controller
             ->latest()
             ->paginate(15)
             ->withQueryString();
+
         return Inertia::render('Config/Category/Form/Index', [
             'categories' => $categories,
-            'filters'    => ['search' => $search],
+            'filters' => ['search' => $search],
         ]);
     }
 }

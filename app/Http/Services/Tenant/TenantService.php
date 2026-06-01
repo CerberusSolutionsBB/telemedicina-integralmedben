@@ -11,6 +11,7 @@ class TenantService
         // private TenantShowService $showService,
         // private TenantListService $listService
     ) {}
+
     public function store($data)
     {
         return $this->createService->execute($data);
@@ -25,13 +26,12 @@ class TenantService
     {
         return $this->deleteService->execute($id);
     }
-    
-    
+
     // public function show($id)
     // {
     //     return $this->showService->execute($id);
     // }
-    
+
     // public function index($filters = [])
     // {
     //     return $this->listService->execute($filters);

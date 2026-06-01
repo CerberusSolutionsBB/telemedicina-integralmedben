@@ -8,8 +8,8 @@ class UpdateSmsTemplateService
 {
     public function execute(SmsTemplate $template, array $data): void
     {
-        $data['recipient_variable'] = match($data['channel']) {
-            'sms'   => 'tel',
+        $data['recipient_variable'] = match ($data['channel']) {
+            'sms' => 'tel',
             default => 'tel',
         };
 

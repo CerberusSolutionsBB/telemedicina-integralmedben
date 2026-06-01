@@ -8,14 +8,11 @@ use App\Models\Question;
 use App\Models\SmsTemplate;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class SmsTemplateController extends Controller
 {
-    public function __construct(private SmsTemplateService $service)
-    {
-    }
+    public function __construct(private SmsTemplateService $service) {}
 
     public function index()
     {
@@ -24,25 +21,25 @@ class SmsTemplateController extends Controller
             ['label' => 'Nome Completo',  'key' => 'nome_completo'],
         ]);
 
-        $roleVariables = Question::whereNotNull('role')->get()->map(fn($q) => [
+        $roleVariables = Question::whereNotNull('role')->get()->map(fn ($q) => [
             'label' => $q->title,
-            'key'   => $q->role->value,
+            'key' => $q->role->value,
         ]);
 
         $variables = $fixed->merge($roleVariables)->values();
 
         // Opções de plano vindas da pergunta com role=plan
         $planQuestion = Question::where('role', 'plan')->first();
-        $planOptions  = $planQuestion?->options ?? [];
+        $planOptions = $planQuestion?->options ?? [];
 
         return Inertia::render('SmsTemplate/Index', [
-            'templates'   => $this->service->getAll(),
-            'tenants'     => Tenant::orderBy('id')->get(['id', 'data']),
-            'events'      => collect(SmsTemplateEventEnum::cases())->map(fn($case) => [
+            'templates' => $this->service->getAll(),
+            'tenants' => Tenant::orderBy('id')->get(['id', 'data']),
+            'events' => collect(SmsTemplateEventEnum::cases())->map(fn ($case) => [
                 'value' => $case->value,
                 'label' => $case->label(),
             ]),
-            'variables'   => $variables,
+            'variables' => $variables,
             'planOptions' => $planOptions,
         ]);
     }
@@ -50,11 +47,11 @@ class SmsTemplateController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'      => 'required|string|max:255',
-            'message'   => 'required|string',
-            'channel'   => 'required|in:sms',
-            'event'     => 'required|string',
-            'plan_id'   => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'message' => 'required|string',
+            'channel' => 'required|in:sms',
+            'event' => 'required|string',
+            'plan_id' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
@@ -66,11 +63,11 @@ class SmsTemplateController extends Controller
     public function update(Request $request, SmsTemplate $smsTemplate)
     {
         $validated = $request->validate([
-            'name'      => 'required|string|max:255',
-            'message'   => 'required|string',
-            'channel'   => 'required|in:sms',
-            'event'     => 'required|string',
-            'plan_id'   => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'message' => 'required|string',
+            'channel' => 'required|in:sms',
+            'event' => 'required|string',
+            'plan_id' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
@@ -89,7 +86,7 @@ class SmsTemplateController extends Controller
     public function assignTenants(Request $request, SmsTemplate $smsTemplate)
     {
         $validated = $request->validate([
-            'tenants'   => 'array',
+            'tenants' => 'array',
             'tenants.*' => 'exists:tenants,id',
         ]);
 

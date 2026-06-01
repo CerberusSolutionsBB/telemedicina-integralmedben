@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Http\Services\Question;
 
@@ -11,7 +11,7 @@ class AssignTenantQuestionService
     {
         $tenant = Tenant::find($tenantId);
 
-        if (!$tenant) {
+        if (! $tenant) {
             throw new \Exception('Tenant não encontrado');
         }
 

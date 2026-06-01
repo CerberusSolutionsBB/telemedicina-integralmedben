@@ -12,23 +12,22 @@ class DashboardService
     public function getData(): array
     {
         $labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        $year   = now()->year;
-        $month  = now()->month;
+        $year = now()->year;
+        $month = now()->month;
 
-        $planQuestion   = Question::where('role', 'plan')->first();
+        $planQuestion = Question::where('role', 'plan')->first();
         $planQuestionId = $planQuestion?->id;
 
         // --- Cards ---
-        $totalTenants  = Tenant::count();
+        $totalTenants = Tenant::count();
         $totalPatients = CentralPatient::count();
-        $newThisMonth  = CentralPatient::whereYear('created_at', $year)
+        $newThisMonth = CentralPatient::whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
             ->count();
 
         $patientsWithPlan = $planQuestionId
-            ? CentralPatient::whereHas('answers', fn ($q) =>
-                $q->where('question_id', $planQuestionId)->whereNotNull('answer')->where('answer', '!=', '')
-              )->count()
+            ? CentralPatient::whereHas('answers', fn ($q) => $q->where('question_id', $planQuestionId)->whereNotNull('answer')->where('answer', '!=', '')
+            )->count()
             : 0;
 
         $patientsWithoutPlan = $totalPatients - $patientsWithPlan;
@@ -56,26 +55,25 @@ class DashboardService
             ->pluck('total', 'tenant_id');
 
         $tenantRanking = Tenant::get()->map(function ($tenant) use ($tenantCounts, $lastMonthCounts, $planQuestionId) {
-            $total     = $tenantCounts[$tenant->id] ?? 0;
+            $total = $tenantCounts[$tenant->id] ?? 0;
             $lastMonth = $lastMonthCounts[$tenant->id] ?? 0;
-            $growth    = $lastMonth > 0 ? round((($total - $lastMonth) / $lastMonth) * 100) : 0;
+            $growth = $lastMonth > 0 ? round((($total - $lastMonth) / $lastMonth) * 100) : 0;
 
             $withPlan = $planQuestionId
                 ? CentralPatient::where('tenant_id', $tenant->id)
-                    ->whereHas('answers', fn ($q) =>
-                        $q->where('question_id', $planQuestionId)->whereNotNull('answer')->where('answer', '!=', '')
+                    ->whereHas('answers', fn ($q) => $q->where('question_id', $planQuestionId)->whereNotNull('answer')->where('answer', '!=', '')
                     )->count()
                 : 0;
 
             return [
-                'id'           => $tenant->id,
-                'name'         => $tenant->name,
-                'subdomain'    => $tenant->tenant_domain,
-                'total'        => $total,
-                'with_plan'    => $withPlan,
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+                'subdomain' => $tenant->tenant_domain,
+                'total' => $total,
+                'with_plan' => $withPlan,
                 'without_plan' => $total - $withPlan,
-                'growth'       => $growth,
-                'is_active'    => !$tenant->deleted_at,
+                'growth' => $growth,
+                'is_active' => ! $tenant->deleted_at,
             ];
         })->sortByDesc('total')->values()->take(8)->toArray();
 
@@ -95,9 +93,9 @@ class DashboardService
             if ($total > 0) {
                 $planDistribution = $planCounts
                     ->map(fn ($row) => [
-                        'label'      => $row->answer,
-                        'value'      => $row->answer,
-                        'total'      => $row->total,
+                        'label' => $row->answer,
+                        'value' => $row->answer,
+                        'total' => $row->total,
                         'percentage' => round(($row->total / $total) * 100),
                     ])
                     ->sortByDesc('total')
@@ -107,14 +105,14 @@ class DashboardService
         }
 
         return [
-            'totalTenants'       => $totalTenants,
-            'totalPatients'      => $totalPatients,
-            'newThisMonth'       => $newThisMonth,
-            'patientsWithPlan'   => $patientsWithPlan,
-            'patientsWithoutPlan'=> $patientsWithoutPlan,
-            'monthlyGrowth'      => $monthlyGrowth,
-            'tenantRanking'      => $tenantRanking,
-            'planDistribution'   => $planDistribution,
+            'totalTenants' => $totalTenants,
+            'totalPatients' => $totalPatients,
+            'newThisMonth' => $newThisMonth,
+            'patientsWithPlan' => $patientsWithPlan,
+            'patientsWithoutPlan' => $patientsWithoutPlan,
+            'monthlyGrowth' => $monthlyGrowth,
+            'tenantRanking' => $tenantRanking,
+            'planDistribution' => $planDistribution,
         ];
     }
 }

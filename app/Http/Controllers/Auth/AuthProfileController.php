@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -25,8 +26,8 @@ class AuthProfileController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $request->user()->id,
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,'.$request->user()->id,
         ]);
 
         $request->user()->update($validated);
@@ -42,8 +43,8 @@ class AuthProfileController extends Controller
     public function updatePassword(Request $request)
     {
         $validated = $request->validate([
-            'current_password'      => 'required|string|current_password',
-            'password'              => 'required|string|min:8|confirmed',
+            'current_password' => 'required|string|current_password',
+            'password' => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string',
         ]);
 

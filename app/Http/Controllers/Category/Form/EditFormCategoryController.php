@@ -1,16 +1,17 @@
 <?php
+
 namespace App\Http\Controllers\Category\Form;
 
 use App\Http\Controllers\Controller;
 use App\Models\FormCategory;
-use Illuminate\Http\RedirectResponse; // ADICIONE ESTE
+use Illuminate\Database\Eloquent\ModelNotFoundException; // ADICIONE ESTE
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
-use \Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class EditFormCategoryController extends Controller
 {
-    public function __invoke(int $id): Response | RedirectResponse
+    public function __invoke(int $id): Response|RedirectResponse
     {
         try {
             $category = FormCategory::findOrFail($id);

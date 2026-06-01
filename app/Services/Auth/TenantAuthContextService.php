@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Auth;
 
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +13,7 @@ class TenantAuthContextService extends BaseAuthContextService
         $user = Auth::user();
 
         Log::debug('[TenantAuthContext] Iniciando verificação de contexto', [
-            'has_auth_user'       => (bool) $user,
+            'has_auth_user' => (bool) $user,
             'tenancy_initialized' => tenancy()->initialized,
         ]);
 
@@ -23,16 +24,16 @@ class TenantAuthContextService extends BaseAuthContextService
         }
 
         Log::debug('[TenantAuthContext] Usuário autenticado encontrado', [
-            'user_id'    => $user->id,
+            'user_id' => $user->id,
             'user_email' => $user->email,
         ]);
 
         if (! $this->isValidTenantUser($user->id, $user->email)) {
             Log::warning('[TenantAuthContext] Usuário inválido para o tenant atual', [
-                'user_id'    => $user->id,
+                'user_id' => $user->id,
                 'user_email' => $user->email,
-                'tenant'     => tenancy()->initialized ? tenant() : null,
-                'tenant_id'  => tenancy()->initialized ? tenant('id') : null,
+                'tenant' => tenancy()->initialized ? tenant() : null,
+                'tenant_id' => tenancy()->initialized ? tenant('id') : null,
             ]);
 
             // Remove o dd() — agora você loga e redireciona/logout
@@ -42,15 +43,15 @@ class TenantAuthContextService extends BaseAuthContextService
         }
 
         Log::info('[TenantAuthContext] Usuário validado com sucesso no tenant', [
-            'user_id'   => $user->id,
+            'user_id' => $user->id,
             'tenant_id' => tenant('id'),
         ]);
 
         return [
-            'user'   => $this->userContext($user),
-            'can'    => $this->permissions($user),
-            'check'  => true,
-            'type'   => 'tenant',
+            'user' => $this->userContext($user),
+            'can' => $this->permissions($user),
+            'check' => true,
+            'type' => 'tenant',
             'tenant' => [
                 'id' => tenant('id'),
             ],
@@ -60,8 +61,8 @@ class TenantAuthContextService extends BaseAuthContextService
     private function isValidTenantUser(int $userId, string $email): bool
     {
         Log::debug('[TenantAuthContext] Validando usuário no tenant', [
-            'user_id'             => $userId,
-            'email'               => $email,
+            'user_id' => $userId,
+            'email' => $email,
             'tenancy_initialized' => tenancy()->initialized,
         ]);
 
@@ -77,10 +78,10 @@ class TenantAuthContextService extends BaseAuthContextService
             ->exists();
 
         Log::debug('[TenantAuthContext] Resultado da validação no banco', [
-            'user_id'    => $userId,
-            'exists'     => $exists,
+            'user_id' => $userId,
+            'exists' => $exists,
             'connection' => DB::connection()->getName(),
-            'database'   => DB::connection()->getDatabaseName(),
+            'database' => DB::connection()->getDatabaseName(),
         ]);
 
         return $exists;

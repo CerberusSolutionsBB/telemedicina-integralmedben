@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,7 +14,7 @@ class ToggleVisibilityFormRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'form_id'   => 'required|exists:forms,id',
+            'form_id' => 'required|exists:forms,id',
             'is_public' => 'required|boolean',
         ];
     }
@@ -21,10 +22,10 @@ class ToggleVisibilityFormRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'form_id.required'   => 'O id do formulário é obrigatório.',
-            'form_id.exists'     => 'O formulário não existe.',
+            'form_id.required' => 'O id do formulário é obrigatório.',
+            'form_id.exists' => 'O formulário não existe.',
             'is_public.required' => 'O status de visibilidade é obrigatório.',
-            'is_public.boolean'  => 'O campo visibilidade deve ser verdadeiro ou falso.',
+            'is_public.boolean' => 'O campo visibilidade deve ser verdadeiro ou falso.',
         ];
     }
 

@@ -16,7 +16,7 @@ class AddSmsQuotaService
         DB::transaction(function () use ($tenant, $amount, $notes) {
             $global = SmsGlobalBalance::instance();
 
-            if (!$global->hasBalance($amount)) {
+            if (! $global->hasBalance($amount)) {
                 throw new \RuntimeException(
                     "Saldo global insuficiente. Disponível: {$global->balance} SMS."
                 );
@@ -26,11 +26,11 @@ class AddSmsQuotaService
             $global->refresh();
 
             SmsGlobalBalanceLog::create([
-                'amount'        => -$amount,
-                'type'          => 'distribute',
-                'tenant_id'     => $tenant->id,
-                'added_by'      => Auth::id(),
-                'notes'         => $notes,
+                'amount' => -$amount,
+                'type' => 'distribute',
+                'tenant_id' => $tenant->id,
+                'added_by' => Auth::id(),
+                'notes' => $notes,
                 'balance_after' => $global->balance,
             ]);
 
@@ -38,9 +38,9 @@ class AddSmsQuotaService
 
             SmsQuotaLog::create([
                 'tenant_id' => $tenant->id,
-                'amount'    => $amount,
-                'added_by'  => Auth::id(),
-                'notes'     => $notes,
+                'amount' => $amount,
+                'added_by' => Auth::id(),
+                'notes' => $notes,
             ]);
         });
     }

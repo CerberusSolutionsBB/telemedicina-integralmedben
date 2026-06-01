@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Tenant\Form;
 
 use App\Http\Controllers\Controller;
@@ -20,14 +21,15 @@ class FormIndexController extends Controller
             ->ativo()
             ->paginate(10)
             ->withQueryString();
+
         return Inertia::render('Tenant/Form/Index', [
-            'tenant'        => [
-                'id'   => $currentTenant->id,
+            'tenant' => [
+                'id' => $currentTenant->id,
                 'name' => $currentTenant->name ?? null,
             ],
             'tenantDetails' => $tenantDetails,
-            'tenantForms'   => $tenantForms,
-            'filters'       => [
+            'tenantForms' => $tenantForms,
+            'filters' => [
                 'search' => $request->input('search', ''),
                 'status' => $request->input('status', ''),
             ],

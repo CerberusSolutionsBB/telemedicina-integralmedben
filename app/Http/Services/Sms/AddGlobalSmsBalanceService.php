@@ -17,11 +17,11 @@ class AddGlobalSmsBalanceService
             $balance->refresh();
 
             SmsGlobalBalanceLog::create([
-                'amount'        => $amount,
-                'type'          => 'recharge',
-                'tenant_id'     => null,
-                'added_by'      => Auth::id(),
-                'notes'         => $notes,
+                'amount' => $amount,
+                'type' => 'recharge',
+                'tenant_id' => null,
+                'added_by' => Auth::id(),
+                'notes' => $notes,
                 'balance_after' => $balance->balance,
             ]);
 

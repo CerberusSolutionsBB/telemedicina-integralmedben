@@ -1,10 +1,11 @@
 <?php
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -12,14 +13,20 @@ use Illuminate\Support\Str;
 class Form extends Model
 {
     use HasFactory, SoftDeletes;
+
     protected $connection = 'mysql';
 
-    public const STATUS_RASCUNHO  = 'rascunho';
-    public const STATUS_ATIVO     = 'ativo';
-    public const STATUS_PAUSADO   = 'pausado';
+    public const STATUS_RASCUNHO = 'rascunho';
+
+    public const STATUS_ATIVO = 'ativo';
+
+    public const STATUS_PAUSADO = 'pausado';
+
     public const STATUS_ENCERRADO = 'encerrado';
-    protected $table              = 'forms';
-    protected $fillable           = [
+
+    protected $table = 'forms';
+
+    protected $fillable = [
         'code',
         'categoria_id',
         'credencia_cluble_id',
@@ -41,6 +48,7 @@ class Form extends Model
         'observacao',
         'status',
     ];
+
     protected $appends = [
         'logo_url',
         'expires_at_br',
@@ -48,17 +56,18 @@ class Form extends Model
         'updated_at_br',
         'atual_at_br',
     ];
+
     protected $casts = [
-        'is_public'       => 'boolean',
-        'published_at'    => 'datetime',
-        'expires_at'      => 'datetime',
-        'settings'        => 'array',
+        'is_public' => 'boolean',
+        'published_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'settings' => 'array',
         'responses_count' => 'integer',
-        'primary_color'   => 'string',
+        'primary_color' => 'string',
         'secondary_color' => 'string',
-        'created_at'      => 'datetime',
-        'updated_at'      => 'datetime',
-        'deleted_at'      => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function getAtualAtBrAttribute()
@@ -70,6 +79,7 @@ class Form extends Model
     {
         return $this->created_at ? $this->created_at->format('d/m/Y H:i') : null;
     }
+
     public function getUpdatedAtBrAttribute()
     {
         return $this->updated_at ? $this->updated_at->format('d/m/Y H:i') : null;
@@ -79,33 +89,37 @@ class Form extends Model
     {
         return $this->expires_at ? $this->expires_at->format('d/m/Y H:i') : null;
     }
-    protected function logoUrl(): \Illuminate\Database\Eloquent\Casts\Attribute
+
+    protected function logoUrl(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             get: function () {
                 $logoArquivo = $this->arquivos()
                     ->wherePivot('tipo', 'logo')
                     ->first();
                 if ($logoArquivo && $logoArquivo->path) {
-                    return asset('storage/' . $logoArquivo->path);
+                    return asset('storage/'.$logoArquivo->path);
                 }
+
                 return null;
             },
         );
     }
+
     public function getLogosAttribute()
     {
         return $this->arquivos()
             ->wherePivot('tipo', 'logo')
             ->get()
-            ->map(fn($arq) => [
-                'id'      => $arq->id,
-                'url'     => asset('storage/' . $arq->path),
-                'nome'    => $arq->nome,
-                'tipo'    => $arq->pivot->tipo,
+            ->map(fn ($arq) => [
+                'id' => $arq->id,
+                'url' => asset('storage/'.$arq->path),
+                'nome' => $arq->nome,
+                'tipo' => $arq->pivot->tipo,
                 'posicao' => $arq->pivot->posicao,
             ]);
     }
+
     protected static function boot(): void
     {
         parent::boot();
@@ -126,33 +140,40 @@ class Form extends Model
             }
         });
     }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
+
     public function categoria(): BelongsTo
     {
         return $this->belongsTo(FormCategory::class, 'categoria_id');
     }
+
     public function lei(): BelongsTo
     {
         return $this->belongsTo(Lei::class, 'lei_id');
     }
+
     public function fields(): HasMany
     {
         return $this->hasMany(FormField::class)->orderBy('order');
     }
+
     public function responses(): HasMany
     {
         return $this->hasMany(FormResponse::class);
     }
+
     public function getColorsAttribute(): array
     {
         return [
-            'primary'   => $this->primary_color ?? '#22d3ee',
+            'primary' => $this->primary_color ?? '#22d3ee',
             'secondary' => $this->secondary_color ?? '#06b6d4',
         ];
     }
+
     public function arquivos()
     {
         return $this->belongsToMany(Arquivo::class, 'form_arquivos', 'form_id', 'arquivo_id');
@@ -171,6 +192,6 @@ class Form extends Model
             'form_id',
             'tenant_id'
         )
-        ->withTimestamps();
+            ->withTimestamps();
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Siprov;
 
 use App\Data\SiprovAssociadoQueryData;

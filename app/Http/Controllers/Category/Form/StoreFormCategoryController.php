@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Category\Form;
 
 use App\Http\Controllers\Controller;
@@ -21,7 +22,7 @@ class StoreFormCategoryController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Erro ao criar categoria: ' . $e->getMessage());
+                ->with('error', 'Erro ao criar categoria: '.$e->getMessage());
         }
     }
 }

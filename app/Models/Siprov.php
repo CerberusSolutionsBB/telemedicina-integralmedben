@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -9,10 +10,13 @@ class Siprov extends Model
 {
     use SoftDeletes;
 
-    public const STATUS_PENDING    = 'pending';
+    public const STATUS_PENDING = 'pending';
+
     public const STATUS_PROCESSING = 'processing';
-    public const STATUS_SUCCESS    = 'success';
-    public const STATUS_FAILED     = 'failed';
+
+    public const STATUS_SUCCESS = 'success';
+
+    public const STATUS_FAILED = 'failed';
 
     protected $fillable = [
         'user_id',
@@ -39,17 +43,17 @@ class Siprov extends Model
     ];
 
     protected $casts = [
-        'ativo'              => 'boolean',
-        'data_nascimento'    => 'date',
-        'integrated_at'      => 'datetime',
-        'deleted_at'         => 'datetime',
+        'ativo' => 'boolean',
+        'data_nascimento' => 'date',
+        'integrated_at' => 'datetime',
+        'deleted_at' => 'datetime',
 
-        'payload_associado'  => 'array',
-        'payload_beneficio'  => 'array',
+        'payload_associado' => 'array',
+        'payload_beneficio' => 'array',
         'response_associado' => 'array',
         'response_beneficio' => 'array',
-        'associado'          => 'array',
-        'beneficio'          => 'array',
+        'associado' => 'array',
+        'beneficio' => 'array',
     ];
 
     /*
@@ -72,20 +76,20 @@ class Siprov extends Model
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            self::STATUS_PENDING    => 'Pendente',
+            self::STATUS_PENDING => 'Pendente',
             self::STATUS_PROCESSING => 'Processando',
-            self::STATUS_SUCCESS    => 'Sucesso',
-            self::STATUS_FAILED     => 'Falhou',
-            default                 => 'Desconhecido',
+            self::STATUS_SUCCESS => 'Sucesso',
+            self::STATUS_FAILED => 'Falhou',
+            default => 'Desconhecido',
         };
     }
 
     public function getPlanoLabelAttribute(): string
     {
         return match ((int) $this->cod_plano) {
-            331385  => 'Clínica Familiar',
-            331384  => 'Clínica Individual',
-            331386  => 'Saúde Mental',
+            331385 => 'Clínica Familiar',
+            331384 => 'Clínica Individual',
+            331386 => 'Saúde Mental',
             default => 'Plano não identificado',
         };
     }

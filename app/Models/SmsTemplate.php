@@ -24,7 +24,7 @@ class SmsTemplate extends Model
     ];
 
     protected $casts = [
-        'event'     => SmsTemplateEventEnum::class,
+        'event' => SmsTemplateEventEnum::class,
         'variables' => 'array',
         'is_active' => 'boolean',
     ];
@@ -39,7 +39,7 @@ class SmsTemplate extends Model
         $message = $this->message;
 
         foreach ($data as $key => $value) {
-            $message = str_replace('{' . $key . '}', $value, $message);
+            $message = str_replace('{'.$key.'}', $value, $message);
         }
 
         return $message;

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests\Lei;
 
 use App\Models\Lei;
@@ -17,9 +18,9 @@ class UpdateLeiRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'  => ['required', 'string', 'min:3', 'max:255'],
-            'text'   => ['required', 'string', 'min:10'],
-            'type'   => ['required', 'string', Rule::in(Lei::TIPOS_VALIDOS)],
+            'title' => ['required', 'string', 'min:3', 'max:255'],
+            'text' => ['required', 'string', 'min:10'],
+            'type' => ['required', 'string', Rule::in(Lei::TIPOS_VALIDOS)],
             'status' => ['required', 'string', 'in:rascunho,ativo,inativo'],
             // 'user_id' => ['nullable', 'integer', 'exists:users,id'], // opcional
         ];
@@ -37,24 +38,24 @@ class UpdateLeiRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.required'  => 'O título da lei é obrigatório.',
-            'title.min'       => 'O título deve ter pelo menos :min caracteres.',
-            'title.max'       => 'O título não pode exceder :max caracteres.',
-            'text.required'   => 'O texto da lei é obrigatório.',
-            'text.min'        => 'O texto deve ter pelo menos :min caracteres.',
-            'type.required'   => 'O tipo de documento é obrigatório.',
-            'type.in'         => 'O tipo deve ser um dos seguintes: ' . implode(', ', Lei::TIPOS_VALIDOS),
+            'title.required' => 'O título da lei é obrigatório.',
+            'title.min' => 'O título deve ter pelo menos :min caracteres.',
+            'title.max' => 'O título não pode exceder :max caracteres.',
+            'text.required' => 'O texto da lei é obrigatório.',
+            'text.min' => 'O texto deve ter pelo menos :min caracteres.',
+            'type.required' => 'O tipo de documento é obrigatório.',
+            'type.in' => 'O tipo deve ser um dos seguintes: '.implode(', ', Lei::TIPOS_VALIDOS),
             'status.required' => 'O status é obrigatório.',
-            'status.in'       => 'O status deve ser: rascunho, ativo ou inativo.',
+            'status.in' => 'O status deve ser: rascunho, ativo ou inativo.',
         ];
     }
 
     public function attributes(): array
     {
         return [
-            'title'  => 'título',
-            'text'   => 'conteúdo',
-            'type'   => 'tipo de documento',
+            'title' => 'título',
+            'text' => 'conteúdo',
+            'type' => 'tipo de documento',
             'status' => 'situação',
         ];
     }

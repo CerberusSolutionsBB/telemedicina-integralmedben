@@ -1,15 +1,19 @@
 <?php
+
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TenantForm extends Model
 {
     use SoftDeletes;
+
     protected $connection = 'mysql';
 
     public const ORIGEM_CENTRAL = 'CENTRAL';
+
     public const ORIGEM_CLIENTE = 'CLIENTE';
 
     protected $table = 'tenants_forms';
@@ -25,8 +29,8 @@ class TenantForm extends Model
     ];
 
     protected $casts = [
-        'ativo'      => 'boolean',
-        'principal'  => 'boolean',
+        'ativo' => 'boolean',
+        'principal' => 'boolean',
         'expires_at' => 'datetime',
 
     ];
@@ -41,7 +45,7 @@ class TenantForm extends Model
             return null;
         }
 
-        return \Carbon\Carbon::parse($this->expires_at)->format('d/m/Y H:i');
+        return Carbon::parse($this->expires_at)->format('d/m/Y H:i');
     }
 
     public function tenant()

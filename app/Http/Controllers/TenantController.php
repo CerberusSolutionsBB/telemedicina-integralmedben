@@ -9,8 +9,6 @@ use App\Http\Services\Tenant\TenantDeleteService;
 use App\Http\Services\Tenant\TenantService;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 
 class TenantController extends Controller
 {
@@ -20,6 +18,7 @@ class TenantController extends Controller
         private TenantDeleteService $tenantDeleteService,
         private AddSmsQuotaService $addSmsQuotaService,
     ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -72,7 +71,7 @@ class TenantController extends Controller
     {
         $request->validate([
             'amount' => 'required|integer|min:1|max:10000',
-            'notes'  => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:255',
         ]);
 
         try {

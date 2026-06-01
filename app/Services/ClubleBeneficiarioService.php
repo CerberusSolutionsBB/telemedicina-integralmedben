@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\CredenciasCluble;
@@ -19,46 +20,47 @@ class ClubleBeneficiarioService
 
         if (! $credencial || $credencial->isTokenExpired()) {
             Log::error('Nenhuma credencial ativa disponível para cadastrar beneficiário');
+
             return null;
         }
 
         try {
             $response = Http::withHeaders([
-                'Accept'        => 'application/json',
-                'Content-Type'  => 'application/json',
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
                 'Authorization' => $credencial->getAuthorizationHeader(),
             ])->post("{$this->baseUrl}/users", $this->formatarDados($dados));
 
             if ($response->successful()) {
                 return [
                     'success' => true,
-                    'data'    => $response->json(),
-                    'status'  => $response->status(),
+                    'data' => $response->json(),
+                    'status' => $response->status(),
                 ];
             }
 
             // Log do erro
             Log::error('Falha ao cadastrar beneficiário na API Clube', [
-                'status'         => $response->status(),
-                'body'           => $response->body(),
+                'status' => $response->status(),
+                'body' => $response->body(),
                 'dados_enviados' => $dados,
             ]);
 
             return [
                 'success' => false,
-                'error'   => $response->json(),
-                'status'  => $response->status(),
+                'error' => $response->json(),
+                'status' => $response->status(),
             ];
 
         } catch (\Exception $e) {
             Log::error('Erro ao cadastrar beneficiário', [
                 'message' => $e->getMessage(),
-                'dados'   => $dados,
+                'dados' => $dados,
             ]);
 
             return [
                 'success' => false,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ];
         }
     }
@@ -69,9 +71,9 @@ class ClubleBeneficiarioService
     private function formatarDados(array $dados): array
     {
         $formatado = [
-            'name'     => $dados['name'],
-            'email'    => $dados['email'],
-            'cpf'      => $this->limparCpf($dados['cpf']),
+            'name' => $dados['name'],
+            'email' => $dados['email'],
+            'cpf' => $this->limparCpf($dados['cpf']),
             'password' => $dados['password'] ?? $this->gerarSenhaTemporaria(),
         ];
 

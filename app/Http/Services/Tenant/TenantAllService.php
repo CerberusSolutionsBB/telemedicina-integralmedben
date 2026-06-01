@@ -12,15 +12,14 @@ class TenantAllService
     {
         $tenants = Tenant::query()
             ->with([
-                'domain' => fn ($query) =>
-                    $query->select('id', 'tenant_id', 'domain'),
-                'questions'
+                'domain' => fn ($query) => $query->select('id', 'tenant_id', 'domain'),
+                'questions',
             ])
             ->withCount([
                 'centralPatients',
-                'smsLogs as sms_sent_count'    => fn ($q) => $q->where('status', 'sent'),
+                'smsLogs as sms_sent_count' => fn ($q) => $q->where('status', 'sent'),
                 'smsLogs as sms_pending_count' => fn ($q) => $q->where('status', 'pending'),
-                'smsLogs as sms_failed_count'  => fn ($q) => $q->where('status', 'failed'),
+                'smsLogs as sms_failed_count' => fn ($q) => $q->where('status', 'failed'),
             ])
             ->latest()
             ->paginate();
@@ -29,7 +28,7 @@ class TenantAllService
 
         return Inertia::render('Credenciados/Index', [
             'tenants' => $tenants,
-            'questions' => $questions
+            'questions' => $questions,
         ]);
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
@@ -21,22 +22,22 @@ class UpdateFormController extends Controller
             $validated = $request->validated();
 
             $form->update([
-                'title'                   => $validated['title'],
-                'description'             => $validated['description'] ?? null,
-                'categoria_id'            => $validated['categoria_id'] ?? null,
-                'lei_id'                  => $validated['lei_id'] ?? null,
-                'status'                  => $validated['status'],
-                'is_public'               => $validated['is_public'] ?? false,
-                'published_at'            => $validated['published_at'] ?? null,
-                'primary_color'           => $validated['primary_color'] ?? '#22d3ee',
-                'secondary_color'         => $validated['secondary_color'] ?? '#06b6d4',
-                'expires_at'              => $validated['expires_at'] ?? null,
-                'response_limit'          => $validated['response_limit'] ?? null,
-                'settings'                => $validated['settings'] ?? null,
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'categoria_id' => $validated['categoria_id'] ?? null,
+                'lei_id' => $validated['lei_id'] ?? null,
+                'status' => $validated['status'],
+                'is_public' => $validated['is_public'] ?? false,
+                'published_at' => $validated['published_at'] ?? null,
+                'primary_color' => $validated['primary_color'] ?? '#22d3ee',
+                'secondary_color' => $validated['secondary_color'] ?? '#06b6d4',
+                'expires_at' => $validated['expires_at'] ?? null,
+                'response_limit' => $validated['response_limit'] ?? null,
+                'settings' => $validated['settings'] ?? null,
                 'btn_confirmar_descricao' => $validated['btn_confirmar_descricao'] ?? null,
-                'sub_descricao'           => $validated['sub_descricao'] ?? null,
-                'observacao'              => $validated['observacao'] ?? null,
-                'credencia_cluble_id'     => $validated['credencia_cluble_id'] ?? null,
+                'sub_descricao' => $validated['sub_descricao'] ?? null,
+                'observacao' => $validated['observacao'] ?? null,
+                'credencia_cluble_id' => $validated['credencia_cluble_id'] ?? null,
             ]);
             $this->syncLogo($form, $request, $validated);
             if (isset($validated['fields'])) {
@@ -52,15 +53,17 @@ class UpdateFormController extends Controller
             Log::error('Erro ao atualizar formulário', [
                 'form_id' => $form->id,
                 'user_id' => $request->user()->id,
-                'error'   => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Erro ao atualizar formulário: ' . $e->getMessage());
+                ->with('error', 'Erro ao atualizar formulário: '.$e->getMessage());
         }
     }
+
     private function syncLogo(Form $form, $request, array $validated): void
     {
 
@@ -69,6 +72,7 @@ class UpdateFormController extends Controller
             if ($logoAtual) {
                 $this->removerLogo($form, $logoAtual);
             }
+
             return;
         }
         if ($request->hasFile('logo') && $request->file('logo')->isValid()) {
@@ -77,6 +81,7 @@ class UpdateFormController extends Controller
             }
             $posicao = $validated['logo_posicao'] ?? 'centro';
             $this->processarLogo($form, $request->file('logo'), $posicao, $request->user()->id);
+
             return;
         }
         if ($logoAtual && isset($validated['logo_posicao'])) {
@@ -90,6 +95,7 @@ class UpdateFormController extends Controller
         }
 
     }
+
     private function removerLogo(Form $form, FormArquivo $formArquivo): void
     {
         $arquivo = $formArquivo->arquivo;
@@ -103,23 +109,24 @@ class UpdateFormController extends Controller
             } catch (\Exception $e) {
                 Log::error('Erro ao remover arquivo do storage', [
                     'arquivo_id' => $arquivo->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
         $formArquivo->delete();
         Log::info('Logo removido do formulário', ['form_id' => $form->id]);
     }
-    private function processarLogo(Form $form, $file, string $posicao = 'centro', int $userId): void
+
+    private function processarLogo(Form $form, $file, string $posicao, int $userId): void
     {
-        $nomeOriginal     = $file->getClientOriginalName();
-        $extensao         = $file->getClientOriginalExtension();
-        $mimeType         = $file->getMimeType();
-        $tamanho          = $file->getSize();
-        $nomeArmazenado   = Str::uuid() . '.' . $extensao;
-        $caminhoDiretorio = 'forms/logos/' . $form->id;
-        $caminhoCompleto  = $caminhoDiretorio . '/' . $nomeArmazenado;
-        $disk             = 'public';
+        $nomeOriginal = $file->getClientOriginalName();
+        $extensao = $file->getClientOriginalExtension();
+        $mimeType = $file->getMimeType();
+        $tamanho = $file->getSize();
+        $nomeArmazenado = Str::uuid().'.'.$extensao;
+        $caminhoDiretorio = 'forms/logos/'.$form->id;
+        $caminhoCompleto = $caminhoDiretorio.'/'.$nomeArmazenado;
+        $disk = 'public';
         $this->criarDiretorioSeNaoExistir($caminhoDiretorio, $disk);
         $file->storeAs($caminhoDiretorio, $nomeArmazenado, $disk);
         $arquivosExistentes = FormArquivo::where('form_id', $form->id)->get();
@@ -132,22 +139,23 @@ class UpdateFormController extends Controller
         }
 
         $arquivo = Arquivo::create([
-            'nome_original'   => $nomeOriginal,
+            'nome_original' => $nomeOriginal,
             'nome_armazenado' => $nomeArmazenado,
-            'caminho'         => $caminhoCompleto,
-            'extensao'        => $extensao,
-            'mime_type'       => $mimeType,
-            'tamanho'         => $tamanho,
-            'disk'            => $disk,
-            'user_id'         => $userId,
+            'caminho' => $caminhoCompleto,
+            'extensao' => $extensao,
+            'mime_type' => $mimeType,
+            'tamanho' => $tamanho,
+            'disk' => $disk,
+            'user_id' => $userId,
         ]);
         FormArquivo::create([
             'arquivo_id' => $arquivo->id,
-            'form_id'    => $form->id,
-            'tipo'       => FormArquivo::TIPO_LOGO,
-            'posicao'    => $posicao,
+            'form_id' => $form->id,
+            'tipo' => FormArquivo::TIPO_LOGO,
+            'posicao' => $posicao,
         ]);
     }
+
     private function criarDiretorioSeNaoExistir(string $caminho, string $disk): void
     {
         $storage = Storage::disk($disk);
@@ -160,20 +168,21 @@ class UpdateFormController extends Controller
             // Log::info("Diretório criado: {$caminho} no disco {$disk}");
         }
     }
+
     private function syncFields(Form $form, array $fields): void
     {
         $form->fields()->delete();
         foreach ($fields as $index => $fieldData) {
             $form->fields()->create([
-                'type'        => $fieldData['type'],
-                'label'       => $fieldData['label'],
+                'type' => $fieldData['type'],
+                'label' => $fieldData['label'],
                 'placeholder' => $fieldData['placeholder'] ?? null,
-                'required'    => $fieldData['required'] ?? false,
-                'options'     => in_array($fieldData['type'], ['select', 'checkbox', 'radio'])
+                'required' => $fieldData['required'] ?? false,
+                'options' => in_array($fieldData['type'], ['select', 'checkbox', 'radio'])
                     ? ($fieldData['options'] ?? [])
                     : [],
-                'help_text'   => $fieldData['help_text'] ?? null,
-                'order'       => $fieldData['order'] ?? $index,
+                'help_text' => $fieldData['help_text'] ?? null,
+                'order' => $fieldData['order'] ?? $index,
             ]);
         }
     }

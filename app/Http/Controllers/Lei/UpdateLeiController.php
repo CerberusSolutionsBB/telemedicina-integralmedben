@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Lei;
 
 use App\Http\Controllers\Controller;
@@ -26,15 +27,16 @@ class UpdateLeiController extends Controller
 
             return redirect()
                 ->route('leis.index', $lei)
-                ->with('success', 'Lei "' . $lei->title . '" atualizada com sucesso!');
+                ->with('success', 'Lei "'.$lei->title.'" atualizada com sucesso!');
         } catch (Throwable $e) {
             DB::rollBack();
             Log::error('Erro ao atualizar lei', [
-                'error'  => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'lei_id' => $lei->id,
-                'data'   => $request->validated(),
-                'user'   => auth()->id(),
+                'data' => $request->validated(),
+                'user' => auth()->id(),
             ]);
+
             return redirect()
                 ->back()
                 ->withInput()

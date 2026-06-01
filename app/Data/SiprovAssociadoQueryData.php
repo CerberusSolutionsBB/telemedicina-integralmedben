@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Data;
 
 use Illuminate\Support\Facades\Log;
@@ -48,14 +49,14 @@ class SiprovAssociadoQueryData
         } catch (Throwable $e) {
             Log::critical('SIPROV | Erro ao montar query params associado', [
                 'message' => $e->getMessage(),
-                'dto'     => [
+                'dto' => [
                     'situacaoBeneficio' => $this->situacaoBeneficio,
-                    'cpfCnpj'           => $this->cpfCnpj,
-                    'codigoIntegracao'  => $this->codigoIntegracao,
-                    'nomePessoa'        => $this->nomePessoa,
+                    'cpfCnpj' => $this->cpfCnpj,
+                    'codigoIntegracao' => $this->codigoIntegracao,
+                    'nomePessoa' => $this->nomePessoa,
                 ],
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             throw $e;

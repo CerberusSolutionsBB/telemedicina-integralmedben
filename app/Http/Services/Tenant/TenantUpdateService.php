@@ -41,7 +41,7 @@ class TenantUpdateService
         if (isset($data['subdomain']) && $data['subdomain'] !== '') {
             $domain = $tenant->domain()->first();
             if ($domain) {
-                $newDomain = $data['subdomain'] . '.' . EnvironmentEnum::currentDomains()[0];
+                $newDomain = $data['subdomain'].'.'.EnvironmentEnum::currentDomains()[0];
                 $domain->update(['domain' => $newDomain]);
             }
         }

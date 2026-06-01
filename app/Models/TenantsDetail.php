@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -8,6 +9,7 @@ use Illuminate\Support\Str;
 class TenantsDetail extends Model
 {
     use SoftDeletes;
+
     protected $connection = 'mysql';
 
     protected $table = 'tenants_details';
@@ -28,7 +30,7 @@ class TenantsDetail extends Model
     ];
 
     protected $casts = [
-        'cor_primaria'   => 'string',
+        'cor_primaria' => 'string',
         'cor_secundaria' => 'string',
     ];
 
@@ -61,5 +63,4 @@ class TenantsDetail extends Model
 
         return Str::upper(Str::substr($limpo, 0, 3));
     }
-
 }

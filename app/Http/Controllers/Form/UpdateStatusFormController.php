@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
@@ -22,13 +23,13 @@ class UpdateStatusFormController extends Controller
             ],
         ]);
 
-        $newStatus     = $validated['status'];
+        $newStatus = $validated['status'];
         $currentStatus = $form->status;
 
         $this->validateStatusTransition($currentStatus, $newStatus);
 
         $form->update([
-            'status'       => $newStatus,
+            'status' => $newStatus,
             'activated_at' => $newStatus === 'ativo' ? now() : $form->activated_at,
         ]);
 

@@ -10,29 +10,29 @@ return new class extends Migration
         // Cria a pergunta "Cidade" como sistema se ainda não existir
         $exists = DB::table('questions')->where('role', 'city')->exists();
 
-        if (!$exists) {
+        if (! $exists) {
             $questionId = DB::table('questions')->insertGetId([
-                'title'       => 'Cidade',
-                'type'        => 'text',
+                'title' => 'Cidade',
+                'type' => 'text',
                 'is_required' => false,
-                'is_unique'   => false,
-                'is_active'   => true,
-                'role'        => 'city',
-                'created_at'  => now(),
-                'updated_at'  => now(),
+                'is_unique' => false,
+                'is_active' => true,
+                'role' => 'city',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             // Vincula a todos os tenants existentes
             $tenantIds = DB::table('tenants')->whereNull('deleted_at')->pluck('id');
 
             $rows = $tenantIds->map(fn ($id) => [
-                'tenant_id'   => $id,
+                'tenant_id' => $id,
                 'question_id' => $questionId,
-                'created_at'  => now(),
-                'updated_at'  => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ])->all();
 
-            if (!empty($rows)) {
+            if (! empty($rows)) {
                 DB::table('tenant_questions')->insert($rows);
             }
         }

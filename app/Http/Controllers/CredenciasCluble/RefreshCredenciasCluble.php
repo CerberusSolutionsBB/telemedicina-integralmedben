@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\CredenciasCluble;
 
 use App\Http\Controllers\Controller;

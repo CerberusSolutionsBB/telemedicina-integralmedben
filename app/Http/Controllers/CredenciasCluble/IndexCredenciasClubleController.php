@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\CredenciasCluble;
 
 use App\Http\Controllers\Controller;
@@ -11,7 +12,7 @@ class IndexCredenciasClubleController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $search     = $request->input('search');
+        $search = $request->input('search');
         $categories = CredenciasCluble::query()
             ->when($search, function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%")
@@ -20,9 +21,10 @@ class IndexCredenciasClubleController extends Controller
             ->latest()
             ->paginate(15)
             ->withQueryString();
+
         return Inertia::render('Config/CredenciasCluble/Index', [
             'credencias' => $categories,
-            'filters'    => ['search' => $search],
+            'filters' => ['search' => $search],
         ]);
     }
 }

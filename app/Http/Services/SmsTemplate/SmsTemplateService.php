@@ -12,8 +12,7 @@ class SmsTemplateService
         private UpdateSmsTemplateService $updateService,
         private DeleteSmsTemplateService $deleteService,
         private AssignTenantSmsTemplateService $assignService,
-    ) {
-    }
+    ) {}
 
     public function getAll()
     {

@@ -12,7 +12,7 @@ class UpdateQuestionService
         $options = null;
 
         if ($data['type'] === 'option' && isset($data['options'])) {
-            $options = collect($data['options'])->map(fn($label, $index) => [
+            $options = collect($data['options'])->map(fn ($label, $index) => [
                 'label' => $label,
                 'value' => Str::slug($label, '_'),
                 'order' => $index,

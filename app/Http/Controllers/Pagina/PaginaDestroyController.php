@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Pagina;
 
 use App\Http\Controllers\Controller;
@@ -24,7 +25,7 @@ class PaginaDestroyController extends Controller
                 ->where('tenant_id', $tenant->id)
                 ->delete();
             if ($detail?->path_arquivos) {
-                $basePath = storage_path('app/' . $detail->path_arquivos);
+                $basePath = storage_path('app/'.$detail->path_arquivos);
                 if (File::exists($basePath)) {
                     File::deleteDirectory($basePath);
                 }
@@ -37,14 +38,16 @@ class PaginaDestroyController extends Controller
             method_exists($tenant, 'forceDelete')
                 ? $tenant->forceDelete()
                 : $tenant->delete();
+
             return redirect()
                 ->route('pagina.index')
                 ->with('message', 'Tenant removido permanentemente com sucesso!')
                 ->with('type', 'success');
         } catch (Throwable $e) {
             report($e);
+
             return back()->withErrors([
-                'general' => 'Erro ao remover tenant: ' . $e->getMessage(),
+                'general' => 'Erro ao remover tenant: '.$e->getMessage(),
             ]);
         }
     }

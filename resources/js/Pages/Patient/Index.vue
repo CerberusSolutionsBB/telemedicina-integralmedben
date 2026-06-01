@@ -3,7 +3,10 @@ import { ref, computed } from "vue";
 import { Head, router, usePage } from "@inertiajs/vue3";
 import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import PatientsTable from "@/Components/TablePatients.vue";
-import PatientDialog from "@/Components/PatientDialog.vue";
+import PatientImportDialog from "@/Components/PatientImportDialog.vue";
+import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal.vue";
+import { Button } from "@/Components/ui/button";
+import { Plus, Download, Upload, FileDown } from "lucide-vue-next";
 
 const props = defineProps({
     patients: {
@@ -31,26 +34,37 @@ const props = defineProps({
 const page = usePage();
 
 const activeTab = ref("current");
-const openDialog = ref(false);
-const selectedPatient = ref(null);
+const openImportDialog = ref(false);
 
 const currentPatientsCount = computed(() => props.patients?.total ?? props.patients?.data?.length ?? 0);
 const newPatientsCount = computed(() => props.newPatients?.total ?? props.newPatients?.data?.length ?? 0);
 
-const openEdit = (patient) => {
-    selectedPatient.value = patient;
-    openDialog.value = true;
+const deleteModal = ref({
+    show: false,
+    patient: null,
+    isProcessing: false,
+});
+
+const confirmDelete = (patient) => {
+    deleteModal.value = { show: true, patient, isProcessing: false };
 };
 
-const deletePatient = (patient) => {
-    if (!confirm(`Deseja excluir este paciente?`)) return;
+const cancelDelete = () => {
+    deleteModal.value.show = false;
+};
 
-    router.delete(route("cpanel.patients.destroy", patient.id));
+const confirmDeletePatient = () => {
+    deleteModal.value.isProcessing = true;
+    router.delete(route("cpanel.patients.destroy", deleteModal.value.patient.id), {
+        onFinish: () => {
+            deleteModal.value.show = false;
+            deleteModal.value.isProcessing = false;
+        },
+    });
 };
 </script>
 
 <template>
-
     <Head title="Pacientes" />
 
     <TenantAdminLayout :tenant-name="tenantName" :tenant-photo="tenantPhoto">
@@ -62,6 +76,41 @@ const deletePatient = (patient) => {
                 <p class="text-sm text-gray-500">
                     Gerencie os pacientes atuais e novos cadastros.
                 </p>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <Button size="sm" @click="router.visit(route('patients.create'))">
+                        <Plus class="w-4 h-4 mr-1" />
+                        Novo Paciente
+                    </Button>
+                    <Button size="sm" variant="outline" @click="openImportDialog = true">
+                        <Upload class="w-4 h-4 mr-1" />
+                        Importar
+                    </Button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a :href="route('patients.template', 'csv')"
+                        class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        <FileDown class="w-4 h-4" />
+                        Template CSV
+                    </a>
+                    <a :href="route('patients.template', 'xlsx')"
+                        class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        <FileDown class="w-4 h-4" />
+                        Template XLSX
+                    </a>
+                    <a :href="route('patients.export', 'csv')"
+                        class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        <Download class="w-4 h-4" />
+                        CSV
+                    </a>
+                    <a :href="route('patients.export', 'xlsx')"
+                        class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                        <Download class="w-4 h-4" />
+                        XLSX
+                    </a>
+                </div>
             </div>
 
             <div class="bg-white rounded-lg shadow border border-gray-100">
@@ -94,15 +143,27 @@ const deletePatient = (patient) => {
                 </div>
 
                 <div v-show="activeTab === 'current'" class="p-4">
-                    <PatientsTable :patients="patients" @edit-patient="openEdit" @delete-patient="deletePatient" />
+                    <PatientsTable :patients="patients" @delete-patient="confirmDelete" />
                 </div>
 
                 <div v-show="activeTab === 'new'" class="p-4">
-                    <PatientsTable :patients="newPatients" @edit-patient="openEdit" @delete-patient="deletePatient" />
+                    <PatientsTable :patients="newPatients" @delete-patient="confirmDelete" />
                 </div>
             </div>
         </div>
     </TenantAdminLayout>
 
-    <PatientDialog v-model:open="openDialog" :patient="selectedPatient" />
+    <PatientImportDialog v-model:open="openImportDialog" />
+
+    <ConfirmDeleteModal
+        :show="deleteModal.show"
+        title="Excluir Paciente"
+        :message="`Tem certeza que deseja excluir o paciente ${deleteModal.patient?.nome || ''}?`"
+        :item-name="deleteModal.patient?.nome || ''"
+        confirm-text="Sim, Excluir"
+        cancel-text="Cancelar"
+        :is-processing="deleteModal.isProcessing"
+        @confirm="confirmDeletePatient"
+        @close="cancelDelete"
+    />
 </template>

@@ -11,8 +11,7 @@ class PublicFormController extends Controller
 {
     public function __construct(private PublicFormService $publicFormService) {}
 
-    public function index() {
-    }
+    public function index() {}
 
     public function show()
     {
@@ -26,7 +25,7 @@ class PublicFormController extends Controller
             'tenantPhoto' => $tenant->photo_url,
             'tenantBgColor' => $tenant->bg_color,
             'tenantButtonColor' => $tenant->button_color,
-            'tenantName' => $tenant->name
+            'tenantName' => $tenant->name,
         ]);
     }
 

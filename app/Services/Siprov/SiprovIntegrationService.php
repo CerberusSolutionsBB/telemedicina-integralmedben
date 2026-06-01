@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Siprov;
 
 use App\Data\SiprovAssociadoData;

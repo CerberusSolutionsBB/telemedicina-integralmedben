@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class SmsGlobalBalanceLog extends Model
 {
     protected $connection = 'mysql';
-    protected $table      = 'sms_global_balance_logs';
-    protected $fillable   = [
+
+    protected $table = 'sms_global_balance_logs';
+
+    protected $fillable = [
         'amount',
         'type',
         'tenant_id',

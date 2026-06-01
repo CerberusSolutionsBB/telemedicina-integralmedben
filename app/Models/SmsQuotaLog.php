@@ -24,6 +24,6 @@ class SmsQuotaLog extends Model
 
     public function addedBy()
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by');
+        return $this->belongsTo(User::class, 'added_by');
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Siprov;
 
 use App\Data\SiprovIntegrationData;
@@ -26,29 +27,29 @@ class CreateSiprovIntegrationController extends Controller
             Siprov::updateOrCreate(
                 [
                     'codigo_integracao' => $data->codigoIntegracao,
-                    'cpf_cnpj'          => $data->cpfCnpj,
-                    'cod_plano'         => $data->codPlano(),
+                    'cpf_cnpj' => $data->cpfCnpj,
+                    'cod_plano' => $data->codPlano(),
                 ],
                 [
-                    'user_id'         => auth()->id(),
+                    'user_id' => auth()->id(),
 
-                    'nome_pessoa'     => $data->nomePessoa,
-                    'email'           => $data->email,
-                    'sexo'            => $data->sexo,
+                    'nome_pessoa' => $data->nomePessoa,
+                    'email' => $data->email,
+                    'sexo' => $data->sexo,
                     'data_nascimento' => $data->dataNascimento,
 
-                    'cod_loja'        => (int) config('siprov.cod_loja'),
+                    'cod_loja' => (int) config('siprov.cod_loja'),
 
-                    'dia_vencimento'  => $data->diaVencimento,
-                    'ativo'           => $data->ativo,
-                    'situacao'        => $data->situacao,
+                    'dia_vencimento' => $data->diaVencimento,
+                    'ativo' => $data->ativo,
+                    'situacao' => $data->situacao,
 
-                    'associado'       => $result['associado'] ?? [],
-                    'beneficio'       => $result['beneficio'] ?? [],
+                    'associado' => $result['associado'] ?? [],
+                    'beneficio' => $result['beneficio'] ?? [],
 
-                    'status'          => Siprov::STATUS_SUCCESS,
-                    'error_message'   => null,
-                    'integrated_at'   => now(),
+                    'status' => Siprov::STATUS_SUCCESS,
+                    'error_message' => null,
+                    'integrated_at' => now(),
                 ]
             );
 
@@ -58,7 +59,7 @@ class CreateSiprovIntegrationController extends Controller
         } catch (SiprovException $e) {
             Log::error('Erro de integração SIPROV.', [
                 'message' => $e->getMessage(),
-                'data'    => $request->all(),
+                'data' => $request->all(),
             ]);
 
             return back()
@@ -69,9 +70,9 @@ class CreateSiprovIntegrationController extends Controller
         } catch (Throwable $e) {
             Log::error('Erro interno ao processar integração SIPROV.', [
                 'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-                'data'    => $request->all(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'data' => $request->all(),
             ]);
 
             return back()

@@ -3,13 +3,16 @@
 namespace App\Http\Services\ExternalApi;
 
 use App\Interfaces\ExternalApiInterface;
+use Carbon\Carbon;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 class ClubeBeneficiosService implements ExternalApiInterface
 {
     private const TOKEN_CACHE_KEY = 'rede_parcerias_access_token';
-    private const TOKEN_TTL_DAYS  = 364;
+
+    private const TOKEN_TTL_DAYS = 364;
 
     public function __construct(
         private string $baseUrl,
@@ -36,13 +39,13 @@ class ClubeBeneficiosService implements ExternalApiInterface
     {
         // Campos obrigatórios
         // 'nome', 'email', 'cpf' são as chaves geradas pelo role no listener
-        $name  = $data['nome'] ?? $data['nome_completo'] ?? $data['name'] ?? null;
-        $email = $data['email']                                            ?? null;
-        $cpf   = $data['cpf']                                              ?? null;
+        $name = $data['nome'] ?? $data['nome_completo'] ?? $data['name'] ?? null;
+        $email = $data['email'] ?? null;
+        $cpf = $data['cpf'] ?? null;
 
-        if (!$name || !$email || !$cpf) {
+        if (! $name || ! $email || ! $cpf) {
             throw new \InvalidArgumentException(
-                'RedeParcerias: campos obrigatórios ausentes (nome, email, cpf). Recebido: ' . implode(', ', array_keys($data))
+                'RedeParcerias: campos obrigatórios ausentes (nome, email, cpf). Recebido: '.implode(', ', array_keys($data))
             );
         }
 
@@ -50,10 +53,10 @@ class ClubeBeneficiosService implements ExternalApiInterface
 
         // Payload obrigatório
         $payload = [
-            'name'       => $name,
-            'email'      => $email,
-            'cpf'        => $cpfClean,
-            'password'   => $cpfClean, // senha padrão = CPF sem máscara; acesso real via SSO
+            'name' => $name,
+            'email' => $email,
+            'cpf' => $cpfClean,
+            'password' => $cpfClean, // senha padrão = CPF sem máscara; acesso real via SSO
             'authorized' => true,
         ];
 
@@ -72,9 +75,15 @@ class ClubeBeneficiosService implements ExternalApiInterface
         }
 
         // Consentimentos de comunicação (true se o paciente tiver respondido afirmativamente)
-        if (isset($data['sms']))        $payload['sms']        = (bool) $data['sms'];
-        if (isset($data['newsletter'])) $payload['newsletter'] = (bool) $data['newsletter'];
-        if (isset($data['whatsapp']))   $payload['whatsapp']   = (bool) $data['whatsapp'];
+        if (isset($data['sms'])) {
+            $payload['sms'] = (bool) $data['sms'];
+        }
+        if (isset($data['newsletter'])) {
+            $payload['newsletter'] = (bool) $data['newsletter'];
+        }
+        if (isset($data['whatsapp'])) {
+            $payload['whatsapp'] = (bool) $data['whatsapp'];
+        }
 
         $response = $this->http()->post('/users', $payload);
         $response->throw();
@@ -94,7 +103,7 @@ class ClubeBeneficiosService implements ExternalApiInterface
 
         // Tenta converter de YYYY-MM-DD
         try {
-            return \Carbon\Carbon::parse($date)->format('d/m/Y');
+            return Carbon::parse($date)->format('d/m/Y');
         } catch (\Throwable) {
             return $date;
         }
@@ -107,8 +116,8 @@ class ClubeBeneficiosService implements ExternalApiInterface
     /**
      * Gera o link de SSO para o usuário acessar o clube sem digitar senha.
      *
-     * @param  string $userId  E-mail ou ID do usuário na RedeParcerias
-     * @return string          URL de redirecionamento
+     * @param  string  $userId  E-mail ou ID do usuário na RedeParcerias
+     * @return string URL de redirecionamento
      */
     public function getSsoToken(string $userId): string
     {
@@ -121,7 +130,7 @@ class ClubeBeneficiosService implements ExternalApiInterface
     /**
      * Autoriza o acesso de um beneficiário (ativa na plataforma).
      *
-     * @param  string $value  CPF ou e-mail
+     * @param  string  $value  CPF ou e-mail
      */
     public function authorizeUser(string $value): array
     {
@@ -134,7 +143,7 @@ class ClubeBeneficiosService implements ExternalApiInterface
     /**
      * Desautoriza o acesso de um beneficiário.
      *
-     * @param  string $value  CPF ou e-mail
+     * @param  string  $value  CPF ou e-mail
      */
     public function unauthorizeUser(string $value): array
     {
@@ -150,7 +159,7 @@ class ClubeBeneficiosService implements ExternalApiInterface
     public function getOffers(array $filters = []): array
     {
         return Cache::remember(
-            'rede_parcerias_offers_' . md5(serialize($filters)),
+            'rede_parcerias_offers_'.md5(serialize($filters)),
             now()->addHour(),
             fn () => $this->http()->get('/offers', $filters)->throw()->json()
         );
@@ -171,8 +180,8 @@ class ClubeBeneficiosService implements ExternalApiInterface
             now()->addDays(self::TOKEN_TTL_DAYS),
             function () {
                 $response = Http::asForm()->post("{$this->baseUrl}/auth", [
-                    'grant_type'    => 'client_credentials',
-                    'client_id'     => $this->clientId,
+                    'grant_type' => 'client_credentials',
+                    'client_id' => $this->clientId,
                     'client_secret' => $this->clientSecret,
                 ]);
 
@@ -195,7 +204,7 @@ class ClubeBeneficiosService implements ExternalApiInterface
     /**
      * Retorna uma instância Http já configurada com a base URL e o Bearer token.
      */
-    private function http(): \Illuminate\Http\Client\PendingRequest
+    private function http(): PendingRequest
     {
         return Http::baseUrl($this->baseUrl)
             ->withToken($this->getToken())

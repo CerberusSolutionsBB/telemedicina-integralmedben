@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
@@ -18,22 +19,22 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
 
         return [
-             ...parent::share($request),
-            'auth'  => [
+            ...parent::share($request),
+            'auth' => [
                 'user' => $user ? [
-                    'id'          => $user->id,
-                    'name'        => $user->name,
-                    'email'       => $user->email,
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
                     // Roles e permissões do Spatie
-                    'roles'       => $user->getRoleNames(),
+                    'roles' => $user->getRoleNames(),
                     'permissions' => $user->getPermissionNames(),
                     // Helper para verificar no frontend
-                    'is_admin'    => $user->hasRole('Admin'),
+                    'is_admin' => $user->hasRole('Admin'),
                 ] : null,
             ],
             'flash' => [
-                'success' => fn() => $request->session()->get('success'),
-                'error'   => fn()   => $request->session()->get('error'),
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
             ],
         ];
     }

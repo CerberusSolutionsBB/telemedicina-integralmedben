@@ -8,24 +8,37 @@ use App\Models\PatientAnswer;
 
 class UpdatePatientService
 {
-    public function execute(Patient $patient, array $answers): void
+    public function execute(Patient $patient, array $data): void
     {
-        foreach ($answers as $questionId => $answer) {
-            PatientAnswer::updateOrCreate(
-                ['patient_id' => $patient->id, 'question_id' => $questionId],
-                ['answer' => $answer]
-            );
+        $patientFields = [
+            'nome', 'cpf', 'rg', 'data_nascimento', 'sexo',
+            'email', 'numero', 'enderecos', 'status',
+        ];
+
+        $patientData = array_intersect_key($data, array_flip($patientFields));
+
+        if (! empty($patientData)) {
+            $patient->update($patientData);
         }
 
-        if ($patient->central_patient_id) {
-            foreach ($answers as $questionId => $answer) {
-                CentralPatientAnswer::updateOrCreate(
-                    [
-                        'central_patient_id' => $patient->central_patient_id,
-                        'question_id' => $questionId,
-                    ],
+        if (isset($data['answers']) && is_array($data['answers'])) {
+            foreach ($data['answers'] as $questionId => $answer) {
+                PatientAnswer::updateOrCreate(
+                    ['patient_id' => $patient->id, 'question_id' => $questionId],
                     ['answer' => $answer]
                 );
+            }
+
+            if ($patient->central_patient_id) {
+                foreach ($data['answers'] as $questionId => $answer) {
+                    CentralPatientAnswer::updateOrCreate(
+                        [
+                            'central_patient_id' => $patient->central_patient_id,
+                            'question_id' => $questionId,
+                        ],
+                        ['answer' => $answer]
+                    );
+                }
             }
         }
     }

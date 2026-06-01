@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,10 +29,10 @@ class CredenciasCluble extends Model
 
     protected $casts = [
         'token_expires_at' => 'datetime',
-        'expires_in'       => 'integer',
-        'created_at'       => 'datetime',
-        'updated_at'       => 'datetime',
-        'deleted_at'       => 'datetime',
+        'expires_in' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     protected $hidden = [
@@ -78,11 +79,11 @@ class CredenciasCluble extends Model
     public function updateToken(array $tokenData): self
     {
         $this->update([
-            'access_token'     => $tokenData['access_token'] ?? $this->access_token,
-            'token_type'       => $tokenData['token_type'] ?? $this->token_type,
-            'expires_in'       => $tokenData['expires_in'] ?? $this->expires_in,
-            'refresh_token'    => $tokenData['refresh_token'] ?? $this->refresh_token,
-            'scope'            => $tokenData['scope'] ?? $this->scope,
+            'access_token' => $tokenData['access_token'] ?? $this->access_token,
+            'token_type' => $tokenData['token_type'] ?? $this->token_type,
+            'expires_in' => $tokenData['expires_in'] ?? $this->expires_in,
+            'refresh_token' => $tokenData['refresh_token'] ?? $this->refresh_token,
+            'scope' => $tokenData['scope'] ?? $this->scope,
             'token_expires_at' => isset($tokenData['expires_in'])
                 ? now()->addSeconds($tokenData['expires_in'])
                 : $this->token_expires_at,

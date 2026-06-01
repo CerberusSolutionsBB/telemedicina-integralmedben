@@ -8,6 +8,7 @@ use App\Models\CentralPatient;
 use App\Models\CentralPatientAnswer;
 use App\Models\Patient;
 use App\Models\Question;
+
 class SyncPatientToCentral
 {
     public function handle(PatientCreated $event): void
@@ -20,7 +21,7 @@ class SyncPatientToCentral
             ? preg_replace('/\D/', '', $event->answers[(string) $cpfQuestionId] ?? '')
             : null;
 
-        if (!$cpf) {
+        if (! $cpf) {
             return;
         }
 
