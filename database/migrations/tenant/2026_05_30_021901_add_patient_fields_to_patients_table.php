@@ -21,9 +21,7 @@ return new class extends Migration
             $table->string('sexo', 1)->nullable()->after('data_nascimento');
             $table->string('email')->nullable()->after('sexo');
             $table->string('numero')->nullable()->after('email');
-            $table->boolean('status')
-                ->default(true)
-                ->after('numero');
+            $table->boolean('status')->default(true);
 
         });
     }
