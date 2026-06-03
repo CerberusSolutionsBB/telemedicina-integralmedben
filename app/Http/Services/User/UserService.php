@@ -13,9 +13,9 @@ class UserService
         private DeleteUserService $deleteUserService,
     ) {}
 
-    public function getUsers()
+    public function getUsers(?string $search = null)
     {
-        return $this->getUsersService->execute();
+        return $this->getUsersService->execute($search);
     }
 
     public function create(array $data): User

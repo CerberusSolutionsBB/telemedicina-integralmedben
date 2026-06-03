@@ -1,6 +1,5 @@
 <script setup>
-import { Pencil, Trash2 } from "lucide-vue-next";
-import { Link } from "@inertiajs/vue3";
+import { Pencil, Trash2, Shield } from "lucide-vue-next";
 import {
   Table,
   TableBody,
@@ -10,7 +9,7 @@ import {
   TableRow,
 } from "@/Components/ui/table";
 
-const props = defineProps({
+defineProps({
   users: {
     type: Object,
     required: true,
@@ -26,16 +25,21 @@ const formatDate = (date) => {
     year: "numeric",
   });
 };
+
+const roleName = (user) => {
+  return user.roles?.[0]?.name ?? "-";
+};
 </script>
 
 <template>
-  <div class="p-3 sm:p-6 overflow-x-auto">
+  <div class="overflow-x-auto">
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead class="text-center">Código</TableHead>
           <TableHead class="text-center">Nome</TableHead>
           <TableHead class="text-center">E-mail</TableHead>
+          <TableHead class="text-center">Perfil</TableHead>
           <TableHead class="text-center">Criado em</TableHead>
           <TableHead class="text-center">Ações</TableHead>
         </TableRow>
@@ -53,6 +57,13 @@ const formatDate = (date) => {
 
           <TableCell class="text-center">
             {{ user.email }}
+          </TableCell>
+
+          <TableCell class="text-center">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-700">
+              <Shield class="w-3 h-3" />
+              {{ roleName(user) }}
+            </span>
           </TableCell>
 
           <TableCell class="text-center">
@@ -74,24 +85,5 @@ const formatDate = (date) => {
         </TableRow>
       </TableBody>
     </Table>
-
-    <div v-if="users.links" class="flex gap-2 justify-center mt-4">
-      <template v-for="link in users.links" :key="link.label">
-        <Link
-          v-if="link.url"
-          :href="link.url"
-          :class="[
-            'px-3 py-1 rounded',
-            link.active ? 'bg-cyan-600 text-white' : 'bg-gray-200',
-          ]"
-          v-html="link.label"
-        />
-        <span
-          v-else
-          class="px-3 py-1 rounded bg-gray-100 text-gray-400"
-          v-html="link.label"
-        />
-      </template>
-    </div>
   </div>
 </template>
