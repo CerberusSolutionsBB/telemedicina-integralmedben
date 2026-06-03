@@ -33,6 +33,7 @@ class StoreUserRequest extends FormRequest
                     ->numbers()
                     ->symbols(),
             ],
+            'role' => ['nullable', 'string', 'exists:roles,name'],
         ];
     }
 
@@ -51,6 +52,7 @@ class StoreUserRequest extends FormRequest
             'password.numbers' => 'A senha deve conter pelo menos um número.',
             'password.symbols' => 'A senha deve conter pelo menos um símbolo.',
             'password.letters' => 'A senha deve conter pelo menos uma letra.',
+            'role.exists' => 'O perfil selecionado é inválido.',
         ];
     }
 
