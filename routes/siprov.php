@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Siprov\CreateSiprovIntegrationController;
+use App\Http\Controllers\Siprov\SiprovCartaoController;
 use App\Http\Controllers\Siprov\SiprovCreateController;
 use App\Http\Controllers\Siprov\SiprovDestroyController;
 use App\Http\Controllers\Siprov\SiprovIndexController;
@@ -21,6 +22,10 @@ Route::post('/store', CreateSiprovIntegrationController::class)
 Route::delete('/{siprov}', SiprovDestroyController::class)
     ->middleware('permission:siprov.delete')
     ->name('destroy');
+
+Route::get('/cartao', SiprovCartaoController::class)
+    ->middleware('permission:siprov.view')
+    ->name('cartao');
 
 Route::get('/debug-siprov', function () {
     return [

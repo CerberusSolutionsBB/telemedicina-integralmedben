@@ -1,6 +1,7 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import Button from '@/Components/ui/button/Button.vue';
+import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import {
@@ -11,6 +12,7 @@ import {
     CheckCircle,
     FileText,
     Plus,
+    CreditCard,
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -20,6 +22,10 @@ const props = defineProps({
     },
     associados: {
         type: [Array, Object, null],
+        default: null,
+    },
+    siprovError: {
+        type: String,
         default: null,
     },
 });
@@ -99,6 +105,68 @@ const formatDate = (date) => {
 const navigateTo = (routeName, params = {}) => {
     router.visit(route(routeName, params));
 };
+
+const cartaoModal = ref({
+    show: false,
+    item: null,
+    isProcessing: false,
+});
+
+const openCartaoModal = (item) => {
+    cartaoModal.value = { show: true, item, isProcessing: false };
+};
+
+const closeCartaoModal = () => {
+    if (cartaoModal.value.isProcessing) return;
+    cartaoModal.value.show = false;
+    setTimeout(() => {
+        cartaoModal.value.item = null;
+        cartaoModal.value.isProcessing = false;
+    }, 200);
+};
+
+const confirmGerarCartao = async () => {
+    const item = cartaoModal.value.item;
+    if (!item) return;
+
+    cartaoModal.value.isProcessing = true;
+
+    const params = new URLSearchParams();
+
+    params.append('nomePessoa', item.nomePessoa || '');
+    params.append('cpfCnpj', item.cpfCnpj || '');
+    params.append('email', item.email || '');
+    params.append('telefoneCelular', item.telefoneCelular || '');
+    params.append('codPessoa', item.codPessoa || '');
+    params.append('codBeneficio', item.codBeneficio || '');
+    params.append('dataCadastro', item.dataCadastro || '');
+    params.append('dataAdesao', item.dataAdesao || '');
+    params.append('dataAtivacao', item.dataAtivacao || '');
+    params.append('situacao', item.situacao || '');
+
+    (item.planos || []).forEach((plano, index) => {
+        params.append(`planos[${index}][codPlano]`, plano.codPlano);
+        params.append(`planos[${index}][nome]`, plano.nome);
+    });
+
+    try {
+        const response = await fetch(route('siprov.cartao') + '?' + params.toString());
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cartao-' + (item.codPessoa || 'associado') + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch {
+        alert('Erro ao gerar cartão. Tente novamente.');
+    } finally {
+        cartaoModal.value.isProcessing = false;
+        closeCartaoModal();
+    }
+};
 </script>
 
 <template>
@@ -173,7 +241,21 @@ const navigateTo = (routeName, params = {}) => {
                 </div>
 
                 <div class="border rounded-xl border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
+                    <div v-if="siprovError" class="p-6 text-center">
+                        <div class="w-16 h-16 mx-auto bg-amber-50 rounded-full flex items-center justify-center mb-4">
+                            <ShieldAlert class="w-8 h-8 text-amber-500" />
+                        </div>
+                        <p class="text-lg font-semibold text-gray-900 mb-2">Serviço SIPROV Indisponível</p>
+                        <p class="text-sm text-gray-500 max-w-md mx-auto mb-4">
+                            Não foi possível conectar à API da SIPROV. Verifique sua conexão com a internet e tente novamente.
+                        </p>
+                        <p class="text-xs text-gray-400 mb-4">Detalhes: {{ siprovError }}</p>
+                        <Button variant="outline" size="sm" @click="navigateTo('siprov.index')">
+                            <Activity class="w-4 h-4 mr-1" />
+                            Tentar novamente
+                        </Button>
+                    </div>
+                    <template v-else>
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -184,6 +266,7 @@ const navigateTo = (routeName, params = {}) => {
                                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Benefício</th>
                                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Cadastro</th>
                                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Situação</th>
+                                    <th class="px-6 py-3 text-right text-xs font-semibold uppercase text-gray-500 tracking-wider">Ações</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
@@ -228,37 +311,53 @@ const navigateTo = (routeName, params = {}) => {
                                             {{ item.situacao }}
                                         </span>
                                     </td>
+                                    <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
+                                        <div class="flex justify-end gap-1">
+                                            <button @click="openCartaoModal(item)"
+                                                class="p-2 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
+                                                title="Gerar Cartão">
+                                                <CreditCard class="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
 
-                    <div v-if="!hasResults" class="text-center py-16 text-gray-500">
-                        <div v-if="hasActiveFilters" class="space-y-3">
-                            <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                                <Search class="w-8 h-8 text-gray-400" />
+                        <div v-if="!hasResults" class="text-center py-16 text-gray-500">
+                            <div v-if="hasActiveFilters" class="space-y-3">
+                                <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                                    <Search class="w-8 h-8 text-gray-400" />
+                                </div>
+                                <p class="text-lg font-medium text-gray-900">Nenhum resultado encontrado</p>
+                                <p class="text-sm text-gray-500 max-w-sm mx-auto">
+                                    Não encontramos associados para os filtros informados.
+                                </p>
+                                <Button variant="outline" size="sm" class="mt-2" @click="clearSearch">
+                                    <X class="w-4 h-4 mr-1" />
+                                    Limpar filtros
+                                </Button>
                             </div>
-                            <p class="text-lg font-medium text-gray-900">Nenhum resultado encontrado</p>
-                            <p class="text-sm text-gray-500 max-w-sm mx-auto">
-                                Não encontramos associados para os filtros informados.
-                            </p>
-                            <Button variant="outline" size="sm" class="mt-2" @click="clearSearch">
-                                <X class="w-4 h-4 mr-1" />
-                                Limpar filtros
-                            </Button>
-                        </div>
-                        <div v-else class="space-y-3">
-                            <div class="w-16 h-16 mx-auto bg-cyan-50 rounded-full flex items-center justify-center">
-                                <Activity class="w-8 h-8 text-cyan-500" />
+                            <div v-else class="space-y-3">
+                                <div class="w-16 h-16 mx-auto bg-cyan-50 rounded-full flex items-center justify-center">
+                                    <Activity class="w-8 h-8 text-cyan-500" />
+                                </div>
+                                <p class="text-lg font-medium text-gray-900">Nenhum associado encontrado</p>
+                                <p class="text-sm text-gray-500">
+                                    Nenhum associado com benefício ativo foi retornado pela SIPROV.
+                                </p>
                             </div>
-                            <p class="text-lg font-medium text-gray-900">Nenhum associado encontrado</p>
-                            <p class="text-sm text-gray-500">
-                                Nenhum associado com benefício ativo foi retornado pela SIPROV.
-                            </p>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </div>
         </div>
     </CentralAdminLayout>
+    <ConfirmDeleteModal :show="cartaoModal.show"
+        title="Gerar Cartão de Benefício"
+        :message="'Deseja gerar o cartão de benefício para ' + (cartaoModal.item?.nomePessoa || 'este associado') + '?'"
+        warning-message="O cartão será baixado automaticamente como arquivo PDF."
+        confirm-text="Sim, Gerar" cancel-text="Cancelar"
+        :is-processing="cartaoModal.isProcessing"
+        variant="info" @close="closeCartaoModal" @confirm="confirmGerarCartao" />
 </template>
