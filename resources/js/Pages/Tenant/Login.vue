@@ -8,6 +8,14 @@ import { Button } from '@/Components/ui/button';
 import TextInput from '@/Components/TextInput.vue';
 import PasswordInput from '@/Components/PasswordInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
+import { AlertTriangle } from 'lucide-vue-next';
+
+const props = defineProps({
+    tenant_status: {
+        type: Boolean,
+        default: true,
+    },
+});
 
 const isLoading = ref(false);
 const page = usePage();
@@ -23,7 +31,7 @@ const isValidEmail = computed(() => {
 });
 
 const canSubmit = computed(() => {
-    return form.email && form.password && isValidEmail.value && !form.processing;
+    return form.email && form.password && isValidEmail.value && !form.processing && props.tenant_status;
 });
 
 const tenantPublic = computed(() => page.props.tenant_public ?? {})
@@ -82,7 +90,19 @@ const submit = () => {
             <p class="text-sm text-red-700">{{ form.errors.general }}</p>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-5">
+        <!-- Parceiro inativado -->
+        <div v-if="!tenant_status"
+            class="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-3">
+            <AlertTriangle class="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+            <div>
+                <p class="text-sm font-semibold text-orange-800">Parceiro Inativado</p>
+                <p class="text-sm text-orange-700 mt-1">
+                    Este parceiro foi desativado e não possui acesso ao sistema. Entre em contato com o administrador para mais informações.
+                </p>
+            </div>
+        </div>
+
+        <form @submit.prevent="submit" class="space-y-5" :class="{ 'opacity-50 pointer-events-none': !tenant_status }">
             <!-- Email -->
             <div class="space-y-1">
                 <InputLabel for="email" value="Email" class="font-medium text-gray-700" />

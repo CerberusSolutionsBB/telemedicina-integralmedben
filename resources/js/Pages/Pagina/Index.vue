@@ -1,7 +1,7 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User } from 'lucide-vue-next';
+import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User, Power } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
@@ -34,6 +34,11 @@ const search = ref(props.filters.search || '');
 const searchInput = ref(null);
 let searchTimer = null;
 const deleteModal = ref({
+    show: false,
+    tenant: null,
+    isProcessing: false
+});
+const statusModal = ref({
     show: false,
     tenant: null,
     isProcessing: false
@@ -131,7 +136,7 @@ const getTenantDomain = (domains) => {
     return domains[0]?.domain || domains[0] || 'Nenhum domínio';
 };
 const getTenantStatus = (item) => {
-    return item.status || 'ativo';
+    return item.status ? 'ativo' : 'inativo';
 };
 const getStatusClass = (status) => {
     const classes = {
@@ -157,6 +162,33 @@ const getInitials = (name) => {
 };
 const navigateTo = (routeName, params = {}) => {
     router.visit(route(routeName, params));
+};
+const openStatusModal = (item) => {
+    statusModal.value = {
+        show: true,
+        tenant: item,
+        isProcessing: false
+    };
+};
+const closeStatusModal = () => {
+    statusModal.value.show = false;
+    setTimeout(() => {
+        statusModal.value.tenant = null;
+        statusModal.value.isProcessing = false;
+    }, 200);
+};
+const confirmToggleStatus = () => {
+    if (!statusModal.value.tenant) return;
+    statusModal.value.isProcessing = true;
+    router.put(route('pagina.status', statusModal.value.tenant.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeStatusModal();
+        },
+        onFinish: () => {
+            statusModal.value.isProcessing = false;
+        }
+    });
 };
 </script>
 <template>
@@ -321,6 +353,16 @@ const navigateTo = (routeName, params = {}) => {
                                                 title="Editar">
                                                 <User class="w-4 h-4" />
                                             </butto>
+                                            <button @click="openStatusModal(item)"
+                                                :class="[
+                                                    'p-2 rounded-lg transition-all',
+                                                    item.status
+                                                        ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
+                                                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                                                ]"
+                                                :title="item.status ? 'Desativar' : 'Ativar'">
+                                                <Power class="w-4 h-4" />
+                                            </button>
                                             <!-- <button v-if="can.edit" @click="navigateTo('pagina.edit', item.id)"
                                                 class="p-2 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
                                                 title="Editar">
@@ -377,5 +419,12 @@ const navigateTo = (routeName, params = {}) => {
             warning-message="Todos os dados associados serão permanentemente removidos. Esta ação não pode ser desfeita."
             confirm-text="Sim, Excluir" cancel-text="Cancelar" :is-processing="deleteModal.isProcessing"
             variant="danger" @close="closeDeleteModal" @confirm="confirmDelete" />
+        <ConfirmDeleteModal :show="statusModal.show"
+            :title="statusModal.tenant?.status ? 'Desativar Parceiro' : 'Ativar Parceiro'"
+            :message="statusModal.tenant?.status ? 'Tem certeza que deseja desativar este parceiro?' : 'Tem certeza que deseja ativar este parceiro?'"
+            :warning-message="statusModal.tenant?.status ? 'Ao desativar, o parceiro ficará inacessível para os usuários.' : 'Ao ativar, o parceiro voltará a ficar acessível para os usuários.'"
+            :confirm-text="statusModal.tenant?.status ? 'Sim, Desativar' : 'Sim, Ativar'"
+            cancel-text="Cancelar" :is-processing="statusModal.isProcessing"
+            variant="warning" @close="closeStatusModal" @confirm="confirmToggleStatus" />
     </CentralAdminLayout>
 </template>
