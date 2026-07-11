@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Siprov;
 
 use App\Data\SiprovAssociadoQueryData;
+use App\Exceptions\SiprovException;
 use App\Http\Controllers\Controller;
 use App\Services\Siprov\SiprovAssociadoService;
 use Illuminate\Http\Request;
@@ -20,10 +21,18 @@ class SiprovIndexController extends Controller
         $situacaoBeneficio = $request->input('situacaoBeneficio', 'Ativo');
         $data = SiprovAssociadoQueryData::fromSituacaoBeneficio($situacaoBeneficio);
 
-        $associados = $this->siprovService->query($data);
+        try {
+            $associados = $this->siprovService->query($data);
 
-        return Inertia::render('Siprov/Index', [
-            'associados' => $associados,
-        ]);
+            return Inertia::render('Siprov/Index', [
+                'associados' => $associados,
+                'siprovError' => null,
+            ]);
+        } catch (SiprovException $e) {
+            return Inertia::render('Siprov/Index', [
+                'associados' => null,
+                'siprovError' => $e->getMessage(),
+            ]);
+        }
     }
 }
