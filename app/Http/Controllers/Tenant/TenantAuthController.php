@@ -11,11 +11,27 @@ class TenantAuthController extends Controller
 {
     public function showLoginForm()
     {
-        return Inertia::render('Tenant/Login');
+        $tenant = tenant();
+
+        return Inertia::render('Tenant/Login', [
+            'tenant_status' => $tenant?->status ?? true,
+        ]);
     }
 
     public function login(Request $request)
     {
+        $tenant = tenant();
+
+        if ($tenant && ! $tenant->status) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'general' => 'Este parceiro está inativado. Acesso negado.',
+            ])->onlyInput('email');
+        }
+
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
