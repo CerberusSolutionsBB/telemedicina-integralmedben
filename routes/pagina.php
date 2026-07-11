@@ -5,6 +5,7 @@ use App\Http\Controllers\Pagina\PaginaDestroyController;
 use App\Http\Controllers\Pagina\PaginaIndexController;
 use App\Http\Controllers\Pagina\PaginaShowController;
 use App\Http\Controllers\Pagina\PaginaStoreController;
+use App\Http\Controllers\Pagina\PaginaStatusController;
 use App\Http\Controllers\Pagina\PaginaUserController;
 use App\Http\Controllers\Tenant\Configuracao\ConfiguracaoController;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,7 @@ Route::get('/', PaginaIndexController::class)->name('index');
 Route::post('store', PaginaStoreController::class)->name('store');
 Route::get('/{tenant}', PaginaShowController::class)->name('show');
 Route::delete('/{tenant}', PaginaDestroyController::class)->name('destroy');
+Route::put('/{tenant}/status', PaginaStatusController::class)->name('status');
 Route::prefix('users')->name('users.')->group(function () {
     Route::get('/{tenant}', [PaginaUserController::class, 'index'])->name('index');
     Route::get('/{tenant}/create', [PaginaUserController::class, 'create'])->name('create');
