@@ -100,7 +100,7 @@ const tabs = computed(() => [
 
 const breadcrumbs = computed(() => [
     {
-        label: 'Página de Vendas',
+        label: 'Página de Parceiros',
         href: route('pagina.index'),
         icon: Home,
     },

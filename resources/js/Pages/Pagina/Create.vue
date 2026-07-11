@@ -126,7 +126,7 @@ const goBack = () => {
     router.visit(route('pagina.index'));
 };
 const breadcrumbs = computed(() => [
-    { label: 'Página de Vendas', href: route('pagina.index'), icon: Home },
+    { label: 'Página de Parceiros', href: route('pagina.index'), icon: Home },
     { label: isEdit.value ? 'Editar' : 'Novo', href: null },
 ]);
 </script>
