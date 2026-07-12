@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Siprov;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 class SiprovCartaoController extends Controller
 {
@@ -68,9 +69,20 @@ class SiprovCartaoController extends Controller
             escapeshellarg($texFile)
         );
 
+        Log::info('SIPROV Cartão | Executando pdflatex', [
+            'command' => $command,
+            'codPessoa' => $associado['codPessoa'],
+        ]);
+
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0 || ! File::exists($pdfFile)) {
+            Log::error('SIPROV Cartão | Erro ao gerar PDF', [
+                'codPessoa' => $associado['codPessoa'],
+                'returnCode' => $returnCode,
+                'output' => implode("\n", array_slice($output, -20)),
+            ]);
+
             File::delete([$texFile, $pdfFile]);
 
             return back()->withErrors([
@@ -85,6 +97,10 @@ class SiprovCartaoController extends Controller
             $pdfFile,
             $tempDir . '/' . $filename . '.aux',
             $tempDir . '/' . $filename . '.log',
+        ]);
+
+        Log::info('SIPROV Cartão | PDF gerado com sucesso', [
+            'codPessoa' => $associado['codPessoa'],
         ]);
 
         return response($pdfContent, 200, [
