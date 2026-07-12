@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Siprov;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\File;
 
 class SiprovCartaoController extends Controller
@@ -50,7 +50,7 @@ class SiprovCartaoController extends Controller
 
         $texContent = str_replace(array_keys($replacements), array_values($replacements), $template);
 
-        $tempDir = storage_path('app/temp/siprov-cartao');
+        $tempDir = config('latex.temp_dir');
         File::makeDirectory($tempDir, 0755, true, true);
 
         $filename = 'cartao-' . $associado['codPessoa'];
@@ -60,8 +60,10 @@ class SiprovCartaoController extends Controller
         File::put($texFile, $texContent);
 
         $command = sprintf(
-            'cd %s && pdflatex -interaction=nonstopmode -output-directory=%s %s 2>&1',
+            'cd %s && %s %s -output-directory=%s %s 2>&1',
             escapeshellarg($tempDir),
+            escapeshellarg(config('latex.bin')),
+            config('latex.options'),
             escapeshellarg($tempDir),
             escapeshellarg($texFile)
         );
