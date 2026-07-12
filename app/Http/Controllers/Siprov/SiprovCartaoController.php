@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Siprov;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\File;
 
 class SiprovCartaoController extends Controller
@@ -62,7 +62,7 @@ class SiprovCartaoController extends Controller
         $command = sprintf(
             'cd %s && %s %s -output-directory=%s %s 2>&1',
             escapeshellarg($tempDir),
-            config('latex.bin'),
+            escapeshellarg(config('latex.bin')),
             config('latex.options'),
             escapeshellarg($tempDir),
             escapeshellarg($texFile)
