@@ -61,9 +61,8 @@ class SiprovCartaoController extends Controller
         File::put($texFile, $texContent);
 
         $command = sprintf(
-            'cd %s && %s %s -output-directory=%s %s 2>&1',
-            escapeshellarg($tempDir),
-            escapeshellarg(config('latex.bin')),
+            '%s %s -output-directory=%s %s 2>&1',
+            config('latex.bin'),
             config('latex.options'),
             escapeshellarg($tempDir),
             escapeshellarg($texFile)
