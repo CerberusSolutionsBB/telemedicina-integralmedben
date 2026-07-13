@@ -5,6 +5,7 @@ import { Button } from "@/Components/ui/button";
 import CentralAdminLayout from "@/Layouts/CentralAdminLayout.vue";
 import { showToast } from '@/Utils/toast';
 import FormField from "@/Components/FormFields/FormField.vue";
+import SmsTemplateModal from "@/Components/SmsTemplateModal.vue";
 
 import {
     ArrowLeft,
@@ -25,7 +26,9 @@ import {
     ChevronRight,
     Home,
     Loader2,
-    Check
+    Check,
+    Plus,
+    Settings
 } from "lucide-vue-next";
 
 const props = defineProps({
@@ -52,12 +55,23 @@ const props = defineProps({
     shareUrl: {
         type: String,
         default: null
+    },
+    smsTemplates: {
+        type: Array,
+        default: () => []
     }
 });
 
 const activeTab = ref('overview');
 const loading = ref(false);
 const linkCopied = ref(false);
+const smsModalOpen = ref(false);
+const smsModalTemplate = ref(null);
+const configForm = ref({
+    status_formulario_dinamico: props.form.configuracao?.paciente?.status_formulario_dinamico ?? false,
+    sms_template_id: props.form.configuracao?.paciente?.sms_template_id ?? null,
+});
+const configSaving = ref(false);
 
 // ==========================================
 // CONSTANTES E CONFIGURAÇÕES
@@ -87,6 +101,95 @@ const breadcrumbs = computed(() => [
     { label: 'Formulários', href: route('forms.index') },
     { label: props.form.title, href: null }
 ]);
+
+const openSmsModal = (template = null) => {
+    smsModalTemplate.value = template;
+    smsModalOpen.value = true;
+};
+
+const closeSmsModal = () => {
+    smsModalOpen.value = false;
+    smsModalTemplate.value = null;
+};
+
+const deleteSmsTemplate = async (template) => {
+    if (!confirm(`Deseja remover o template "${template.name}"?`)) return;
+
+    try {
+        const response = await fetch(route('forms.sms-templates.destroy', template.id), {
+            method: 'DELETE',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+            },
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showToast(data.message, 'success');
+            router.reload({ only: ['smsTemplates'] });
+        } else {
+            showToast(data.message || 'Erro ao remover template.', 'error');
+        }
+    } catch {
+        showToast('Erro ao remover template. Tente novamente.', 'error');
+    }
+};
+
+const saveConfiguracao = async () => {
+    configSaving.value = true;
+
+    const configuracao = {
+        paciente: {
+            status_formulario_dinamico: configForm.value.status_formulario_dinamico,
+            sms_template_id: configForm.value.sms_template_id,
+        }
+    };
+
+    try {
+        const payload = new FormData();
+        payload.append('_method', 'PATCH');
+        payload.append('title', props.form.title);
+        payload.append('description', props.form.description || '');
+        payload.append('status', props.form.status);
+        payload.append('configuracao', JSON.stringify(configuracao));
+
+        if (props.form.categoria_id) payload.append('categoria_id', props.form.categoria_id);
+        if (props.form.lei_id) payload.append('lei_id', props.form.lei_id);
+        if (props.form.credencia_cluble_id) payload.append('credencia_cluble_id', props.form.credencia_cluble_id);
+
+        props.form.fields?.forEach((field, index) => {
+            payload.append(`fields[${index}][type]`, field.type);
+            payload.append(`fields[${index}][label]`, field.label);
+            if (field.placeholder) payload.append(`fields[${index}][placeholder]`, field.placeholder);
+            payload.append(`fields[${index}][required]`, field.required ? '1' : '0');
+            if (field.options?.length) {
+                field.options.forEach((opt, oi) => {
+                    payload.append(`fields[${index}][options][${oi}]`, opt);
+                });
+            }
+            if (field.help_text) payload.append(`fields[${index}][help_text]`, field.help_text);
+            payload.append(`fields[${index}][order]`, index);
+        });
+
+        await router.post(route('forms.update', props.form.id), payload, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showToast('Configuração salva com sucesso!', 'success');
+            },
+            onError: (errors) => {
+                showToast(errors?.message || 'Erro ao salvar configuração.', 'error');
+            },
+            onFinish: () => {
+                configSaving.value = false;
+            }
+        });
+    } catch {
+        configSaving.value = false;
+        showToast('Erro inesperado ao salvar configuração.', 'error');
+    }
+};
 
 // Cache para cálculos de gráficos
 const maxDailyResponse = computed(() => {
@@ -388,6 +491,28 @@ const formatDateTime = (dateString) => {
                     id="tab-analytics">
                     <Eye class="w-4 h-4" aria-hidden="true" />
                     Análise por Campo
+                </button>
+                <button @click="activeTab = 'sms'" :class="['py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors whitespace-nowrap',
+                    activeTab === 'sms'
+                        ? 'border-cyan-500 text-cyan-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ]" role="tab" :aria-selected="activeTab === 'sms'" aria-controls="sms-panel"
+                    id="tab-sms">
+                    <MessageSquare class="w-4 h-4" aria-hidden="true" />
+                    Templates SMS
+                    <span v-if="props.smsTemplates.length > 0"
+                        class="ml-1 px-2 py-0.5 rounded-full text-xs bg-cyan-100 text-cyan-700 font-semibold">
+                        {{ props.smsTemplates.length }}
+                    </span>
+                </button>
+                <button @click="activeTab = 'config'" :class="['py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors whitespace-nowrap',
+                    activeTab === 'config'
+                        ? 'border-cyan-500 text-cyan-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ]" role="tab" :aria-selected="activeTab === 'config'" aria-controls="config-panel"
+                    id="tab-config">
+                    <Settings class="w-4 h-4" aria-hidden="true" />
+                    Configuração
                 </button>
             </nav>
         </div>
@@ -703,5 +828,189 @@ const formatDateTime = (dateString) => {
                 </div>
             </div>
         </div>
+        <!-- ==========================================
+             TAB: TEMPLATES SMS
+             ========================================== -->
+        <div v-show="activeTab === 'sms'" id="sms-panel" role="tabpanel" aria-labelledby="tab-sms"
+            class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Templates SMS</h3>
+                    <p class="text-sm text-gray-500 mt-1">Gerencie as mensagens enviadas por SMS aos pacientes.</p>
+                </div>
+                <Button @click="openSmsModal()"
+                    class="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    <Plus class="w-4 h-4" />
+                    Novo Template
+                </Button>
+            </div>
+
+            <div v-if="props.smsTemplates.length === 0"
+                class="bg-white p-12 rounded-xl border border-gray-200 text-center">
+                <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <MessageSquare class="w-8 h-8 text-gray-400" />
+                </div>
+                <p class="text-lg font-medium text-gray-900">Nenhum template SMS</p>
+                <p class="text-sm text-gray-500 mt-1">Crie um template para enviar mensagens automáticas aos pacientes.</p>
+            </div>
+
+            <div v-else class="space-y-4">
+                <div v-for="template in props.smsTemplates" :key="template.id"
+                    class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-2">
+                                <h4 class="text-sm font-semibold text-gray-900">{{ template.name }}</h4>
+                                <span :class="['px-2 py-0.5 rounded-full text-xs font-medium',
+                                    template.is_active
+                                        ? 'bg-green-100 text-green-700 border border-green-200'
+                                        : 'bg-gray-100 text-gray-500 border border-gray-200']">
+                                    {{ template.is_active ? 'Ativo' : 'Inativo' }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600 whitespace-pre-line">{{ template.message }}</p>
+                            <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+                                <span>Atualizado: {{ new Date(template.updated_at).toLocaleDateString('pt-BR') }}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <button @click="openSmsModal(template)"
+                                class="p-2 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
+                                title="Editar">
+                                <Edit class="w-4 h-4" />
+                            </button>
+                            <button @click="deleteSmsTemplate(template)"
+                                class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all"
+                                title="Remover">
+                                <Trash2 class="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ==========================================
+             TAB: CONFIGURAÇÃO
+             ========================================== -->
+        <div v-show="activeTab === 'config'" id="config-panel" role="tabpanel" aria-labelledby="tab-config"
+            class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Configuração do Formulário</h3>
+                    <p class="text-sm text-gray-500 mt-1">Configure comportamentos dinâmicos e envio de SMS para este formulário.</p>
+                </div>
+                <Button @click="saveConfiguracao" :disabled="configSaving"
+                    class="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    <Loader2 v-if="configSaving" class="w-4 h-4 animate-spin" />
+                    <Check v-else class="w-4 h-4" />
+                    {{ configSaving ? 'Salvando...' : 'Salvar' }}
+                </Button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Status Formulário Dinâmico -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="p-3 bg-purple-50 rounded-lg">
+                                <Settings class="w-6 h-6 text-purple-600" />
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-900">Status Formulário Dinâmico</h4>
+                                <p class="text-xs text-gray-500 mt-0.5">Atualização automática do paciente</p>
+                            </div>
+                        </div>
+                        <button @click="configForm.status_formulario_dinamico = !configForm.status_formulario_dinamico"
+                            :class="['relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2',
+                                configForm.status_formulario_dinamico ? 'bg-cyan-600' : 'bg-gray-200']"
+                            role="switch" :aria-checked="configForm.status_formulario_dinamico">
+                            <span :class="['pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                                configForm.status_formulario_dinamico ? 'translate-x-5' : 'translate-x-0']" />
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4">
+                        Quando ativado, o formulário vinculado ao paciente será atualizado dinamicamente conforme as respostas recebidas.
+                    </p>
+                </div>
+
+                <!-- Template SMS Vinculado -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-3 bg-green-50 rounded-lg">
+                            <MessageSquare class="w-6 h-6 text-green-600" />
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-900">Template SMS Vinculado</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">Mensagem enviada ao paciente</p>
+                        </div>
+                    </div>
+
+                    <div v-if="props.smsTemplates.length === 0"
+                        class="bg-gray-50 p-6 rounded-lg border border-dashed border-gray-300 text-center">
+                        <MessageSquare class="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                        <p class="text-sm text-gray-500">Nenhum template disponível.</p>
+                        <p class="text-xs text-gray-400 mt-1">Crie na aba "Templates SMS".</p>
+                    </div>
+
+                    <div v-else class="space-y-2">
+                        <label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
+                            :class="configForm.sms_template_id === null
+                                ? 'border-cyan-300 bg-cyan-50'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'">
+                            <input type="radio" :value="null" v-model="configForm.sms_template_id"
+                                class="w-4 h-4 text-cyan-600 border-gray-300 focus:ring-cyan-500" />
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Nenhum template</p>
+                                <p class="text-xs text-gray-500">Não enviar SMS ao atualizar status</p>
+                            </div>
+                        </label>
+
+                        <label v-for="template in props.smsTemplates" :key="template.id"
+                            class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
+                            :class="configForm.sms_template_id === template.id
+                                ? 'border-cyan-300 bg-cyan-50'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'">
+                            <input type="radio" :value="template.id" v-model="configForm.sms_template_id"
+                                class="w-4 h-4 text-cyan-600 border-gray-300 focus:ring-cyan-500" />
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <p class="text-sm font-medium text-gray-900">{{ template.name }}</p>
+                                    <span :class="['px-1.5 py-0.5 rounded text-xs font-medium',
+                                        template.is_active
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-gray-100 text-gray-500']">
+                                        {{ template.is_active ? 'Ativo' : 'Inativo' }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-500 truncate mt-0.5">{{ template.message }}</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo da Configuração -->
+            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <h4 class="text-sm font-semibold text-gray-900 mb-3">Resumo</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div :class="['w-3 h-3 rounded-full', configForm.status_formulario_dinamico ? 'bg-green-500' : 'bg-gray-300']" />
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Status Dinâmico</p>
+                            <p class="text-xs text-gray-500">{{ configForm.status_formulario_dinamico ? 'Ativado' : 'Desativado' }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div :class="['w-3 h-3 rounded-full', configForm.sms_template_id ? 'bg-green-500' : 'bg-gray-300']" />
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Template SMS</p>
+                            <p class="text-xs text-gray-500">{{ configForm.sms_template_id ? 'Vinculado' : 'Nenhum' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <SmsTemplateModal :show="smsModalOpen" :template="smsModalTemplate" event="patient.created"
+            @close="closeSmsModal" />
     </CentralAdminLayout>
 </template>

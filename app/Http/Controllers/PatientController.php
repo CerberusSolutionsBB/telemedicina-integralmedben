@@ -25,6 +25,7 @@ class PatientController extends Controller
         $patients = $this->patientService->getPatients(
             search: $request->search,
             status: $request->status,
+            registro: $request->registro,
         );
         $tenant = Tenant::find(tenant('id'));
 

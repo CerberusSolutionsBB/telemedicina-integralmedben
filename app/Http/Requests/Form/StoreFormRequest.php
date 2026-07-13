@@ -45,6 +45,7 @@ class StoreFormRequest extends FormRequest
             'btn_confirmar_descricao' => ['nullable', 'string', 'max:500'],
             'sub_descricao' => ['nullable', 'string', 'max:500'],
             'observacao' => ['nullable', 'string'],
+            'configuracao' => ['nullable', 'array'],
         ];
     }
 
@@ -168,6 +169,19 @@ class StoreFormRequest extends FormRequest
 
             $this->merge([
                 'logo_posicao' => $posicao,
+            ]);
+        }
+
+        if ($this->has('configuracao')) {
+            $configuracao = $this->configuracao;
+
+            if (is_string($configuracao)) {
+                $decoded = json_decode($configuracao, true);
+                $configuracao = is_array($decoded) ? $decoded : null;
+            }
+
+            $this->merge([
+                'configuracao' => $configuracao,
             ]);
         }
 

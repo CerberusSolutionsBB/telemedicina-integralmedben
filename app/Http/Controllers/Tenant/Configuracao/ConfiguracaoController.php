@@ -198,6 +198,35 @@ class ConfiguracaoController extends Controller
         }
     }
 
+    public function toggleStatusFormularioDinamico(Tenant $tenant)
+    {
+        try {
+            $detail = TenantsDetail::firstOrCreate([
+                'tenant_id' => $tenant->id,
+            ]);
+
+            $config = $detail->configuracao ?? [];
+            $current = $config['status_formulario_dinamico'] ?? false;
+            $config['status_formulario_dinamico'] = ! $current;
+            $detail->update(['configuracao' => $config]);
+
+            return redirect()
+                ->route('pagina.show', $tenant->id)
+                ->with('message', 'Status Formulário Dinâmico atualizado com sucesso.')
+                ->with('type', 'success');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao atualizar status_formulario_dinamico', [
+                'tenant_id' => $tenant->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('message', 'Não foi possível atualizar o status.')
+                ->with('type', 'error');
+        }
+    }
+
     public function removeVinculo(TenantForm $tenantForm)
     {
         try {

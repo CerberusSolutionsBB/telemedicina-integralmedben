@@ -26,12 +26,13 @@ class TenantsDetail extends Model
         'favicon',
         'cor_primaria',
         'cor_secundaria',
-
+        'configuracao',
     ];
 
     protected $casts = [
         'cor_primaria' => 'string',
         'cor_secundaria' => 'string',
+        'configuracao' => 'array',
     ];
 
     protected $appends = [

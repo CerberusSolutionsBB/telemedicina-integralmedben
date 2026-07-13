@@ -17,9 +17,9 @@ class PatientService
         private ImportPatientsService $importPatientsService,
     ) {}
 
-    public function getPatients(?string $search = null, ?string $status = null)
+    public function getPatients(?string $search = null, ?string $status = null, ?string $registro = null)
     {
-        return $this->getPatientsService->execute($search, $status);
+        return $this->getPatientsService->execute($search, $status, $registro);
     }
 
     public function getPatientDetails(Patient $patient)
