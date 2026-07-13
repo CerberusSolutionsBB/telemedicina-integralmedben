@@ -29,4 +29,5 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::post('/{tenant}', [ConfiguracaoController::class, 'forms'])->name('forms');
     Route::put('{tenantForm}/expires-at', [ConfiguracaoController::class, 'createExpiresAt'])->name('expires-at');
     Route::delete('{tenantForm}/unlink', [ConfiguracaoController::class, 'removeVinculo'])->name('unlink');
+    Route::put('/{tenant}/status-formulario-dinamico', [ConfiguracaoController::class, 'toggleStatusFormularioDinamico'])->name('status-formulario-dinamico');
 });

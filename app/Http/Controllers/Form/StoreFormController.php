@@ -38,6 +38,7 @@ class StoreFormController extends Controller
                 'sub_descricao' => $validated['sub_descricao'] ?? null,
                 'observacao' => $validated['observacao'] ?? null,
                 'credencia_cluble_id' => $validated['credencia_cluble_id'] ?? null,
+                'configuracao' => $validated['configuracao'] ?? null,
             ]);
             if ($request->hasFile('logo') && $request->file('logo')->isValid()) {
                 $posicao = $validated['logo_posicao'] ?? 'centro';

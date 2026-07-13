@@ -7,6 +7,11 @@ use App\Models\CredenciasCluble;
 use App\Models\Form;
 use App\Models\FormArquivo;
 use App\Models\FormResponse;
+use App\Models\Patient;
+use App\Models\PatientAnswer;
+use App\Models\Question;
+use App\Models\TenantsDetail;
+use App\Models\Tenant;
 use App\Services\ClubleBeneficiarioService;
 use App\Services\SimpleSmsService;
 use App\Services\Tenant\FormsResponseTenentService;
@@ -18,6 +23,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Stancl\Tenancy\TenantCollection;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
@@ -320,6 +326,10 @@ class PublicFormController extends Controller
 
             DB::commit();
 
+            if ($currentTenant != null) {
+                $this->criarPacienteDinamico($currentTenant, $form, $formResponse, $processedAnswers);
+            }
+
             return redirect()
                 ->route('forms.public.thanks', $slug)
                 ->with('success', 'Resposta enviada com sucesso!');
@@ -537,5 +547,163 @@ class PublicFormController extends Controller
         }
 
         return mb_substr($tel, 0, 15);
+    }
+
+    private function criarPacienteDinamico(
+        string $tenantId,
+        Form $form,
+        FormResponse $formResponse,
+        array $processedAnswers,
+    ): void {
+        try {
+            $tenant = Tenant::find($tenantId);
+            if (! $tenant) {
+                return;
+            }
+
+            $detail = TenantsDetail::where('tenant_id', $tenantId)->first();
+            $config = $detail->configuracao ?? [];
+            if (empty($config['status_formulario_dinamico'])) {
+                return;
+            }
+
+            $fields = $form->fields()->orderBy('order')->get();
+            $fieldAnswers = [];
+            foreach ($fields as $field) {
+                $fieldAnswers[$field->id] = $processedAnswers[$field->id] ?? null;
+            }
+
+            $questions = Question::all();
+
+            $patientId = null;
+            $answersPorQuestion = [];
+
+            $tenant->run(function () use ($tenantId, $fieldAnswers, $fields, $questions, &$patientId, &$answersPorQuestion) {
+                $patientData = $this->extrairDadosPaciente($fieldAnswers, $fields, $questions);
+                $patient = Patient::create([
+                    'status_registro' => \App\Enums\StatusRegistroEnum::FormDinamico,
+                    'nome' => $patientData['nome'],
+                    'cpf' => $patientData['cpf'],
+                    'email' => $patientData['email'],
+                    'data_nascimento' => $patientData['data_nascimento'],
+                    'numero' => $patientData['numero'],
+                    'sexo' => $patientData['sexo'],
+                ]);
+
+                $answersPorQuestion = $this->mapearRespostasParaQuestions($fieldAnswers, $fields, $questions);
+                foreach ($answersPorQuestion as $questionId => $answer) {
+                    if ($answer === null || $answer === '') {
+                        continue;
+                    }
+                    PatientAnswer::create([
+                        'patient_id' => $patient->id,
+                        'question_id' => $questionId,
+                        'answer' => (string) $answer,
+                    ]);
+                }
+
+                $patientId = $patient->id;
+
+                Log::info('Paciente criado dinamicamente via formulário público', [
+                    'patient_id' => $patient->id,
+                    'tenant_id' => $tenantId,
+                    'form_id' => $form->id,
+                    'response_id' => $formResponse->id,
+                ]);
+            });
+
+            if ($patientId) {
+                \App\Events\PatientCreated::dispatch($patientId, $tenantId, $answersPorQuestion);
+            }
+        } catch (Throwable $e) {
+            Log::error('Erro ao criar paciente dinamicamente', [
+                'tenant_id' => $tenantId,
+                'form_id' => $form->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function extrairDadosPaciente(array $fieldAnswers, $fields, $questions): array
+    {
+        $dados = [
+            'nome' => null,
+            'cpf' => null,
+            'email' => null,
+            'data_nascimento' => null,
+            'numero' => null,
+            'sexo' => null,
+        ];
+
+        foreach ($fields as $field) {
+            $valor = $fieldAnswers[$field->id] ?? null;
+            if (empty($valor)) {
+                continue;
+            }
+            $label = mb_strtolower(trim($field->label));
+
+            if (empty($dados['nome']) && str_contains($label, 'nome')) {
+                $dados['nome'] = (string) $valor;
+            } elseif (empty($dados['cpf']) && str_contains($label, 'cpf')) {
+                $dados['cpf'] = preg_replace('/\D/', '', (string) $valor);
+            } elseif (empty($dados['email']) && (str_contains($label, 'e-mail') || str_contains($label, 'email') || $field->type === 'email')) {
+                $dados['email'] = mb_strtolower(trim((string) $valor));
+            } elseif (empty($dados['data_nascimento']) && (str_contains($label, 'nascimento') || ($field->type === 'date' && str_contains($label, 'nasc')))) {
+                $dados['data_nascimento'] = $this->convertBrazilianDateToISO((string) $valor);
+            } elseif (empty($dados['numero']) && (str_contains($label, 'celular') || str_contains($label, 'telefone') || str_contains($label, 'tel') || str_contains($label, 'whatsapp'))) {
+                $dados['numero'] = (string) $valor;
+            } elseif (empty($dados['sexo']) && str_contains($label, 'sexo')) {
+                $dados['sexo'] = $this->normalizarSexo((string) $valor);
+            }
+        }
+
+        return $dados;
+    }
+
+    private function normalizarSexo(string $valor): ?string
+    {
+        $valor = mb_strtolower(trim($valor));
+
+        return match (true) {
+            in_array($valor, ['m', 'masculino', 'homme']) => 'M',
+            in_array($valor, ['f', 'feminino', 'femme']) => 'F',
+            default => null,
+        };
+    }
+
+    private function mapearRespostasParaQuestions(array $fieldAnswers, $fields, $questions): array
+    {
+        $result = [];
+        foreach ($fields as $field) {
+            $valor = $fieldAnswers[$field->id] ?? null;
+            if ($valor === null || $valor === '') {
+                continue;
+            }
+            $label = mb_strtolower(trim($field->label));
+            $question = $questions->first(function ($q) use ($label, $field) {
+                $qTitle = mb_strtolower(trim($q->title));
+                if ($qTitle === $label) {
+                    return true;
+                }
+                if (str_contains($qTitle, $label) || str_contains($label, $qTitle)) {
+                    return true;
+                }
+                if ($q->type === $field->type) {
+                    $qWords = explode(' ', $qTitle);
+                    $fWords = explode(' ', $label);
+                    $intersection = array_intersect($qWords, $fWords);
+                    if (count($intersection) >= 1) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+            if ($question) {
+                $result[$question->id] = (string) $valor;
+            }
+        }
+
+        return $result;
     }
 }

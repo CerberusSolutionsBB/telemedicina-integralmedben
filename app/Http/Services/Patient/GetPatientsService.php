@@ -6,7 +6,7 @@ use App\Models\Patient;
 
 class GetPatientsService
 {
-    public function execute(?string $search = null, ?string $status = null)
+    public function execute(?string $search = null, ?string $status = null, ?string $registro = null)
     {
         return Patient::with('answers.question')
             ->when($search, function ($query, $search) {
@@ -18,6 +18,9 @@ class GetPatientsService
             })
             ->when($status !== null && $status !== '', function ($query) use ($status) {
                 $query->where('status', $status);
+            })
+            ->when($registro !== null && $registro !== '', function ($query) use ($registro) {
+                $query->where('status_registro', $registro);
             })
             ->latest()
             ->paginate(10)

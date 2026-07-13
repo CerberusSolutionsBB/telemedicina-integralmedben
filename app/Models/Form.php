@@ -47,6 +47,7 @@ class Form extends Model
         'sub_descricao',
         'observacao',
         'status',
+        'configuracao',
     ];
 
     protected $appends = [
@@ -62,6 +63,7 @@ class Form extends Model
         'published_at' => 'datetime',
         'expires_at' => 'datetime',
         'settings' => 'array',
+        'configuracao' => 'array',
         'responses_count' => 'integer',
         'primary_color' => 'string',
         'secondary_color' => 'string',

@@ -99,6 +99,7 @@ class FormShowController extends Controller
                 'lei' => $form->lei,
                 'responses' => count($currentTenantResponseIds),
                 'categoria' => $form->categoria,
+                'configuracao' => $form->configuracao,
                 'logo' => $this->getLogoData($form),
                 'fields' => $form->fields->map(fn ($f) => [
                     'id' => $f->id,
