@@ -4,6 +4,7 @@ import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
+import { showToast } from '@/Utils/toast';
 import {
     Search,
     X,
@@ -13,6 +14,7 @@ import {
     FileText,
     Plus,
     CreditCard,
+    Trash2,
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -36,6 +38,8 @@ const flashMessage = computed(() => page.props.flash?.message);
 const flashType = computed(() => page.props.flash?.type);
 
 const can = computed(() => page.props?.authUser?.can?.siprov || {});
+
+const currentSituacao = ref(new URLSearchParams(page.url?.split('?')[1] || '').get('situacaoBeneficio') || 'Ativo');
 
 const extractItens = (data) => {
     if (Array.isArray(data) && data.length === 1 && data[0].itens) {
@@ -89,12 +93,26 @@ const filteredAssociados = computed(() => {
 
 const hasResults = computed(() => filteredAssociados.value.length > 0);
 
-const hasActiveFilters = computed(() => search.value.length > 0 || selectedPlano.value !== '');
+const hasActiveFilters = computed(() => search.value.length > 0 || selectedPlano.value !== '' || currentSituacao.value !== 'Ativo');
 
 const clearSearch = () => {
     search.value = '';
     selectedPlano.value = '';
+    if (currentSituacao.value !== 'Ativo') {
+        currentSituacao.value = 'Ativo';
+        onSituacaoChange();
+        return;
+    }
+    currentSituacao.value = 'Ativo';
     searchInput.value?.focus();
+};
+
+const onSituacaoChange = () => {
+    router.visit(route('siprov.index', { situacaoBeneficio: currentSituacao.value || '' }), {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
 };
 
 const formatDate = (date) => {
@@ -161,10 +179,61 @@ const confirmGerarCartao = async () => {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
     } catch {
-        alert('Erro ao gerar cartão. Tente novamente.');
+        showToast('Erro ao gerar cartão. Tente novamente.', 'error');
     } finally {
         cartaoModal.value.isProcessing = false;
         closeCartaoModal();
+    }
+};
+
+const cancelModal = ref({
+    show: false,
+    item: null,
+    isProcessing: false,
+});
+
+const openCancelModal = (item) => {
+    cancelModal.value = { show: true, item, isProcessing: false };
+};
+
+const closeCancelModal = () => {
+    if (cancelModal.value.isProcessing) return;
+    cancelModal.value.show = false;
+    setTimeout(() => {
+        cancelModal.value.item = null;
+        cancelModal.value.isProcessing = false;
+    }, 200);
+};
+
+const confirmCancelarBeneficio = async () => {
+    const item = cancelModal.value.item;
+    if (!item) return;
+
+    cancelModal.value.isProcessing = true;
+
+    try {
+        const response = await fetch(route('siprov.cancelar-beneficio', item.codBeneficio), {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+            },
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            closeCancelModal();
+            showToast('Benefício cancelado com sucesso.', 'success');
+            router.reload({ only: [] });
+        } else {
+            showToast(data.message || 'Erro ao cancelar benefício.', 'error');
+        }
+    } catch {
+        showToast('Erro ao cancelar benefício. Tente novamente.', 'error');
+    } finally {
+        cancelModal.value.isProcessing = false;
     }
 };
 </script>
@@ -230,6 +299,14 @@ const confirmGerarCartao = async () => {
                             <option v-for="plano in planoOptions" :key="plano.value" :value="plano.value">
                                 {{ plano.label }}
                             </option>
+                        </select>
+
+                        <select v-model="currentSituacao" @change="onSituacaoChange"
+                            class="block w-full sm:w-48 py-2.5 px-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-shadow cursor-pointer">
+                            <option value="">Todos os status</option>
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                            <option value="Suspenso">Suspenso</option>
                         </select>
 
                         <button v-if="hasActiveFilters" type="button" @click="clearSearch"
@@ -318,6 +395,11 @@ const confirmGerarCartao = async () => {
                                                 title="Gerar Cartão">
                                                 <CreditCard class="w-4 h-4" />
                                             </button>
+                                            <button @click="openCancelModal(item)"
+                                                class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all"
+                                                title="Cancelar Benefício">
+                                                <Trash2 class="w-4 h-4" />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -360,4 +442,11 @@ const confirmGerarCartao = async () => {
         confirm-text="Sim, Gerar" cancel-text="Cancelar"
         :is-processing="cartaoModal.isProcessing"
         variant="info" @close="closeCartaoModal" @confirm="confirmGerarCartao" />
+    <ConfirmDeleteModal :show="cancelModal.show"
+        title="Cancelar Benefício"
+        :message="'Deseja cancelar o benefício #' + (cancelModal.item?.codBeneficio || '') + ' de ' + (cancelModal.item?.nomePessoa || 'este associado') + '?'"
+        warning-message="Esta ação irá cancelar o benefício na SIPROV e não pode ser desfeita."
+        confirm-text="Sim, Cancelar" cancel-text="Não, Manter"
+        :is-processing="cancelModal.isProcessing"
+        variant="danger" @close="closeCancelModal" @confirm="confirmCancelarBeneficio" />
 </template>

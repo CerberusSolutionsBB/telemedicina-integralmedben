@@ -2,9 +2,10 @@
 import { ref, computed } from "vue";
 import { Head, router, Link } from "@inertiajs/vue3";
 import { Button } from "@/Components/ui/button";
-import CentralAdminLayout from "@/Layouts/CentralAdminLayout.vue";
+import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import { showToast } from '@/Utils/toast';
 import FormField from "@/Components/FormFields/FormField.vue";
+import CreatePatientFromResponseModal from "@/Components/CreatePatientFromResponseModal.vue";
 import {
     ArrowLeft,
     Edit,
@@ -24,7 +25,8 @@ import {
     ChevronRight,
     Home,
     Loader2,
-    Check
+    Check,
+    UserPlus
 } from "lucide-vue-next";
 const props = defineProps({
     form: {
@@ -55,6 +57,8 @@ const props = defineProps({
 const activeTab = ref('overview');
 const loading = ref(false);
 const linkCopied = ref(false);
+const patientDialogOpen = ref(false);
+const selectedResponse = ref(null);
 const statusColors = {
     rascunho: 'bg-gray-100 text-gray-800 border-gray-200',
     ativo: 'bg-green-100 text-green-800 border-green-200',
@@ -153,6 +157,10 @@ const handlePagination = (url) => {
         }
     });
 };
+const openPatientDialog = (response) => {
+    selectedResponse.value = response;
+    patientDialogOpen.value = true;
+};
 const formatAnswer = (answer, fieldType) => {
     if (answer === null || answer === undefined || answer === '') {
         return '-';
@@ -202,7 +210,7 @@ const formatDateTime = (dateString) => {
 <template>
 
     <Head :title="props.form.title" />
-    <CentralAdminLayout>
+    <TenantAdminLayout>
         <!-- ==========================================
              BREADCRUMB
              ========================================== -->
@@ -527,6 +535,15 @@ const formatDateTime = (dateString) => {
                                 <p class="text-xs text-gray-400 font-mono">
                                     IP: {{ response.ip_address || 'N/A' }}
                                 </p>
+                                <Button v-if="!response.status_paciente" variant="outline" size="sm" class="mt-2 gap-1 text-xs"
+                                    @click="openPatientDialog(response)">
+                                    <UserPlus class="w-3.5 h-3.5" />
+                                    Criar Paciente
+                                </Button>
+                                <span v-else class="inline-flex items-center gap-1 text-xs text-green-600 font-medium mt-2">
+                                    <CheckCircle2 class="w-3.5 h-3.5" />
+                                    Paciente criado
+                                </span>
                             </div>
                         </div>
                         <!-- Respostas por campo -->
@@ -619,5 +636,7 @@ const formatDateTime = (dateString) => {
                 </div>
             </div>
         </div>
-    </CentralAdminLayout>
+        <CreatePatientFromResponseModal :open="patientDialogOpen" :response="selectedResponse"
+            :fields="props.form.fields" @update:open="patientDialogOpen = $event" />
+    </TenantAdminLayout>
 </template>

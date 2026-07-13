@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Siprov\CreateSiprovIntegrationController;
 use App\Http\Controllers\Siprov\SiprovCartaoController;
+use App\Http\Controllers\Siprov\SiprovCancelBeneficioController;
 use App\Http\Controllers\Siprov\SiprovCreateController;
 use App\Http\Controllers\Siprov\SiprovDestroyController;
 use App\Http\Controllers\Siprov\SiprovIndexController;
@@ -22,6 +23,10 @@ Route::post('/store', CreateSiprovIntegrationController::class)
 Route::delete('/{siprov}', SiprovDestroyController::class)
     ->middleware('permission:siprov.delete')
     ->name('destroy');
+
+Route::put('/{codBeneficio}/cancelar', SiprovCancelBeneficioController::class)
+    ->middleware('permission:siprov.delete')
+    ->name('cancelar-beneficio');
 
 Route::get('/cartao', SiprovCartaoController::class)
     ->middleware('permission:siprov.view')

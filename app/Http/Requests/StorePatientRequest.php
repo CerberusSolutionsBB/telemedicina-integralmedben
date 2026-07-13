@@ -32,6 +32,7 @@ class StorePatientRequest extends FormRequest
             'enderecos.cidade' => 'nullable|string|max:255',
             'enderecos.estado' => 'nullable|string|max:2',
             'status' => 'nullable|boolean',
+            'response_id' => 'nullable|integer',
         ];
     }
 

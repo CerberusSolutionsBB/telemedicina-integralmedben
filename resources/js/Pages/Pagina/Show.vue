@@ -625,8 +625,8 @@ const confirmRemoveLink = () => {
         <FormSelectorDialog v-model:open="dialogOpen" v-model="selectedFormIds" :forms="availableForms"
             @confirm="syncForms" />
 
-        <ConfirmDeleteModal :open="confirmDialogOpen" title="Desvincular formulário"
-            message="Tem certeza que deseja remover este formulário deste tenant?" confirm-text="Sim, remover"
-            cancel-text="Cancelar" :loading="isRemoving" @cancel="closeRemoveLinkDialog" @confirm="confirmRemoveLink" />
+        <ConfirmDeleteModal :show="confirmDialogOpen" title="Remover vínculo"
+            message="Deseja remover esse vínculo?" confirm-text="Sim, remover"
+            cancel-text="Cancelar" :isProcessing="isRemoving" @close="closeRemoveLinkDialog" @confirm="confirmRemoveLink" />
     </CentralAdminLayout>
 </template>

@@ -67,6 +67,26 @@ const sexoLabel = (sexo) => {
     return map[sexo.toLowerCase()] || sexo;
 };
 
+const registroLabel = (registro) => {
+    const map = {
+        'formulario': 'Formulario',
+        'form-dinamico': 'Form. Dinamico',
+        'importacao': 'Importacao',
+        'form-publico': 'Form. Publico',
+    };
+    return map[registro] || registro;
+};
+
+const registroColor = (registro) => {
+    const map = {
+        'formulario': 'bg-blue-100 text-blue-800',
+        'form-dinamico': 'bg-purple-100 text-purple-800',
+        'importacao': 'bg-orange-100 text-orange-800',
+        'form-publico': 'bg-teal-100 text-teal-800',
+    };
+    return map[registro] || 'bg-gray-100 text-gray-800';
+};
+
 const navigate = () => {
     const params = {};
     if (search.value) params.search = search.value;
@@ -129,6 +149,7 @@ const onStatusChange = () => {
                     <TableHead class="text-center whitespace-nowrap">Sexo</TableHead>
                     <TableHead class="text-center whitespace-nowrap">Nascimento</TableHead>
                     <TableHead class="text-center whitespace-nowrap">Status</TableHead>
+                    <TableHead class="text-center whitespace-nowrap">Registro</TableHead>
                     <TableHead class="text-center whitespace-nowrap">Cadastro</TableHead>
                     <TableHead v-for="question in questions" :key="question.id" class="text-center whitespace-nowrap">
                         <div class="truncate max-w-[150px]" :title="question.title">
@@ -175,6 +196,13 @@ const onStatusChange = () => {
                     </TableCell>
 
                     <TableCell class="text-center">
+                        <span v-if="patient.status_registro" :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', registroColor(patient.status_registro)]">
+                            {{ registroLabel(patient.status_registro) }}
+                        </span>
+                        <span v-else class="text-gray-400 text-xs">-</span>
+                    </TableCell>
+
+                    <TableCell class="text-center">
                         {{ formatDate(patient.created_at) }}
                     </TableCell>
 
@@ -200,7 +228,7 @@ const onStatusChange = () => {
                 </TableRow>
 
                 <TableRow v-if="patients.data && patients.data.length === 0">
-                    <TableCell :colspan="9 + questions.length" class="text-center py-8 text-gray-500">
+                    <TableCell :colspan="10 + questions.length" class="text-center py-8 text-gray-500">
                         Nenhum paciente encontrado.
                     </TableCell>
                 </TableRow>

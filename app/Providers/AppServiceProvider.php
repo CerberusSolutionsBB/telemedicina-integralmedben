@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Events\PatientCreated;
+use App\Events\SiprovIntegrated;
 use App\Http\Services\ExternalApi\ClubeBeneficiosService;
 use App\Http\Services\ExternalApi\TelemedicinaService;
 use App\Listeners\RegisterPatientToExternalApis;
 use App\Listeners\SendNotificationOnPatientCreated;
+use App\Listeners\SendNotificationOnSiprovIntegrated;
 use App\Listeners\SyncPatientToCentral;
 use App\Notifications\Channels\SmsChannel;
 use App\Notifications\NotificationDispatcher;
@@ -49,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PatientCreated::class, SyncPatientToCentral::class);
         Event::listen(PatientCreated::class, SendNotificationOnPatientCreated::class);
         Event::listen(PatientCreated::class, RegisterPatientToExternalApis::class);
+        Event::listen(SiprovIntegrated::class, SendNotificationOnSiprovIntegrated::class);
         // $host          = request()->getHost();
         // $currentTenant = str($host)->before('.')->toString();
         // $current       = Tenant::with(['details'])->where('slug', $currentTenant)->first();

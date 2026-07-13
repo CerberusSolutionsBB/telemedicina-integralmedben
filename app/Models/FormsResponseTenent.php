@@ -19,6 +19,7 @@ class FormsResponseTenent extends Model
         'tenant_id',
         'form_id',
         'response_id',
+        'status_paciente',
     ];
 
     /**

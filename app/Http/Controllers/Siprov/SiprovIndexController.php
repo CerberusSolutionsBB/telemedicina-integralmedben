@@ -18,7 +18,7 @@ class SiprovIndexController extends Controller
 
     public function __invoke(Request $request): Response
     {
-        $situacaoBeneficio = $request->input('situacaoBeneficio', 'Ativo');
+        $situacaoBeneficio = $request->input('situacaoBeneficio') ?: 'Ativo';
         $data = SiprovAssociadoQueryData::fromSituacaoBeneficio($situacaoBeneficio);
 
         try {

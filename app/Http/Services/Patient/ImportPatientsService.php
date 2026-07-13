@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\Patient;
 
+use App\Enums\StatusRegistroEnum;
 use App\Models\Patient;
 use App\Models\PatientAnswer;
 use Illuminate\Http\UploadedFile;
@@ -89,6 +90,7 @@ class ImportPatientsService
             }
 
             try {
+                $patientData['status_registro'] = StatusRegistroEnum::Importacao;
                 $patient = Patient::create($patientData);
                 foreach ($answers as $questionId => $answer) {
                     PatientAnswer::create([

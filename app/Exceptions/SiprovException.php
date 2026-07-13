@@ -20,4 +20,9 @@ class SiprovException extends Exception
     {
         return new self($message ?? 'Falha ao cadastrar benefício na SIPROV.');
     }
+
+    public static function cancelarBeneficioFailed(?string $message = null): self
+    {
+        return new self($message ?? 'Falha ao cancelar benefício na SIPROV.');
+    }
 }
