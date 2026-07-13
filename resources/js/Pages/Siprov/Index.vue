@@ -14,7 +14,8 @@ import {
     FileText,
     Plus,
     CreditCard,
-    Trash2,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -30,6 +31,10 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    pagination: {
+        type: Object,
+        default: () => ({ currentPage: 1, hasNextPage: false, total: 0 }),
+    },
 });
 
 const page = usePage();
@@ -40,6 +45,18 @@ const flashType = computed(() => page.props.flash?.type);
 const can = computed(() => page.props?.authUser?.can?.siprov || {});
 
 const currentSituacao = ref(new URLSearchParams(page.url?.split('?')[1] || '').get('situacaoBeneficio') || 'Ativo');
+const currentPage = ref(props.pagination.currentPage || 1);
+
+const goToPage = (newPage) => {
+    if (newPage < 1) return;
+    currentPage.value = newPage;
+    const params = { situacaoBeneficio: currentSituacao.value, pagina: newPage };
+    router.visit(route('siprov.index', params), {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
 
 const extractItens = (data) => {
     if (Array.isArray(data) && data.length === 1 && data[0].itens) {
@@ -98,9 +115,10 @@ const hasActiveFilters = computed(() => search.value.length > 0 || selectedPlano
 const clearSearch = () => {
     search.value = '';
     selectedPlano.value = '';
-    if (currentSituacao.value !== 'Ativo') {
+    if (currentSituacao.value !== 'Ativo' || currentPage.value !== 1) {
         currentSituacao.value = 'Ativo';
-        onSituacaoChange();
+        currentPage.value = 1;
+        goToPage(1);
         return;
     }
     currentSituacao.value = 'Ativo';
@@ -108,7 +126,8 @@ const clearSearch = () => {
 };
 
 const onSituacaoChange = () => {
-    router.visit(route('siprov.index', { situacaoBeneficio: currentSituacao.value || '' }), {
+    currentPage.value = 1;
+    router.visit(route('siprov.index', { situacaoBeneficio: currentSituacao.value }), {
         preserveState: true,
         preserveScroll: true,
         replace: true,
@@ -185,57 +204,6 @@ const confirmGerarCartao = async () => {
         closeCartaoModal();
     }
 };
-
-const cancelModal = ref({
-    show: false,
-    item: null,
-    isProcessing: false,
-});
-
-const openCancelModal = (item) => {
-    cancelModal.value = { show: true, item, isProcessing: false };
-};
-
-const closeCancelModal = () => {
-    if (cancelModal.value.isProcessing) return;
-    cancelModal.value.show = false;
-    setTimeout(() => {
-        cancelModal.value.item = null;
-        cancelModal.value.isProcessing = false;
-    }, 200);
-};
-
-const confirmCancelarBeneficio = async () => {
-    const item = cancelModal.value.item;
-    if (!item) return;
-
-    cancelModal.value.isProcessing = true;
-
-    try {
-        const response = await fetch(route('siprov.cancelar-beneficio', item.codBeneficio), {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
-            },
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            closeCancelModal();
-            showToast('Benefício cancelado com sucesso.', 'success');
-            router.reload({ only: [] });
-        } else {
-            showToast(data.message || 'Erro ao cancelar benefício.', 'error');
-        }
-    } catch {
-        showToast('Erro ao cancelar benefício. Tente novamente.', 'error');
-    } finally {
-        cancelModal.value.isProcessing = false;
-    }
-};
 </script>
 
 <template>
@@ -303,7 +271,6 @@ const confirmCancelarBeneficio = async () => {
 
                         <select v-model="currentSituacao" @change="onSituacaoChange"
                             class="block w-full sm:w-48 py-2.5 px-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-shadow cursor-pointer">
-                            <option value="">Todos os status</option>
                             <option value="Ativo">Ativo</option>
                             <option value="Inativo">Inativo</option>
                             <option value="Suspenso">Suspenso</option>
@@ -395,16 +362,26 @@ const confirmCancelarBeneficio = async () => {
                                                 title="Gerar Cartão">
                                                 <CreditCard class="w-4 h-4" />
                                             </button>
-                                            <button @click="openCancelModal(item)"
-                                                class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all"
-                                                title="Cancelar Benefício">
-                                                <Trash2 class="w-4 h-4" />
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
+
+                        <div v-if="hasResults && (currentPage > 1 || props.pagination.hasNextPage)"
+                            class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                            <div class="text-sm text-gray-500">
+                                Página {{ currentPage }} · {{ props.pagination.total }} resultado(s)
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
+                                    Anterior
+                                </Button>
+                                <Button variant="outline" size="sm" :disabled="!props.pagination.hasNextPage" @click="goToPage(currentPage + 1)">
+                                    Próxima
+                                </Button>
+                            </div>
+                        </div>
 
                         <div v-if="!hasResults" class="text-center py-16 text-gray-500">
                             <div v-if="hasActiveFilters" class="space-y-3">
@@ -442,11 +419,4 @@ const confirmCancelarBeneficio = async () => {
         confirm-text="Sim, Gerar" cancel-text="Cancelar"
         :is-processing="cartaoModal.isProcessing"
         variant="info" @close="closeCartaoModal" @confirm="confirmGerarCartao" />
-    <ConfirmDeleteModal :show="cancelModal.show"
-        title="Cancelar Benefício"
-        :message="'Deseja cancelar o benefício #' + (cancelModal.item?.codBeneficio || '') + ' de ' + (cancelModal.item?.nomePessoa || 'este associado') + '?'"
-        warning-message="Esta ação irá cancelar o benefício na SIPROV e não pode ser desfeita."
-        confirm-text="Sim, Cancelar" cancel-text="Não, Manter"
-        :is-processing="cancelModal.isProcessing"
-        variant="danger" @close="closeCancelModal" @confirm="confirmCancelarBeneficio" />
 </template>
