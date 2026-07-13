@@ -30,6 +30,7 @@ const emit = defineEmits([
 ])
 const isEditing = ref(false)
 const isConfirmingDelete = ref(false)
+const isConfirmingRemoveLink = ref(false)
 const expiresAt = ref(props.item.expires_at || '')
 const dateInputRef = ref(null)
 watch(
@@ -124,6 +125,7 @@ const cancelEditing = () => {
     expiresAt.value = props.item.expires_at || ''
     isEditing.value = false
     isConfirmingDelete.value = false
+    isConfirmingRemoveLink.value = false
 }
 const confirmEditing = () => {
     if (!isValidDate.value) return
@@ -146,13 +148,20 @@ const removeExpiresAt = () => {
     isConfirmingDelete.value = false
 }
 const removeLink = () => {
+    if (!isConfirmingRemoveLink.value) {
+        isConfirmingRemoveLink.value = true
+        return
+    }
 
     emit('remove:link', props.item)
-
+    isConfirmingRemoveLink.value = false
 }
 const handleKeydown = (e) => {
     if (e.key === 'Escape' && isEditing.value) {
         cancelEditing()
+    }
+    if (e.key === 'Escape' && isConfirmingRemoveLink.value) {
+        isConfirmingRemoveLink.value = false
     }
 }
 onMounted(() => {
@@ -291,11 +300,14 @@ onUnmounted(() => {
                 </Transition>
                 <!-- Ações Destrutivas -->
                 <div class="pt-2 border-t border-gray-100">
-                    <button type="button"
-                        class="group/btn inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 transition-all hover:bg-red-50 hover:border-red-300 hover:shadow-sm active:scale-[0.99]"
-                        @click="removeLink">
+                    <button type="button" :class="[
+                        'group/btn inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all active:scale-[0.99]',
+                        isConfirmingRemoveLink
+                            ? 'border-red-300 bg-red-600 text-white hover:bg-red-700 shadow-sm'
+                            : 'border-red-200 bg-white text-red-600 hover:bg-red-50 hover:border-red-300 hover:shadow-sm'
+                    ]" @click="removeLink">
                         <Unlink class="w-4 h-4 transition-transform group-hover/btn:rotate-12" />
-                        Remover vínculo
+                        {{ isConfirmingRemoveLink ? 'Clique novamente para confirmar' : 'Remover vínculo' }}
                     </button>
                 </div>
                 <!-- Meta info desktop -->

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SimpleSmsService
 {
@@ -22,6 +23,13 @@ class SimpleSmsService
     {
         $destinationAddr = $this->formatPhone($phone);
 
+        Log::info('SMS | Enviando mensagem', [
+            'phone_original' => $phone,
+            'phone_formatted' => $destinationAddr,
+            'message' => $message,
+            'reference' => $ref,
+        ]);
+
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
             'Authorization' => 'Basic '.$this->auth,
@@ -33,11 +41,27 @@ class SimpleSmsService
 
         $data = $response->json();
 
-        return [
+        $result = [
             'sent' => empty($data['error']),
             'message_id' => $data['message_id'] ?? null,
             'error' => $data['message'] ?? null,
         ];
+
+        if ($result['sent']) {
+            Log::info('SMS | Enviado com sucesso', [
+                'phone' => $destinationAddr,
+                'message_id' => $result['message_id'],
+            ]);
+        } else {
+            Log::error('SMS | Erro ao enviar', [
+                'phone' => $destinationAddr,
+                'error' => $result['error'],
+                'status' => $response->status(),
+                'response' => $data,
+            ]);
+        }
+
+        return $result;
     }
 
     private function formatPhone(string $phone): string

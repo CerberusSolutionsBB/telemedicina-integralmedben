@@ -148,4 +148,68 @@ class SiprovAssociadoService
             );
         }
     }
+
+    public function cancelarBeneficio(int $codBeneficio): array
+    {
+        try {
+            Log::info('SIPROV | Cancelando benefício', [
+                'endpoint' => '/ext/beneficio/'.$codBeneficio.'/cancelar',
+            ]);
+
+            $response = Http::withToken($this->authService->token())
+                ->acceptJson()
+                ->put(
+                    config('siprov.base_url').'/ext/beneficio/'.$codBeneficio.'/cancelar'
+                );
+
+            if ($response->unauthorized()) {
+                Log::warning('SIPROV | Token expirado, renovando token', [
+                    'status' => $response->status(),
+                    'response' => $response->body(),
+                ]);
+
+                $this->authService->forgetToken();
+
+                $response = Http::withToken($this->authService->token())
+                    ->acceptJson()
+                    ->put(
+                        config('siprov.base_url').'/ext/beneficio/'.$codBeneficio.'/cancelar'
+                    );
+            }
+
+            if ($response->failed()) {
+                Log::error('SIPROV | Erro ao cancelar benefício', [
+                    'status' => $response->status(),
+                    'response' => $response->body(),
+                    'cod_beneficio' => $codBeneficio,
+                ]);
+
+                throw SiprovException::cancelarBeneficioFailed(
+                    $response->body()
+                );
+            }
+
+            Log::info('SIPROV | Benefício cancelado com sucesso', [
+                'status' => $response->status(),
+                'cod_beneficio' => $codBeneficio,
+            ]);
+
+            return $response->json() ?? [];
+
+        } catch (SiprovException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            Log::critical('SIPROV | Exception ao cancelar benefício', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'cod_beneficio' => $codBeneficio,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw SiprovException::cancelarBeneficioFailed(
+                $e->getMessage()
+            );
+        }
+    }
 }

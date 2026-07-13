@@ -23,12 +23,14 @@ class Patient extends Model
         'email',
         'numero',
         'status',
+        'status_registro',
         'enderecos',
     ];
 
     protected $casts = [
         'data_nascimento' => 'date',
         'status' => 'boolean',
+        'status_registro' => \App\Enums\StatusRegistroEnum::class,
         'enderecos' => 'array',
         'sexo' => PatientSexoEnum::class,
     ];

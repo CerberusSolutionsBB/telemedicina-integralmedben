@@ -12,11 +12,15 @@ class SiprovAssociadoQueryData
         public readonly ?string $cpfCnpj = null,
         public readonly ?string $codigoIntegracao = null,
         public readonly ?string $nomePessoa = null,
+        public readonly ?int $pagina = null,
     ) {}
 
-    public static function fromSituacaoBeneficio(?string $situacaoBeneficio): self
+    public static function fromRequest(?string $situacaoBeneficio, ?int $pagina): self
     {
-        return new self(situacaoBeneficio: $situacaoBeneficio);
+        return new self(
+            situacaoBeneficio: $situacaoBeneficio,
+            pagina: $pagina,
+        );
     }
 
     public function toQueryParams(): array
@@ -38,6 +42,10 @@ class SiprovAssociadoQueryData
 
             if (! empty($this->nomePessoa)) {
                 $params['nomePessoa'] = $this->nomePessoa;
+            }
+
+            if ($this->pagina !== null && $this->pagina > 1) {
+                $params['pagina'] = $this->pagina;
             }
 
             Log::info('SIPROV | Query params associado montado', [

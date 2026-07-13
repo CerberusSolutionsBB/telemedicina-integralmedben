@@ -18,15 +18,21 @@ class SiprovIndexController extends Controller
 
     public function __invoke(Request $request): Response
     {
-        $situacaoBeneficio = $request->input('situacaoBeneficio', 'Ativo');
-        $data = SiprovAssociadoQueryData::fromSituacaoBeneficio($situacaoBeneficio);
+        $situacaoBeneficio = $request->input('situacaoBeneficio') ?: 'Ativo';
+        $pagina = $request->input('pagina') ? (int) $request->input('pagina') : 1;
+        $data = SiprovAssociadoQueryData::fromRequest($situacaoBeneficio, $pagina > 1 ? $pagina : null);
 
         try {
-            $associados = $this->siprovService->query($data);
+            $response = $this->siprovService->query($data);
 
             return Inertia::render('Siprov/Index', [
-                'associados' => $associados,
+                'associados' => $response['itens'] ?? [],
                 'siprovError' => null,
+                'pagination' => [
+                    'currentPage' => $response['paginaAtual'] ?? 1,
+                    'hasNextPage' => $response['proximaPagina'] ?? false,
+                    'total' => $response['quantidade'] ?? 0,
+                ],
             ]);
         } catch (SiprovException $e) {
             return Inertia::render('Siprov/Index', [

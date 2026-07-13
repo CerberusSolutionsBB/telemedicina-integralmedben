@@ -10,6 +10,7 @@ use App\Http\Controllers\Form\StoreFormController;
 use App\Http\Controllers\Form\ToggleVisibilityFormController;
 use App\Http\Controllers\Form\UpdateFormController;
 use App\Http\Controllers\Form\UpdateStatusFormController;
+use App\Http\Controllers\Tenant\Form\SmsTemplateController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/f/{slug}', [PublicFormController::class, 'show'])
@@ -50,4 +51,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/{form}', DestroyFormController::class)
         ->name('destroy')
         ->middleware('permission:forms.delete');
+
+    Route::get('/sms-templates', [SmsTemplateController::class, 'index'])
+        ->name('sms-templates.index');
+    Route::post('/sms-templates', [SmsTemplateController::class, 'store'])
+        ->name('sms-templates.store');
+    Route::put('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'update'])
+        ->name('sms-templates.update');
+    Route::delete('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'destroy'])
+        ->name('sms-templates.destroy');
 });

@@ -4,6 +4,7 @@ import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
+import { showToast } from '@/Utils/toast';
 import {
     Search,
     X,
@@ -13,6 +14,8 @@ import {
     FileText,
     Plus,
     CreditCard,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -28,6 +31,10 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    pagination: {
+        type: Object,
+        default: () => ({ currentPage: 1, hasNextPage: false, total: 0 }),
+    },
 });
 
 const page = usePage();
@@ -36,6 +43,20 @@ const flashMessage = computed(() => page.props.flash?.message);
 const flashType = computed(() => page.props.flash?.type);
 
 const can = computed(() => page.props?.authUser?.can?.siprov || {});
+
+const currentSituacao = ref(new URLSearchParams(page.url?.split('?')[1] || '').get('situacaoBeneficio') || 'Ativo');
+const currentPage = ref(props.pagination.currentPage || 1);
+
+const goToPage = (newPage) => {
+    if (newPage < 1) return;
+    currentPage.value = newPage;
+    const params = { situacaoBeneficio: currentSituacao.value, pagina: newPage };
+    router.visit(route('siprov.index', params), {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
 
 const extractItens = (data) => {
     if (Array.isArray(data) && data.length === 1 && data[0].itens) {
@@ -89,12 +110,28 @@ const filteredAssociados = computed(() => {
 
 const hasResults = computed(() => filteredAssociados.value.length > 0);
 
-const hasActiveFilters = computed(() => search.value.length > 0 || selectedPlano.value !== '');
+const hasActiveFilters = computed(() => search.value.length > 0 || selectedPlano.value !== '' || currentSituacao.value !== 'Ativo');
 
 const clearSearch = () => {
     search.value = '';
     selectedPlano.value = '';
+    if (currentSituacao.value !== 'Ativo' || currentPage.value !== 1) {
+        currentSituacao.value = 'Ativo';
+        currentPage.value = 1;
+        goToPage(1);
+        return;
+    }
+    currentSituacao.value = 'Ativo';
     searchInput.value?.focus();
+};
+
+const onSituacaoChange = () => {
+    currentPage.value = 1;
+    router.visit(route('siprov.index', { situacaoBeneficio: currentSituacao.value }), {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
 };
 
 const formatDate = (date) => {
@@ -161,7 +198,7 @@ const confirmGerarCartao = async () => {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
     } catch {
-        alert('Erro ao gerar cartão. Tente novamente.');
+        showToast('Erro ao gerar cartão. Tente novamente.', 'error');
     } finally {
         cartaoModal.value.isProcessing = false;
         closeCartaoModal();
@@ -230,6 +267,13 @@ const confirmGerarCartao = async () => {
                             <option v-for="plano in planoOptions" :key="plano.value" :value="plano.value">
                                 {{ plano.label }}
                             </option>
+                        </select>
+
+                        <select v-model="currentSituacao" @change="onSituacaoChange"
+                            class="block w-full sm:w-48 py-2.5 px-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-shadow cursor-pointer">
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                            <option value="Suspenso">Suspenso</option>
                         </select>
 
                         <button v-if="hasActiveFilters" type="button" @click="clearSearch"
@@ -323,6 +367,21 @@ const confirmGerarCartao = async () => {
                                 </tr>
                             </tbody>
                         </table>
+
+                        <div v-if="hasResults && (currentPage > 1 || props.pagination.hasNextPage)"
+                            class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                            <div class="text-sm text-gray-500">
+                                Página {{ currentPage }} · {{ props.pagination.total }} resultado(s)
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
+                                    Anterior
+                                </Button>
+                                <Button variant="outline" size="sm" :disabled="!props.pagination.hasNextPage" @click="goToPage(currentPage + 1)">
+                                    Próxima
+                                </Button>
+                            </div>
+                        </div>
 
                         <div v-if="!hasResults" class="text-center py-16 text-gray-500">
                             <div v-if="hasActiveFilters" class="space-y-3">
