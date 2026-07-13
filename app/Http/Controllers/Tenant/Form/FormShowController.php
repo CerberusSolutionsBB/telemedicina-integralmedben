@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant\Form;
 use App\Http\Controllers\Controller;
 use App\Models\Form;
 use App\Models\FormsResponseTenent;
+use App\Models\SmsTemplate;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -122,6 +123,21 @@ class FormShowController extends Controller
                 'edit' => $user->can('forms.edit') || $form->user_id === $user->id,
                 'delete' => $user->can('forms.delete') || $form->user_id === $user->id,
             ],
+            'smsTemplates' => SmsTemplate::query()
+                ->where('event', 'patient.created')
+                ->orderByDesc('updated_at')
+                ->get()
+                ->map(fn ($t) => [
+                    'id' => $t->id,
+                    'name' => $t->name,
+                    'message' => $t->message,
+                    'event' => $t->event->value,
+                    'plan_id' => $t->plan_id,
+                    'variables' => $t->variables,
+                    'is_active' => $t->is_active,
+                    'created_at' => $t->created_at,
+                    'updated_at' => $t->updated_at,
+                ]),
         ]);
     }
 }

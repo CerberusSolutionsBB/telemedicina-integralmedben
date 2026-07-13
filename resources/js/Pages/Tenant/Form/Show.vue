@@ -6,6 +6,7 @@ import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import { showToast } from '@/Utils/toast';
 import FormField from "@/Components/FormFields/FormField.vue";
 import CreatePatientFromResponseModal from "@/Components/CreatePatientFromResponseModal.vue";
+import SmsTemplateModal from "@/Components/SmsTemplateModal.vue";
 import {
     ArrowLeft,
     Edit,
@@ -26,7 +27,11 @@ import {
     Home,
     Loader2,
     Check,
-    UserPlus
+    UserPlus,
+    Plus,
+    FileText,
+    Power,
+    PowerOff,
 } from "lucide-vue-next";
 const props = defineProps({
     form: {
@@ -52,6 +57,10 @@ const props = defineProps({
     shareUrl: {
         type: String,
         default: null
+    },
+    smsTemplates: {
+        type: Array,
+        default: () => []
     }
 });
 const activeTab = ref('overview');
@@ -59,6 +68,8 @@ const loading = ref(false);
 const linkCopied = ref(false);
 const patientDialogOpen = ref(false);
 const selectedResponse = ref(null);
+const smsModalOpen = ref(false);
+const smsModalTemplate = ref(null);
 const statusColors = {
     rascunho: 'bg-gray-100 text-gray-800 border-gray-200',
     ativo: 'bg-green-100 text-green-800 border-green-200',
@@ -76,6 +87,41 @@ const breadcrumbs = computed(() => [
     { label: 'Formulários', href: route('forms.index') },
     { label: props.form.title, href: null }
 ]);
+
+const openSmsModal = (template = null) => {
+    smsModalTemplate.value = template;
+    smsModalOpen.value = true;
+};
+
+const closeSmsModal = () => {
+    smsModalOpen.value = false;
+    smsModalTemplate.value = null;
+};
+
+const deleteSmsTemplate = async (template) => {
+    if (!confirm(`Deseja remover o template "${template.name}"?`)) return;
+
+    try {
+        const response = await fetch(route('forms.sms-templates.destroy', template.id), {
+            method: 'DELETE',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+            },
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showToast(data.message, 'success');
+            router.reload({ only: ['smsTemplates'] });
+        } else {
+            showToast(data.message || 'Erro ao remover template.', 'error');
+        }
+    } catch {
+        showToast('Erro ao remover template. Tente novamente.', 'error');
+    }
+};
 const maxDailyResponse = computed(() => {
     if (!props.stats.daily_responses?.length) return 1;
     return Math.max(...props.stats.daily_responses.map(d => d.count));
@@ -332,6 +378,19 @@ const formatDateTime = (dateString) => {
                     id="tab-analytics">
                     <Eye class="w-4 h-4" aria-hidden="true" />
                     Análise por Campo
+                </button>
+                <button @click="activeTab = 'sms'" :class="['py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors whitespace-nowrap',
+                    activeTab === 'sms'
+                        ? 'border-cyan-500 text-cyan-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ]" role="tab" :aria-selected="activeTab === 'sms'" aria-controls="sms-panel"
+                    id="tab-sms">
+                    <MessageSquare class="w-4 h-4" aria-hidden="true" />
+                    Templates SMS
+                    <span v-if="props.smsTemplates.length > 0"
+                        class="ml-1 px-2 py-0.5 rounded-full text-xs bg-cyan-100 text-cyan-700 font-semibold">
+                        {{ props.smsTemplates.length }}
+                    </span>
                 </button>
             </nav>
         </div>
@@ -636,6 +695,69 @@ const formatDateTime = (dateString) => {
                 </div>
             </div>
         </div>
+        <!-- ==========================================
+             TAB: TEMPLATES SMS
+             ========================================== -->
+        <div v-show="activeTab === 'sms'" id="sms-panel" role="tabpanel" aria-labelledby="tab-sms"
+            class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Templates SMS</h3>
+                    <p class="text-sm text-gray-500 mt-1">Gerencie as mensagens enviadas por SMS aos pacientes.</p>
+                </div>
+                <Button @click="openSmsModal()"
+                    class="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    <Plus class="w-4 h-4" />
+                    Novo Template
+                </Button>
+            </div>
+
+            <div v-if="props.smsTemplates.length === 0"
+                class="bg-white p-12 rounded-xl border border-gray-200 text-center">
+                <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <MessageSquare class="w-8 h-8 text-gray-400" />
+                </div>
+                <p class="text-lg font-medium text-gray-900">Nenhum template SMS</p>
+                <p class="text-sm text-gray-500 mt-1">Crie um template para enviar mensagens automáticas aos pacientes.</p>
+            </div>
+
+            <div v-else class="space-y-4">
+                <div v-for="template in props.smsTemplates" :key="template.id"
+                    class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-2">
+                                <h4 class="text-sm font-semibold text-gray-900">{{ template.name }}</h4>
+                                <span :class="['px-2 py-0.5 rounded-full text-xs font-medium',
+                                    template.is_active
+                                        ? 'bg-green-100 text-green-700 border border-green-200'
+                                        : 'bg-gray-100 text-gray-500 border border-gray-200']">
+                                    {{ template.is_active ? 'Ativo' : 'Inativo' }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600 whitespace-pre-line">{{ template.message }}</p>
+                            <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+                                <span>Atualizado: {{ new Date(template.updated_at).toLocaleDateString('pt-BR') }}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <button @click="openSmsModal(template)"
+                                class="p-2 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
+                                title="Editar">
+                                <Edit class="w-4 h-4" />
+                            </button>
+                            <button @click="deleteSmsTemplate(template)"
+                                class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all"
+                                title="Remover">
+                                <Trash2 class="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <SmsTemplateModal :show="smsModalOpen" :template="smsModalTemplate" event="patient.created"
+            @close="closeSmsModal" />
         <CreatePatientFromResponseModal :open="patientDialogOpen" :response="selectedResponse"
             :fields="props.form.fields" @update:open="patientDialogOpen = $event" />
     </TenantAdminLayout>
