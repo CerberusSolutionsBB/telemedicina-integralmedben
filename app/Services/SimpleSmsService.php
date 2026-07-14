@@ -33,7 +33,7 @@ class SimpleSmsService
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
             'Authorization' => 'Basic '.$this->auth,
-        ])->post("{$this->baseUrl}/message", [
+        ])->withoutVerifying()->post("{$this->baseUrl}/message", [
             'destination_addr' => $destinationAddr,
             'message' => $message,
             'reference_id' => 'teste-001',
