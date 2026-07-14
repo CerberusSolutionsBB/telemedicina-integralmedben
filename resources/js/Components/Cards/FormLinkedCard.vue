@@ -12,18 +12,44 @@ import {
     Unlink,
     Loader2,
     CalendarDays,
+    ExternalLink,
+    Copy,
+    Link,
 } from 'lucide-vue-next'
 import DateTimeInput from '@/Components/DateTimeInput.vue'
+import { showToast } from '@/Utils/toast'
 const props = defineProps({
     item: {
         type: Object,
         required: true,
+    },
+    tenant: {
+        type: Object,
+        default: null,
     },
     loading: {
         type: Boolean,
         default: false,
     },
 })
+
+const formFillUrl = computed(() => {
+    if (!props.tenant?.url || !props.item?.form?.slug) return null
+    return `${props.tenant.url}/forms/f/${props.item.form.slug}`
+})
+
+const copyToClipboard = async (text) => {
+    if (!text) {
+        showToast('Link não encontrado.', 'error')
+        return
+    }
+    try {
+        await navigator.clipboard.writeText(text)
+        showToast('Link copiado com sucesso!', 'success')
+    } catch {
+        showToast('Não foi possível copiar o link.', 'error')
+    }
+}
 const emit = defineEmits([
     'update:expiresAt',
     'remove:link',
@@ -208,6 +234,21 @@ onUnmounted(() => {
                     <p class="mt-1.5 text-sm text-gray-500 leading-relaxed line-clamp-3">
                         {{ item.form?.description || 'Sem descrição cadastrada.' }}
                     </p>
+                </div>
+
+                <div v-if="formFillUrl"
+                    class="flex items-center gap-2 p-2.5 rounded-lg bg-cyan-50 border border-cyan-200">
+                    <Link class="w-4 h-4 text-cyan-600 shrink-0" />
+                    <span class="text-xs text-cyan-700 truncate flex-1">{{ formFillUrl }}</span>
+                    <button type="button" class="p-1 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-100 rounded transition-all"
+                        title="Copiar link" @click="copyToClipboard(formFillUrl)">
+                        <Copy class="w-3.5 h-3.5" />
+                    </button>
+                    <a :href="formFillUrl" target="_blank" rel="noopener noreferrer"
+                        class="p-1 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-100 rounded transition-all"
+                        title="Abrir formulário">
+                        <ExternalLink class="w-3.5 h-3.5" />
+                    </a>
                 </div>
                 <!-- Meta info mobile -->
                 <div class="flex items-center gap-4 text-xs text-gray-400 lg:hidden">
