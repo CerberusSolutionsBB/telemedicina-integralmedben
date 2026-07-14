@@ -684,7 +684,7 @@ const confirmRemoveLink = () => {
                         </div>
 
                         <div v-if="fomrs_tenants.length" class="space-y-4">
-                            <FormLinkedCard v-for="item in fomrs_tenants" :key="item.id" :item="item"
+                            <FormLinkedCard v-for="item in fomrs_tenants" :key="item.id" :item="item" :tenant="tenant"
                                 @update:expiresAt="handleUpdateExpiresAt" @remove:link="openRemoveLinkDialog" />
                         </div>
 

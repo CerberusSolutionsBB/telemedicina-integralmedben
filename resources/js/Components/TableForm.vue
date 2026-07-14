@@ -400,17 +400,7 @@ const truncate = (text, length = 50) => {
                     <TableCell class="text-center">
                         <div class="flex justify-center items-center gap-1">
                             <!-- Visualizar Público -->
-                            <button @click="viewFormPublic(form)"
-                                :disabled="form.status !== 'ativo' || isProcessing(form.id)" :class="[
-                                    'p-1.5 rounded-md transition-colors',
-                                    form.status === 'ativo'
-                                        ? 'text-blue-600 hover:bg-blue-50 hover:text-blue-900'
-                                        : 'text-gray-300 cursor-not-allowed'
-                                ]"
-                                :title="form.status === 'ativo' ? 'Abrir página pública (nova aba)' : 'Formulário não está ativo'">
-                                <ExternalLink v-if="form.status === 'ativo'" class="w-4 h-4" />
-                                <Globe v-else class="w-4 h-4" />
-                            </button>
+
 
                             <!-- Visualizar -->
                             <button @click="viewForm(form)" :disabled="isProcessing(form.id)"
