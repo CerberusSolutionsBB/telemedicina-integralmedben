@@ -344,7 +344,6 @@ const truncate = (text, length = 50) => {
                     <TableHead class="w-[100px] text-center">Visibilidade</TableHead>
                     <TableHead class="w-[120px] text-center">Autor</TableHead>
                     <TableHead class="w-[100px] text-center">Respostas</TableHead>
-                    <TableHead class="w-[120px] text-center">Atualizado</TableHead>
                     <TableHead class="w-[240px] text-center">Ações</TableHead>
                 </TableRow>
             </TableHeader>
@@ -397,12 +396,6 @@ const truncate = (text, length = 50) => {
                         </div>
                     </TableCell>
 
-                    <TableCell class="text-center">
-                        <div class="flex items-center justify-center gap-1">
-                            <Calendar class="w-3 h-3 text-gray-400" />
-                            <span class="text-xs text-gray-600">{{ formatDate(form.updated_at) }}</span>
-                        </div>
-                    </TableCell>
 
                     <TableCell class="text-center">
                         <div class="flex justify-center items-center gap-1">
