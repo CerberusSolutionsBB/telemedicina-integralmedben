@@ -32,7 +32,7 @@ class AuthProfileController extends Controller
 
         $request->user()->update($validated);
 
-        return redirect()->route('profile.edit')
+        return redirect()->route('perfil.edit')
             ->with('status', 'Perfil atualizado com sucesso!')
             ->with('type', 'success');
     }
@@ -52,7 +52,7 @@ class AuthProfileController extends Controller
             'password' => bcrypt($validated['password']),
         ]);
 
-        return redirect()->route('profile.edit')
+        return redirect()->route('perfil.edit')
             ->with('status', 'Senha atualizada com sucesso!')
             ->with('type', 'success');
     }

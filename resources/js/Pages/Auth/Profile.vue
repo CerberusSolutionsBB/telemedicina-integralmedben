@@ -4,6 +4,7 @@ import { Head, useForm, router, usePage } from "@inertiajs/vue3";
 import { Button } from "@/Components/ui/button";
 import { Label } from "@/Components/ui/label";
 import CentralAdminLayout from "@/Layouts/CentralAdminLayout.vue";
+import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import { showToast } from '@/Utils/toast';
 import Breadcrumb from "@/Components/Breadcrumb.vue";
 import InputError from "@/Components/InputError.vue";
