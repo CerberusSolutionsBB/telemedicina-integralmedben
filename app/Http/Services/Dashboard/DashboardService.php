@@ -70,6 +70,13 @@ class DashboardService
             ])
             ->toArray();
 
+        // Ranking top páginas por pacientes
+        $topPages = collect($pages)
+            ->sortByDesc('patients')
+            ->take(5)
+            ->values()
+            ->toArray();
+
         return [
             'totalTenants' => $totalTenants,
             'activeTenants' => $activeTenants,
@@ -79,6 +86,7 @@ class DashboardService
             'monthlyGrowth' => $monthlyGrowth,
             'currentYear' => $year,
             'pages' => $pages,
+            'topPages' => $topPages,
             'tenantMonthlyGrowth' => $tenantMonthlyGrowth,
             'monthLabels' => $labels,
         ];

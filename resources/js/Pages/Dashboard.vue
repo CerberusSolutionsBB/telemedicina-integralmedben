@@ -14,6 +14,7 @@ const props = defineProps({
   monthlyGrowth:           { type: Array,  default: () => [] },
   currentYear:             { type: Number, default: new Date().getFullYear() },
   pages:                   { type: Array,  default: () => [] },
+  topPages:                { type: Array,  default: () => [] },
   tenantMonthlyGrowth:     { type: Object, default: () => ({}) },
   monthLabels:             { type: Array,  default: () => [] },
 });
@@ -54,13 +55,13 @@ const yTicks = computed(() => {
   <Head title="Dashboard" />
 
   <CentralAdminLayout>
-    <div class="space-y-6 sm:space-y-8 max-w-7xl mx-auto">
+    <div class="py-6 space-y-5">
 
       <!-- Cabeçalho -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 class="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
-          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm text-gray-500">
+          <h2 class="text-xl font-semibold leading-tight text-gray-800 uppercase tracking-wide">Dashboard</h2>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-500">
             <span class="inline-flex items-center gap-1.5 font-semibold text-gray-800">
               <span class="w-2 h-2 rounded-full bg-cyan-500" /> {{ activeTenants }} páginas ativas
             </span>
@@ -123,6 +124,38 @@ const yTicks = computed(() => {
           </CardContent>
         </Card>
       </div>
+
+      <!-- Ranking -->
+      <Card class="shadow-sm" v-if="topPages.length">
+        <CardHeader class="pb-2 pt-4 sm:pt-5 px-4 sm:px-5">
+          <CardTitle class="text-sm sm:text-base font-bold text-gray-800 flex items-center gap-2">
+            <TrendingUp class="w-4 h-4 text-amber-500" />
+            Top páginas com mais cadastros
+          </CardTitle>
+        </CardHeader>
+        <CardContent class="pb-4 px-4 sm:px-5">
+          <div class="space-y-2">
+            <div
+              v-for="(page, i) in topPages"
+              :key="page.id"
+              class="flex items-center gap-3"
+            >
+              <span class="text-xs font-bold w-5 text-right"
+                :class="i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-700' : 'text-gray-300'"
+              >#{{ i + 1 }}</span>
+              <span class="text-sm text-gray-700 w-32 truncate flex-shrink-0" :title="page.name">{{ page.name }}</span>
+              <div class="flex-1 bg-gray-100 rounded-full h-2.5">
+                <div
+                  class="h-2.5 rounded-full transition-all"
+                  :class="i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-cyan-500' : i === 2 ? 'bg-indigo-500' : 'bg-gray-400'"
+                  :style="{ width: topPages[0]?.patients > 0 ? (page.patients / topPages[0].patients * 100) + '%' : '0%' }"
+                />
+              </div>
+              <span class="text-sm font-bold text-gray-700 w-12 text-right">{{ page.patients }}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <!-- Gráfico -->
       <Card class="shadow-sm">
