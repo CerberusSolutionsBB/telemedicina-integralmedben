@@ -244,11 +244,11 @@ const tenantInitial = computed(() => {
                                         </div>
                                     </div>
 
-                                    <Link :href="route('perfil.edit')"
+                                    <a :href="route('perfil.edit')"
                                         class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <UserCircle class="w-4 h-4" />
                                         Meu Perfil
-                                    </Link>
+                                    </a>
 <!--
                                     <Link :href="route('tenant.dashboard')"
                                         class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">

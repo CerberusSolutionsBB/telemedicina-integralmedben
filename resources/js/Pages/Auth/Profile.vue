@@ -36,10 +36,21 @@ const props = defineProps({
         default: null
     }
 });
+const isTenant = computed(() => {
+    const host = window.location.hostname;
+    return host !== 'localhost' && host !== '127.0.0.1';
+});
+
+const homeRoute = computed(() => isTenant.value ? 'patients.index' : 'dashboard');
+
 const breadcrumbs = computed(() => [
-    { label: 'Início', href: route('dashboard'), icon: Home },
+    { label: 'Início', href: route(homeRoute.value), icon: Home },
     { label: 'Meu Perfil', href: null },
 ]);
+
+const goHome = () => {
+    router.visit(route(homeRoute.value));
+};
 const perfilForm = useForm({
     name: user.value?.name || '',
     email: user.value?.email || '',
