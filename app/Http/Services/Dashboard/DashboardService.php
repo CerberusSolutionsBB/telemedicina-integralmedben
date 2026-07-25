@@ -8,9 +8,10 @@ use App\Models\Tenant;
 
 class DashboardService
 {
-    public function getData(int $year): array
+    public function getData(int $year, ?string $monthParam = null): array
     {
-        $month = now()->month;
+        $selectedMonth = $monthParam ? (int) $monthParam : null;
+        $currentMonth = now()->month;
 
         $planQuestion = Question::where('role', 'plan')->first();
         $planQuestionId = $planQuestion?->id;
@@ -23,7 +24,7 @@ class DashboardService
             ? CentralPatient::whereHas('answers', fn ($q) => $q->where('question_id', $planQuestionId)->whereNotNull('answer')->where('answer', '!=', ''))->count()
             : 0;
         $newThisMonth = CentralPatient::whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
+            ->whereMonth('created_at', $currentMonth)
             ->count();
 
         // Gráfico mensal
@@ -56,7 +57,12 @@ class DashboardService
 
         // Lista de páginas/tenants
         $pages = Tenant::whereNull('deleted_at')
-            ->withCount('centralPatients')
+            ->withCount(['centralPatients' => function ($q) use ($year, $selectedMonth) {
+                if ($selectedMonth) {
+                    $q->whereYear('created_at', $year)
+                      ->whereMonth('created_at', $selectedMonth);
+                }
+            }])
             ->with('details')
             ->orderBy('id')
             ->get()
@@ -85,6 +91,8 @@ class DashboardService
             'newThisMonth' => $newThisMonth,
             'monthlyGrowth' => $monthlyGrowth,
             'currentYear' => $year,
+            'currentMonth' => $currentMonth,
+            'selectedMonth' => $selectedMonth,
             'pages' => $pages,
             'topPages' => $topPages,
             'tenantMonthlyGrowth' => $tenantMonthlyGrowth,

@@ -13,6 +13,8 @@ const props = defineProps({
   newThisMonth:            { type: Number, default: 0 },
   monthlyGrowth:           { type: Array,  default: () => [] },
   currentYear:             { type: Number, default: new Date().getFullYear() },
+  currentMonth:            { type: Number, default: new Date().getMonth() + 1 },
+  selectedMonth:           { type: Number, default: null },
   pages:                   { type: Array,  default: () => [] },
   topPages:                { type: Array,  default: () => [] },
   tenantMonthlyGrowth:     { type: Object, default: () => ({}) },
@@ -35,9 +37,14 @@ const filteredMonthlyGrowth = computed(() => {
 });
 
 const availableYears = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 const goToYear = (year) => {
-  router.visit(route('dashboard', { year }), { preserveState: true, preserveScroll: true, replace: true });
+  router.visit(route('dashboard', { year, month: props.selectedMonth || undefined }), { preserveState: true, preserveScroll: true, replace: true });
+};
+
+const goToMonth = (month) => {
+  router.visit(route('dashboard', { year: props.currentYear, month: month || undefined }), { preserveState: true, preserveScroll: true, replace: true });
 };
 
 const monthName = new Date().toLocaleString('pt-BR', { month: 'long' });
@@ -75,13 +82,23 @@ const yTicks = computed(() => {
             </span>
           </div>
         </div>
-        <select
-          :value="currentYear"
-          @change="goToYear($event.target.value)"
-          class="self-start sm:self-auto text-sm border border-gray-200 rounded-xl px-4 py-2.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm"
-        >
-          <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
-        </select>
+        <div class="flex items-center gap-2">
+          <select
+            :value="selectedMonth || ''"
+            @change="goToMonth($event.target.value || null)"
+            class="self-start sm:self-auto text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm"
+          >
+            <option value="">Todos os meses</option>
+            <option v-for="(name, i) in monthNames" :key="i" :value="i + 1">{{ name }}</option>
+          </select>
+          <select
+            :value="currentYear"
+            @change="goToYear($event.target.value)"
+            class="self-start sm:self-auto text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm"
+          >
+            <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+          </select>
+        </div>
       </div>
 
       <!-- KPIs -->
@@ -131,6 +148,7 @@ const yTicks = computed(() => {
           <CardTitle class="text-sm sm:text-base font-bold text-gray-800 flex items-center gap-2">
             <Trophy class="w-4 h-4 text-amber-500" />
             Top páginas com mais cadastros
+            <span v-if="selectedMonth" class="text-xs font-normal text-gray-400">— {{ monthNames[selectedMonth - 1] }}/{{ currentYear }}</span>
           </CardTitle>
         </CardHeader>
         <CardContent class="pb-4 px-4 sm:px-5">
@@ -171,7 +189,7 @@ const yTicks = computed(() => {
           <div>
             <CardTitle class="text-sm sm:text-base font-bold text-gray-800">Cadastros por mês — {{ currentYear }}</CardTitle>
             <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5">
-              {{ selectedPage ? (pages.find(p => p.id === selectedPage)?.name || 'Filtrado') : 'Todos os parceiros' }}
+              {{ selectedPage ? (pages.find(p => p.id === selectedPage)?.name || 'Filtrado') : (selectedMonth ? monthNames[selectedMonth - 1] + ' de ' + currentYear : 'Todos os meses de ' + currentYear) }}
             </p>
           </div>
           <select

@@ -12,7 +12,8 @@ class DashboardController extends Controller
     public function index(\Illuminate\Http\Request $request)
     {
         $year = (int) $request->input('year', now()->year);
+        $month = $request->input('month');
 
-        return Inertia::render('Dashboard', $this->dashboardService->getData($year));
+        return Inertia::render('Dashboard', $this->dashboardService->getData($year, $month));
     }
 }
