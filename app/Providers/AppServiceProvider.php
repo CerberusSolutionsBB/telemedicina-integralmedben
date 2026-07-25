@@ -48,6 +48,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
+        \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::$onFail = function ($e, $request, $next) {
+            return $next($request);
+        };
+
         Event::listen(PatientCreated::class, SyncPatientToCentral::class);
         Event::listen(PatientCreated::class, SendNotificationOnPatientCreated::class);
         Event::listen(PatientCreated::class, RegisterPatientToExternalApis::class);
