@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Events\PatientCreated;
 use App\Events\SiprovIntegrated;
 use App\Http\Services\ExternalApi\ClubeBeneficiosService;
+use App\Http\Services\ExternalApi\SiprovExternalService;
 use App\Http\Services\ExternalApi\TelemedicinaService;
 use App\Listeners\RegisterPatientToExternalApis;
 use App\Listeners\SendNotificationOnPatientCreated;
@@ -40,6 +41,12 @@ class AppServiceProvider extends ServiceProvider
             return new TelemedicinaService(
                 baseUrl: config('external_apis.telemedicina.base_url'),
                 apiKey: config('external_apis.telemedicina.api_key'),
+            );
+        });
+
+        $this->app->singleton(SiprovExternalService::class, function () {
+            return new SiprovExternalService(
+                app(\App\Services\Siprov\SiprovIntegrationService::class),
             );
         });
     }

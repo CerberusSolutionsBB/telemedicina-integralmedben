@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Enums\QuestionRoleEnum;
 use App\Events\PatientCreated;
 use App\Http\Services\ExternalApi\ClubeBeneficiosService;
+use App\Http\Services\ExternalApi\SiprovExternalService;
 use App\Http\Services\ExternalApi\TelemedicinaService;
 use App\Interfaces\ExternalApiInterface;
 use App\Models\ExternalApiLog;
@@ -17,6 +18,7 @@ class RegisterPatientToExternalApis
     public function __construct(
         private ClubeBeneficiosService $clubeService,
         private TelemedicinaService $telemedicinaService,
+        private SiprovExternalService $siprovService,
     ) {}
 
     public function handle(PatientCreated $event): void
@@ -42,6 +44,12 @@ class RegisterPatientToExternalApis
 
         if ($hasPlanQuestion && ! empty($payload['plan'])) {
             $this->call('telemedicina', $this->telemedicinaService, $event, $payload);
+        }
+
+        // Integração SIPROV (associado + benefício)
+        // Mesmos critérios da telemedicina: tenant configurado + paciente respondeu plano
+        if ($hasPlanQuestion && ! empty($payload['plan'])) {
+            $this->call('siprov', $this->siprovService, $event, $payload);
         }
     }
 
