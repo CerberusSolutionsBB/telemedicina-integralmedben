@@ -1,153 +1,168 @@
-\documentclass[border=0pt]{standalone}
+\documentclass[border=12pt,multi=tikzpicture]{standalone}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[brazil]{babel}
 \usepackage{helvet}
 \renewcommand{\familydefault}{\sfdefault}
 \usepackage{xcolor}
 \usepackage{tikz}
-\usepackage{graphicx}
-\usepackage{calc}
-\usepackage{pgfmath}
-\usepackage{ifthen}
+\usepackage{qrcode}
 
-\definecolor{cyanbrand}{HTML}{0891b2}
-\definecolor{cyanbg}{HTML}{ecfeff}
-\definecolor{cyanborder}{HTML}{a5f3fc}
-\definecolor{greenbg}{HTML}{dcfce7}
-\definecolor{greentext}{HTML}{166534}
-\definecolor{greenborder}{HTML}{bbf7d0}
-\definecolor{redbg}{HTML}{fef2f2}
-\definecolor{redtext}{HTML}{991b1b}
-\definecolor{redborder}{HTML}{fecaca}
-\definecolor{textdark}{HTML}{111827}
-\definecolor{textmain}{HTML}{1f2937}
-\definecolor{textmuted}{HTML}{6b7280}
-\definecolor{textlight}{HTML}{9ca3af}
-\definecolor{linecolor}{HTML}{e5e7eb}
-\definecolor{footbg}{HTML}{f9fafb}
-\definecolor{barcolor}{HTML}{374151}
+\definecolor{medbencyan}{HTML}{1DC9D4}
+\definecolor{cyanlight}{HTML}{4DD4DE}
+\definecolor{cyandark}{HTML}{15A8B2}
+\definecolor{logoheart}{HTML}{E11D48}
 
 \begin{document}
-\begin{tikzpicture}[
-  x=1pt, y=1pt,
-  font=\sffamily
-]
 
-% ═══ CARD BORDER ═══
-\draw[line width=0.5pt, draw=linecolor, rounded corners=4pt]
-  (0,0) rectangle (540,300);
+% ═══════════════════════════════════════════
+% PÁGINA 1 — FRENTE
+% ═══════════════════════════════════════════
+\begin{tikzpicture}[x=1pt, y=1pt, font=\sffamily]
 
-% ═══ HEADER BAR ═══
-\fill[fill=cyanbg!60, rounded corners=4pt]
-  (0.5,300-0.5) rectangle (540-0.5,300-55);
-\draw[line width=1pt, draw=cyanbrand]
-  (0.5,300-55) -- (540-0.5,300-55);
+\fill[medbencyan, rounded corners=14pt] (0,0) rectangle (340,210);
 
-% Brand
-\node[anchor=west, text=cyanbrand, font=\bfseries\Huge]
-  at (16, 300-22) {IntegralMedBen};
-\node[anchor=west, text=textmuted, font=\small]
-  at (16, 300-40) {Telemedicina --- Cartão de Benefício};
+% ── Fundo: linhas diagonais ──
+\begin{scope}
+  \clip[rounded corners=14pt] (0,0) rectangle (340,210);
+  \foreach \i in {-160,-140,...,420} {
+    \draw[cyanlight, opacity=0.22, line width=9pt] (\i, -30) -- (\i+220, 240);
+  }
+  \foreach \i in {-150,-130,...,420} {
+    \draw[cyandark, opacity=0.13, line width=6pt] (\i, -30) -- (\i+220, 240);
+  }
+\end{scope}
 
-% Status badge
-\ifthenelse{\equal{\statusVar}{Ativo}}{%
-  \node[anchor=east, fill=greentext, text=white, font=\bfseries\tiny, rounded corners=2pt, inner xsep=8pt, inner ysep=3pt]
-    at (540-16, 300-28) {ATIVO};
-}{%
-  \node[anchor=east, fill=redtext, text=white, font=\bfseries\tiny, rounded corners=2pt, inner xsep=8pt, inner ysep=3pt]
-    at (540-16, 300-28) {INATIVO};
-}
+% ── Fundo: arcos concêntricos ──
+\begin{scope}
+  \clip[rounded corners=14pt] (0,0) rectangle (340,210);
+  \foreach \r in {50,75,...,240} {
+    \draw[white, opacity=0.10, line width=1.0pt] (170,105) circle (\r);
+  }
+  \foreach \r in {62,87,...,230} {
+    \draw[white, opacity=0.06, line width=0.5pt] (150,90) circle (\r);
+  }
+\end{scope}
 
-% ═══ BODY ═══
-% Row 1: Nome + Código
-\node[anchor=west, text=textlight, font=\fontsize{5}{6}\selectfont\bfseries]
-  at (16, 300-72) {ASSOCIADO};
-\node[anchor=west, text=textdark, font=\fontsize{11}{13}\selectfont\bfseries, text width=330pt, inner sep=0pt]
-  at (16, 300-88) {\nomeVar};
+% ═══ CABEÇALHO ═══
 
-\node[anchor=east, text=textlight, font=\fontsize{5}{6}\selectfont\bfseries]
-  at (540-16, 300-72) {CÓDIGO};
-\node[anchor=east, text=textmuted, font=\fontsize{9}{11}\selectfont, family=\ttfamily]
-  at (540-16, 300-86) {\#\codPessoaVar};
+% Logo top right
+\fill[white, rounded corners=8pt] (264,166) rectangle (320,202);
+\begin{scope}[shift={(292,181)}, scale=0.50]
+  \fill[logoheart] plot[domain=0:360, samples=100, variable=\t]
+    ({16*sin(\t)^3}, {13*cos(\t) - 5*cos(2*\t) - 2*cos(3*\t) - cos(4*\t)});
+\end{scope}
+\draw[white, line width=1.4pt, line cap=round, line join=round]
+  (287,178) -- (290,182) -- (297,173);
 
-\draw[line width=0.3pt, draw=gray!15]
-  (16, 300-96) -- (540-16, 300-96);
+% Marca top left
+\node[anchor=west, text=white, font=\fontsize{13}{16}\selectfont\bfseries] at (20,190) {INTEGRAL MEDBEN};
+\node[anchor=west, text=white, font=\fontsize{6.5}{8.5}\selectfont, opacity=0.55] at (20,175) {Cartão de Benefício};
 
-% Row 2: CPF/CNPJ + Benefício
-\node[anchor=west, text=textlight, font=\fontsize{5}{6}\selectfont\bfseries]
-  at (16, 300-108) {CPF/CNPJ};
-\node[anchor=west, text=textmain, font=\fontsize{10}{12}\selectfont\bfseries]
-  at (16, 300-122) {\cpfVar};
+% Linha separadora header
+\draw[white, opacity=0.22, line width=0.4pt] (20,158) -- (320,158);
 
-\node[anchor=east, text=textlight, font=\fontsize{5}{6}\selectfont\bfseries]
-  at (540-16, 300-108) {BENEFÍCIO};
-\node[anchor=east, text=textmuted, font=\fontsize{9}{11}\selectfont, family=\ttfamily]
-  at (540-16, 300-122) {\#\codBeneficioVar};
+% ═══ CORPO ═══
 
-\draw[line width=0.3pt, draw=gray!15]
-  (16, 300-132) -- (540-16, 300-132);
+% ── NOME (destaque principal) ──
+\node[anchor=west, text=white, font=\fontsize{6.5}{8}\selectfont\bfseries, opacity=0.75] at (20,142) {NOME};
+\node[anchor=west, text=white, font=\fontsize{14}{17}\selectfont\bfseries] at (20,122) {\nomeVar};
 
-% Row 3: Plano + Situação
-\node[anchor=west, text=textlight, font=\fontsize{5}{6}\selectfont\bfseries]
-  at (16, 300-144) {PLANO};
+% ── Linha divisória ──
+\draw[white, opacity=0.18, line width=0.3pt] (20,104) -- (320,104);
 
-\node[anchor=west,
-  fill=cyanbg, draw=cyanborder, line width=0.3pt,
-  text=cyanbrand, font=\fontsize{7}{8}\selectfont\bfseries,
-  rounded corners=2pt, inner xsep=6pt, inner ysep=2pt]
-  at (16, 300-158) {\planoVar};
+% ── CPF + CÓDIGO (duas colunas) ──
+\node[anchor=west, text=white, font=\fontsize{6.5}{8}\selectfont\bfseries, opacity=0.75] at (20,88) {CPF};
+\node[anchor=west, text=white, font=\fontsize{11}{13}\selectfont] at (20,72) {\cpfVar};
 
-\ifthenelse{\equal{\statusVar}{Ativo}}{%
-  \node[anchor=east, fill=greenbg, draw=greenborder, line width=0.3pt,
-    text=greentext, font=\fontsize{7}{8}\selectfont\bfseries,
-    rounded corners=2pt, inner xsep=6pt, inner ysep=2pt]
-    at (540-16, 300-158) {\statusVar};
-}{%
-  \node[anchor=east, fill=redbg, draw=redborder, line width=0.3pt,
-    text=redtext, font=\fontsize{7}{8}\selectfont\bfseries,
-    rounded corners=2pt, inner xsep=6pt, inner ysep=2pt]
-    at (540-16, 300-158) {\statusVar};
-}
+\node[anchor=east, text=white, font=\fontsize{6.5}{8}\selectfont\bfseries, opacity=0.75] at (320,88) {CÓDIGO};
+\node[anchor=east, text=white, font=\fontsize{10}{12}\selectfont, family=\ttfamily] at (320,72) {\#\codPessoaVar};
 
-\node[anchor=east, text=textlight, font=\fontsize{5}{6}\selectfont\bfseries]
-  at (540-16, 300-144) {SITUAÇÃO};
+% ── PLANO ──
+\node[anchor=west, text=white, font=\fontsize{6.5}{8}\selectfont\bfseries, opacity=0.75] at (20,52) {PLANO};
+\node[anchor=west, text=white, font=\fontsize{11}{13}\selectfont] at (20,36) {\planoVar};
 
-\draw[line width=0.3pt, draw=gray!15]
-  (16, 300-168) -- (540-16, 300-168);
-
-% Row 4: Email + Telefone
-\node[anchor=west, text=textlight, font=\fontsize{5}{6}\selectfont\bfseries]
-  at (16, 300-180) {E-MAIL};
-\node[anchor=west, text=textmuted, font=\fontsize{8}{10}\selectfont, text width=260pt, inner sep=0pt]
-  at (16, 300-193) {\emailVar};
-
-\node[anchor=east, text=textlight, font=\fontsize{5}{6}\selectfont\bfseries]
-  at (540-16, 300-180) {TELEFONE};
-\node[anchor=east, text=textmuted, font=\fontsize{8}{10}\selectfont]
-  at (540-16, 300-193) {\telefoneVar};
-
-% ═══ FOOTER ═══
-\fill[fill=footbg]
-  (0.5,0.5) rectangle (540-0.5,42);
-\draw[line width=0.3pt, draw=linecolor]
-  (0.5,42) -- (540-0.5,42);
-
-\node[anchor=west, text=textmuted, font=\fontsize{6}{8}\selectfont]
-  at (16, 32) {\textbf{Cadastro:} \cadastroVar};
-\node[anchor=west, text=textmuted, font=\fontsize{6}{8}\selectfont]
-  at (16, 22) {\textbf{Adesão:} \adesaoVar};
-\node[anchor=west, text=textmuted, font=\fontsize{6}{8}\selectfont]
-  at (16, 12) {\textbf{Ativação:} \ativacaoVar};
-
-% Barcode
-\foreach \i in {1,...,45} {
-  \pgfmathsetmacro{\bw}{random(1,3)}
-  \pgfmathsetmacro{\bx}{370 + (\i-1)*3.5}
-  \fill[barcolor] (\bx, 6) rectangle (\bx + \bw, 34);
-}
-\node[anchor=east, text=textmuted, font=\fontsize{6}{7}\selectfont, family=\ttfamily]
-  at (540-16, 6) {\cpfCnpjVar};
+% ═══ RODAPÉ ═══
+\draw[white, opacity=0.18, line width=0.3pt] (20,22) -- (320,22);
+\node[anchor=west, text=white, font=\fontsize{6}{7.5}\selectfont, opacity=0.45] at (20,14) {www.medben.com.br};
+\node[anchor=east, text=white, font=\fontsize{6}{7.5}\selectfont, opacity=0.45] at (320,14) {Telemedicina};
 
 \end{tikzpicture}
+
+% ═══════════════════════════════════════════
+% PÁGINA 2 — VERSO
+% ═══════════════════════════════════════════
+\begin{tikzpicture}[x=1pt, y=1pt, font=\sffamily]
+
+\fill[medbencyan, rounded corners=14pt] (0,0) rectangle (340,210);
+
+% ── Fundo ──
+\begin{scope}
+  \clip[rounded corners=14pt] (0,0) rectangle (340,210);
+  \foreach \i in {-160,-140,...,420} {
+    \draw[cyanlight, opacity=0.22, line width=9pt] (\i, -30) -- (\i+220, 240);
+  }
+  \foreach \i in {-150,-130,...,420} {
+    \draw[cyandark, opacity=0.13, line width=6pt] (\i, -30) -- (\i+220, 240);
+  }
+  \foreach \r in {50,75,...,240} {
+    \draw[white, opacity=0.10, line width=1.0pt] (170,105) circle (\r);
+  }
+  \foreach \r in {62,87,...,230} {
+    \draw[white, opacity=0.06, line width=0.5pt] (150,90) circle (\r);
+  }
+\end{scope}
+
+% ═══ CABEÇALHO ═══
+
+% Logo top left
+\fill[white, rounded corners=6pt] (20,172) rectangle (50,198);
+\begin{scope}[shift={(35,182)}, scale=0.32]
+  \fill[logoheart] plot[domain=0:360, samples=80, variable=\t]
+    ({16*sin(\t)^3}, {13*cos(\t) - 5*cos(2*\t) - 2*cos(3*\t) - cos(4*\t)});
+\end{scope}
+\draw[white, line width=1pt, line cap=round, line join=round]
+  (32,180) -- (34,182) -- (38,178);
+
+\node[anchor=west, text=white, font=\fontsize{5.5}{7}\selectfont] at (56,190) {I\,N\,T\,E\,G\,R\,A\,L};
+\node[anchor=west, text=white, font=\fontsize{11}{14}\selectfont\bfseries] at (56,177) {MEDBEN};
+
+% Código top right
+\node[anchor=east, text=white, font=\fontsize{7}{9}\selectfont\bfseries, opacity=0.55] at (320,190) {CÓD: \#\codPessoaVar};
+
+% Linha header
+\draw[white, opacity=0.18, line width=0.3pt] (20,162) -- (320,162);
+
+% ═══ QR CODE (lado esquerdo) ═══
+\fill[white, rounded corners=8pt] (20,30) rectangle (130,140);
+\node at (75,85) {\qrcode[height=95pt,level=M]{\codPessoaVar}};
+
+% ═══ INFORMAÇÕES (lado direito) ═══
+
+% Título
+\node[anchor=west, text=white, font=\fontsize{8}{10}\selectfont\bfseries] at (148,148) {ATENDIMENTO};
+
+% Telefone
+\node[anchor=west, text=white, font=\fontsize{13}{16}\selectfont\bfseries] at (148,128) {(91) 4040-0700};
+
+% Horário
+\node[anchor=west, text=white, font=\fontsize{7}{9}\selectfont, opacity=0.75] at (148,112) {24 horas · 7 dias};
+
+% Linha
+\draw[white, opacity=0.18, line width=0.3pt] (148,98) -- (310,98);
+
+% Associado
+\node[anchor=west, text=white, font=\fontsize{6.5}{8}\selectfont\bfseries, opacity=0.70] at (148,84) {ASSOCIADO};
+\node[anchor=west, text=white, font=\fontsize{9}{11}\selectfont] at (148,70) {\nomeVar};
+
+% CPF
+\node[anchor=west, text=white, font=\fontsize{6.5}{8}\selectfont\bfseries, opacity=0.70] at (148,52) {CPF};
+\node[anchor=west, text=white, font=\fontsize{9}{11}\selectfont] at (148,38) {\cpfVar};
+
+% ═══ RODAPÉ ═══
+\draw[white, opacity=0.15, line width=0.3pt] (20,22) -- (320,22);
+\node[anchor=west, text=white, font=\fontsize{5.5}{7}\selectfont, opacity=0.40] at (20,14) {www.medben.com.br};
+\node[anchor=east, text=white, font=\fontsize{5.5}{7}\selectfont, opacity=0.40] at (320,14) {Cartão pessoal e intransferível};
+
+\end{tikzpicture}
+
 \end{document}

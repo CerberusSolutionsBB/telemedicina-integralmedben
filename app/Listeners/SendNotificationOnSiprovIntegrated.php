@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Enums\SmsTemplateEventEnum;
 use App\Events\SiprovIntegrated;
 use App\Models\SmsTemplate;
+use App\Models\Tenant;
 use App\Notifications\NotificationDispatcher;
 
 class SendNotificationOnSiprovIntegrated
@@ -40,6 +41,9 @@ class SendNotificationOnSiprovIntegrated
             'cod_plano' => $event->codPlano ?? '',
             'tel' => $event->telefone ?? '',
         ];
+
+        $tenant = Tenant::find($event->tenantId);
+        $data['link_pagina'] = $tenant?->url ?? config('app.url');
 
         foreach ($templates as $template) {
             $this->dispatcher->send($template, $data);

@@ -492,7 +492,7 @@ const formatDateTime = (dateString) => {
                     <Eye class="w-4 h-4" aria-hidden="true" />
                     Análise por Campo
                 </button>
-                <button @click="activeTab = 'sms'" :class="['py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors whitespace-nowrap',
+                <!-- <button @click="activeTab = 'sms'" :class="['py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors whitespace-nowrap',
                     activeTab === 'sms'
                         ? 'border-cyan-500 text-cyan-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -504,8 +504,8 @@ const formatDateTime = (dateString) => {
                         class="ml-1 px-2 py-0.5 rounded-full text-xs bg-cyan-100 text-cyan-700 font-semibold">
                         {{ props.smsTemplates.length }}
                     </span>
-                </button>
-                <button @click="activeTab = 'config'" :class="['py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors whitespace-nowrap',
+                </button> -->
+                <!-- <button @click="activeTab = 'config'" :class="['py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors whitespace-nowrap',
                     activeTab === 'config'
                         ? 'border-cyan-500 text-cyan-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -513,7 +513,7 @@ const formatDateTime = (dateString) => {
                     id="tab-config">
                     <Settings class="w-4 h-4" aria-hidden="true" />
                     Configuração
-                </button>
+                </button> -->
             </nav>
         </div>
 
@@ -831,8 +831,7 @@ const formatDateTime = (dateString) => {
         <!-- ==========================================
              TAB: TEMPLATES SMS
              ========================================== -->
-        <div v-show="activeTab === 'sms'" id="sms-panel" role="tabpanel" aria-labelledby="tab-sms"
-            class="space-y-6">
+        <div v-show="activeTab === 'sms'" id="sms-panel" role="tabpanel" aria-labelledby="tab-sms" class="space-y-6">
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-900">Templates SMS</h3>
@@ -851,7 +850,8 @@ const formatDateTime = (dateString) => {
                     <MessageSquare class="w-8 h-8 text-gray-400" />
                 </div>
                 <p class="text-lg font-medium text-gray-900">Nenhum template SMS</p>
-                <p class="text-sm text-gray-500 mt-1">Crie um template para enviar mensagens automáticas aos pacientes.</p>
+                <p class="text-sm text-gray-500 mt-1">Crie um template para enviar mensagens automáticas aos pacientes.
+                </p>
             </div>
 
             <div v-else class="space-y-4">
@@ -897,7 +897,8 @@ const formatDateTime = (dateString) => {
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-900">Configuração do Formulário</h3>
-                    <p class="text-sm text-gray-500 mt-1">Configure comportamentos dinâmicos e envio de SMS para este formulário.</p>
+                    <p class="text-sm text-gray-500 mt-1">Configure comportamentos dinâmicos e envio de SMS para este
+                        formulário.</p>
                 </div>
                 <Button @click="saveConfiguracao" :disabled="configSaving"
                     class="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
@@ -922,14 +923,15 @@ const formatDateTime = (dateString) => {
                         </div>
                         <button @click="configForm.status_formulario_dinamico = !configForm.status_formulario_dinamico"
                             :class="['relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2',
-                                configForm.status_formulario_dinamico ? 'bg-cyan-600' : 'bg-gray-200']"
-                            role="switch" :aria-checked="configForm.status_formulario_dinamico">
+                                configForm.status_formulario_dinamico ? 'bg-cyan-600' : 'bg-gray-200']" role="switch"
+                            :aria-checked="configForm.status_formulario_dinamico">
                             <span :class="['pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
                                 configForm.status_formulario_dinamico ? 'translate-x-5' : 'translate-x-0']" />
                         </button>
                     </div>
                     <p class="text-sm text-gray-500 mt-4">
-                        Quando ativado, o formulário vinculado ao paciente será atualizado dinamicamente conforme as respostas recebidas.
+                        Quando ativado, o formulário vinculado ao paciente será atualizado dinamicamente conforme as
+                        respostas recebidas.
                     </p>
                 </div>
 
@@ -994,17 +996,21 @@ const formatDateTime = (dateString) => {
                 <h4 class="text-sm font-semibold text-gray-900 mb-3">Resumo</h4>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <div :class="['w-3 h-3 rounded-full', configForm.status_formulario_dinamico ? 'bg-green-500' : 'bg-gray-300']" />
+                        <div
+                            :class="['w-3 h-3 rounded-full', configForm.status_formulario_dinamico ? 'bg-green-500' : 'bg-gray-300']" />
                         <div>
                             <p class="text-sm font-medium text-gray-900">Status Dinâmico</p>
-                            <p class="text-xs text-gray-500">{{ configForm.status_formulario_dinamico ? 'Ativado' : 'Desativado' }}</p>
+                            <p class="text-xs text-gray-500">{{ configForm.status_formulario_dinamico ? 'Ativado' :
+                                'Desativado' }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <div :class="['w-3 h-3 rounded-full', configForm.sms_template_id ? 'bg-green-500' : 'bg-gray-300']" />
+                        <div
+                            :class="['w-3 h-3 rounded-full', configForm.sms_template_id ? 'bg-green-500' : 'bg-gray-300']" />
                         <div>
                             <p class="text-sm font-medium text-gray-900">Template SMS</p>
-                            <p class="text-xs text-gray-500">{{ configForm.sms_template_id ? 'Vinculado' : 'Nenhum' }}</p>
+                            <p class="text-xs text-gray-500">{{ configForm.sms_template_id ? 'Vinculado' : 'Nenhum' }}
+                            </p>
                         </div>
                     </div>
                 </div>

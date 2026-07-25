@@ -95,7 +95,8 @@ class PatientController extends Controller
     {
         $this->patientService->delete($patient);
 
-        return redirect()->route('patients.index');
+        return redirect()->route('patients.index')
+            ->with('success', 'Paciente excluído com sucesso!');
     }
 
     public function export(string $format)

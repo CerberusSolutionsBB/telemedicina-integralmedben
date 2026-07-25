@@ -8,6 +8,7 @@ use App\Models\CentralPatient;
 use App\Models\CentralPatientAnswer;
 use App\Models\Patient;
 use App\Models\Question;
+use App\Models\Tenant;
 
 class SyncPatientToCentral
 {
@@ -25,7 +26,6 @@ class SyncPatientToCentral
             return;
         }
 
-        // Busca pelo CPF normalizado (apenas dígitos) direto na tabela de respostas
         $cpfAnswer = CentralPatientAnswer::where('question_id', $cpfQuestionId)
             ->where('answer', $cpf)
             ->first();
@@ -35,7 +35,6 @@ class SyncPatientToCentral
             : CentralPatient::create(['tenant_id' => $event->tenantId]);
 
         foreach ($event->answers as $questionId => $answer) {
-            // CPF é sempre salvo normalizado (só dígitos) para garantir consistência nas buscas
             $storedAnswer = ((int) $questionId === (int) $cpfQuestionId) ? $cpf : $answer;
 
             CentralPatientAnswer::updateOrCreate(
@@ -44,7 +43,12 @@ class SyncPatientToCentral
             );
         }
 
-        Patient::where('id', $event->tenantPatientId)
-            ->update(['central_patient_id' => $centralPatient->id]);
+        $tenant = Tenant::find($event->tenantId);
+        if ($tenant) {
+            $tenant->run(function () use ($event, $centralPatient) {
+                Patient::where('id', $event->tenantPatientId)
+                    ->update(['central_patient_id' => $centralPatient->id]);
+            });
+        }
     }
 }

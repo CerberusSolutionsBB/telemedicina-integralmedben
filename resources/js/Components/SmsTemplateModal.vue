@@ -1,7 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { Button } from '@/Components/ui/button';
-import { X, Loader2, Save, MessageSquare } from 'lucide-vue-next';
+import { X, Loader2, Save, MessageSquare, Building2, Check } from 'lucide-vue-next';
 import { showToast } from '@/Utils/toast';
 import { router } from '@inertiajs/vue3';
 
@@ -9,6 +9,7 @@ const props = defineProps({
     show: { type: Boolean, default: false },
     template: { type: Object, default: null },
     event: { type: String, default: 'patient.created' },
+    tenants: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -21,6 +22,7 @@ const availableTags = {
         { tag: '{email}', label: 'E-mail' },
         { tag: '{sexo}', label: 'Sexo' },
         { tag: '{data_nascimento}', label: 'Data de nascimento' },
+        { tag: '{link_pagina}', label: 'Link da página do parceiro' },
         { tag: '{data}', label: 'Data atual' },
         { tag: '{hora}', label: 'Hora atual' },
     ],
@@ -30,6 +32,7 @@ const availableTags = {
         { tag: '{telefone}', label: 'Telefone' },
         { tag: '{email}', label: 'E-mail' },
         { tag: '{plano}', label: 'Plano' },
+        { tag: '{link_pagina}', label: 'Link da página do parceiro' },
         { tag: '{data}', label: 'Data atual' },
         { tag: '{hora}', label: 'Hora atual' },
     ],
@@ -40,21 +43,59 @@ const form = ref({
     message: '',
     event: props.event,
     plan_id: null,
+    form_ids: [],
     variables: [],
     is_active: true,
+    tenant_ids: [],
 });
 
 const isProcessing = ref(false);
+const tenantOpen = ref(false);
+
+const selectedTenants = computed(() => {
+    return props.tenants.filter(t => form.value.tenant_ids.includes(t.id));
+});
+
+const toggleTenant = (id) => {
+    const idx = form.value.tenant_ids.indexOf(id);
+    if (idx >= 0) {
+        form.value.tenant_ids.splice(idx, 1);
+    } else {
+        form.value.tenant_ids.push(id);
+    }
+};
+
+const selectAllTenants = () => {
+    form.value.tenant_ids = props.tenants.map(t => t.id);
+};
+
+const clearTenants = () => {
+    form.value.tenant_ids = [];
+};
+
+const availableForms = computed(() => {
+    if (form.value.tenant_ids.length === 0) return [];
+    const forms = new Map();
+    props.tenants
+        .filter(t => form.value.tenant_ids.includes(t.id))
+        .forEach(t => {
+            (t.forms || []).forEach(f => forms.set(f.id, { id: f.id, title: f.title }));
+        });
+    return Array.from(forms.values());
+});
 
 watch(() => props.show, (val) => {
     if (val && props.template) {
+        const tenantIds = props.template.tenants ? props.template.tenants.map(t => t.id || t.tenant_id || t) : [];
         form.value = {
             name: props.template.name || '',
             message: props.template.message || '',
             event: props.template.event || props.event,
             plan_id: props.template.plan_id || null,
+            form_ids: props.template.form_ids || [],
             variables: props.template.variables || [],
             is_active: props.template.is_active ?? true,
+            tenant_ids: tenantIds,
         };
     } else if (val) {
         form.value = {
@@ -62,10 +103,13 @@ watch(() => props.show, (val) => {
             message: '',
             event: props.event,
             plan_id: null,
+            form_ids: [],
             variables: [],
             is_active: true,
+            tenant_ids: [],
         };
     }
+    tenantOpen.value = false;
 });
 
 const insertTag = (tag) => {
@@ -173,6 +217,57 @@ const handleSubmit = async () => {
                                     <span class="font-mono text-cyan-600">{{ tag.tag }}</span>
                                     <span class="text-gray-400">{{ tag.label }}</span>
                                 </button>
+                            </div>
+                        </div>
+
+                        <div v-if="tenants.length">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Vincular a páginas</label>
+
+                            <div class="flex flex-wrap gap-1.5 mb-2">
+                                <span v-for="t in selectedTenants" :key="t.id"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-200">
+                                    {{ t.name || t.subdomain || t.id }}
+                                    <button @click="toggleTenant(t.id)" class="ml-0.5 hover:text-cyan-900">&times;</button>
+                                </span>
+                            </div>
+
+                            <div class="relative">
+                                <button type="button" @click="tenantOpen = !tenantOpen"
+                                    class="w-full flex items-center justify-between px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                    <span v-if="selectedTenants.length === 0" class="text-gray-400">Selecionar páginas...</span>
+                                    <span v-else>{{ selectedTenants.length }} página(s) selecionada(s)</span>
+                                    <Building2 class="w-4 h-4 text-gray-400" />
+                                </button>
+
+                                <div v-if="tenantOpen"
+                                    class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                    <div class="flex gap-1 p-2 border-b">
+                                        <button @click="selectAllTenants" class="text-xs text-cyan-600 hover:text-cyan-800 font-medium">Todos</button>
+                                        <span class="text-gray-300">·</span>
+                                        <button @click="clearTenants" class="text-xs text-gray-500 hover:text-gray-700">Limpar</button>
+                                    </div>
+                                    <label v-for="tenant in tenants" :key="tenant.id"
+                                        class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm">
+                                        <input type="checkbox" :checked="form.tenant_ids.includes(tenant.id)"
+                                            @change="toggleTenant(tenant.id)"
+                                            class="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500" />
+                                        <span class="text-gray-700">{{ tenant.name || tenant.subdomain || tenant.id }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="availableForms.length">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Vincular a formulários</label>
+                            <div class="flex flex-wrap gap-1.5">
+                                <label v-for="f in availableForms" :key="f.id"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border cursor-pointer transition-colors"
+                                    :class="form.form_ids.includes(f.id) ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'">
+                                    <input type="checkbox" :checked="form.form_ids.includes(f.id)"
+                                        @change="form.form_ids.includes(f.id) ? form.form_ids = form.form_ids.filter(id => id !== f.id) : form.form_ids.push(f.id)"
+                                        class="w-3.5 h-3.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500" />
+                                    {{ f.title }}
+                                </label>
                             </div>
                         </div>
 

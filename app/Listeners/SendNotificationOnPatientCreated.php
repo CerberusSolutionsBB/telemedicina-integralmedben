@@ -7,7 +7,9 @@ use App\Enums\SmsTemplateEventEnum;
 use App\Events\PatientCreated;
 use App\Models\Question;
 use App\Models\SmsTemplate;
+use App\Models\Tenant;
 use App\Notifications\NotificationDispatcher;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class SendNotificationOnPatientCreated
@@ -37,6 +39,9 @@ class SendNotificationOnPatientCreated
             'patient_id' => $event->tenantPatientId,
             'tenant' => $event->tenantId,
         ];
+
+        $tenant = Tenant::find($event->tenantId);
+        $data['link_pagina'] = $tenant?->url ?? config('app.url');
 
         $patientPlan = null;
 
@@ -68,6 +73,15 @@ class SendNotificationOnPatientCreated
         );
 
         foreach ($templates as $template) {
+            Log::info('SMS template enviado via PatientCreated', [
+                'tenant_id' => $event->tenantId,
+                'patient_id' => $event->tenantPatientId,
+                'template_id' => $template->id,
+                'template_name' => $template->name,
+                'message_raw' => $template->message,
+                'message_resolved' => $template->resolveMessage($data),
+                'recipient' => $data[$template->recipient_variable] ?? null,
+            ]);
             $this->dispatcher->send($template, $data);
         }
     }
