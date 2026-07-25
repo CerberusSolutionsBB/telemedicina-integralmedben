@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PublicFormController;
-use App\Http\Controllers\Auth\AuthProfileController;
 use App\Http\Controllers\Tenant\Configuracao\ConfiguracaoController;
 use App\Http\Controllers\Tenant\Form\FormIndexController;
 use App\Http\Controllers\Tenant\Form\FormShowController;
@@ -36,13 +35,6 @@ Route::middleware([
 
     Route::middleware('auth')->group(function () {
         Route::post('/admin/logout', [TenantAuthController::class, 'logout'])->name('tenant.logout');
-
-        Route::prefix('perfil')->name('perfil.')->group(function () {
-            Route::get('/', [AuthProfileController::class, 'edit'])->name('edit');
-            Route::patch('/', [AuthProfileController::class, 'update'])->name('update');
-            Route::put('/senha', [AuthProfileController::class, 'updatePassword'])->name('password.update');
-            Route::delete('/', [AuthProfileController::class, 'destroy'])->name('destroy');
-        });
 
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
