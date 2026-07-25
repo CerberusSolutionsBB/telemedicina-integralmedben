@@ -12,5 +12,5 @@ Route::patch('/', [AuthProfileController::class, 'update'])
 Route::put('/senha', [AuthProfileController::class, 'updatePassword'])
     ->name('password.update');
 
-Route::delete('/{id}', [AuthProfileController::class, 'destroy'])
+Route::delete('/', [AuthProfileController::class, 'destroy'])
     ->name('destroy');

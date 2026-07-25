@@ -41,7 +41,7 @@ Route::middleware([
             Route::get('/', [AuthProfileController::class, 'edit'])->name('edit');
             Route::patch('/', [AuthProfileController::class, 'update'])->name('update');
             Route::put('/senha', [AuthProfileController::class, 'updatePassword'])->name('password.update');
-            Route::delete('/{id}', [AuthProfileController::class, 'destroy'])->name('destroy');
+            Route::delete('/', [AuthProfileController::class, 'destroy'])->name('destroy');
         });
 
         Route::get('/users', [UserController::class, 'index'])->name('users.index');

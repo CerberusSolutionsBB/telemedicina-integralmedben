@@ -41,6 +41,13 @@ const isTenant = computed(() => {
     return host !== 'localhost' && host !== '127.0.0.1';
 });
 
+const layout = computed(() => isTenant.value ? TenantAdminLayout : CentralAdminLayout);
+
+const tenantName = computed(() => {
+    if (!isTenant.value) return '';
+    return window.location.hostname.split('.')[0];
+});
+
 const homeRoute = computed(() => isTenant.value ? 'patients.index' : 'dashboard');
 
 const breadcrumbs = computed(() => [
@@ -128,13 +135,13 @@ const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
 const goBack = () => {
-    router.visit(route('dashboard'));
+    router.visit(route(homeRoute.value));
 };
 </script>
 <template>
 
     <Head title="Meu Perfil" />
-    <CentralAdminLayout>
+    <component :is="layout" :tenant-name="tenantName">
         <div class=" mx-auto space-y-6">
             <!-- Status Message -->
             <div v-if="status" class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
@@ -446,5 +453,5 @@ const goBack = () => {
                 </div>
             </template>
         </ConfirmDeleteModal>
-    </CentralAdminLayout>
+    </component>
 </template>
