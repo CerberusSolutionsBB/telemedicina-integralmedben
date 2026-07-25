@@ -2,7 +2,7 @@
 import { Head, router } from "@inertiajs/vue3";
 import CentralAdminLayout from "@/Layouts/CentralAdminLayout.vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
-import { Building2, Users, UserPlus, ExternalLink, Search, X, TrendingUp } from "lucide-vue-next";
+import { Building2, Users, UserPlus, ExternalLink, Search, X, TrendingUp, Crown, Medal, Trophy } from "lucide-vue-next";
 import { ref, computed } from "vue";
 
 const props = defineProps({
@@ -129,29 +129,37 @@ const yTicks = computed(() => {
       <Card class="shadow-sm" v-if="topPages.length">
         <CardHeader class="pb-2 pt-4 sm:pt-5 px-4 sm:px-5">
           <CardTitle class="text-sm sm:text-base font-bold text-gray-800 flex items-center gap-2">
-            <TrendingUp class="w-4 h-4 text-amber-500" />
+            <Trophy class="w-4 h-4 text-amber-500" />
             Top páginas com mais cadastros
           </CardTitle>
         </CardHeader>
         <CardContent class="pb-4 px-4 sm:px-5">
-          <div class="space-y-2">
+          <div class="space-y-1.5">
             <div
               v-for="(page, i) in topPages"
               :key="page.id"
-              class="flex items-center gap-3"
+              class="flex items-center gap-3 p-2 rounded-lg transition-colors"
+              :class="i === 0 ? 'bg-amber-50/60 ring-1 ring-amber-200' : i === 1 ? 'bg-gray-50/60 ring-1 ring-gray-200' : i === 2 ? 'bg-orange-50/50 ring-1 ring-orange-200' : ''"
             >
-              <span class="text-xs font-bold w-5 text-right"
-                :class="i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-700' : 'text-gray-300'"
-              >#{{ i + 1 }}</span>
-              <span class="text-sm text-gray-700 w-32 truncate flex-shrink-0" :title="page.name">{{ page.name }}</span>
+              <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                :class="i === 0 ? 'bg-amber-400 text-white shadow-sm' : i === 1 ? 'bg-gray-300 text-white' : i === 2 ? 'bg-orange-400 text-white' : 'bg-gray-100 text-gray-400'">
+                <Crown v-if="i === 0" class="w-3.5 h-3.5" />
+                <Medal v-else-if="i === 1" class="w-3.5 h-3.5" />
+                <Medal v-else-if="i === 2" class="w-3.5 h-3.5" />
+                <span v-else class="text-xs font-bold">{{ i + 1 }}</span>
+              </div>
+              <span class="text-sm text-gray-700 w-28 sm:w-32 truncate flex-shrink-0" :title="page.name"
+                :class="{ 'font-bold': i === 0 }">{{ page.name }}</span>
               <div class="flex-1 bg-gray-100 rounded-full h-2.5">
                 <div
                   class="h-2.5 rounded-full transition-all"
-                  :class="i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-cyan-500' : i === 2 ? 'bg-indigo-500' : 'bg-gray-400'"
+                  :class="i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-orange-500' : 'bg-gray-300'"
                   :style="{ width: topPages[0]?.patients > 0 ? (page.patients / topPages[0].patients * 100) + '%' : '0%' }"
                 />
               </div>
-              <span class="text-sm font-bold text-gray-700 w-12 text-right">{{ page.patients }}</span>
+              <span class="text-sm font-bold w-12 text-right"
+                :class="i === 0 ? 'text-amber-600' : i === 1 ? 'text-gray-600' : i === 2 ? 'text-orange-600' : 'text-gray-400'"
+              >{{ page.patients }}</span>
             </div>
           </div>
         </CardContent>
