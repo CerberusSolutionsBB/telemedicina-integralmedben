@@ -9,6 +9,7 @@ use App\Models\Question;
 use App\Models\SmsTemplate;
 use App\Models\Tenant;
 use App\Notifications\NotificationDispatcher;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -18,11 +19,17 @@ class SendNotificationOnPatientCreated
 
     public function handle(PatientCreated $event): void
     {
+        if ($event->smsAlreadySent) {
+            return;
+        }
+        $templateIds = DB::connection('mysql')
+            ->table('tenant_sms_templates')
+            ->where('tenant_id', $event->tenantId)
+            ->pluck('sms_template_id');
+
         $allTemplates = SmsTemplate::where('event', SmsTemplateEventEnum::PatientCreated->value)
             ->where('is_active', true)
-            ->whereHas('tenants', function ($query) use ($event) {
-                $query->where('tenants.id', $event->tenantId);
-            })
+            ->whereIn('id', $templateIds)
             ->get();
 
         if ($allTemplates->isEmpty()) {

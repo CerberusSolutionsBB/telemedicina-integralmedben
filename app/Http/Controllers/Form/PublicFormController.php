@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Form;
 
 use App\Http\Controllers\Controller;
+use App\Data\SiprovIntegrationData;
 use App\Models\CredenciasCluble;
 use App\Models\Form;
 use App\Models\FormArquivo;
@@ -9,11 +10,13 @@ use App\Models\FormResponse;
 use App\Models\Patient;
 use App\Models\PatientAnswer;
 use App\Models\Question;
+use App\Models\Siprov;
 use App\Models\SmsTemplate;
 use App\Models\Tenant;
 use App\Models\TenantsDetail;
 use App\Services\ClubleBeneficiarioService;
-use App\Services\SimpleSmsService;
+use App\Services\Siprov\SiprovIntegrationService;
+use App\Services\SmsSenderService;
 use App\Services\Tenant\FormsResponseTenentService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -30,8 +33,9 @@ class PublicFormController extends Controller
 {
     public function __construct(
         protected ClubleBeneficiarioService $beneficiarioService,
-        private SimpleSmsService $simpleSmsService,
+        private SmsSenderService $smsSenderService,
         private FormsResponseTenentService $formsResponseTenentService,
+        private SiprovIntegrationService $siprovIntegrationService,
     ) {}
 
     private function canAcceptResponses(Form $form): bool
@@ -323,8 +327,11 @@ class PublicFormController extends Controller
             }
 
             DB::commit();
+            // $message = now()->format('d/m/Y H:i:s');
+            // $this->simpleSmsService->send("86994311316", $message);
 
             if ($currentTenant != null) {
+                $this->integrarSiprov($form, $processedAnswers);
                 $this->enviarSmsTemplate($currentTenant, $form, $processedAnswers);
                 $this->criarPacienteDinamico($currentTenant, $form, $formResponse, $processedAnswers);
             }
@@ -601,7 +608,7 @@ class PublicFormController extends Controller
             });
 
             if ($patientId) {
-                \App\Events\PatientCreated::dispatch($patientId, $tenantId, $answersPorQuestion);
+                \App\Events\PatientCreated::dispatch($patientId, $tenantId, $answersPorQuestion, smsAlreadySent: true);
             }
         } catch (Throwable $e) {
             Log::error('Erro ao criar paciente dinamicamente', [
@@ -612,77 +619,250 @@ class PublicFormController extends Controller
         }
     }
 
-    private function enviarSmsTemplate(string $tenantId, Form $form, array $processedAnswers): void
-    {
+    private function enviarSmsTemplate(
+        string $tenantId,
+        Form $form,
+        array $processedAnswers
+    ): void {
         try {
+
             $tenant = Tenant::find($tenantId);
+
             if (! $tenant) {
-                return;
-            }
-
-            $fields    = $form->fields()->orderBy('order')->get();
-            $questions = Question::all();
-
-            $templates = SmsTemplate::where('event', 'patient.created')
-                ->where('is_active', true)
-                ->whereHas('tenants', fn($q) => $q->where('tenants.id', $tenantId))
-                ->get()
-                ->filter(fn($t) => empty($t->form_ids) || in_array($form->id, $t->form_ids));
-
-            if ($templates->isEmpty()) {
-                return;
-            }
-
-            $fieldAnswers = [];
-            foreach ($fields as $field) {
-                $fieldAnswers[$field->id] = $processedAnswers[$field->id] ?? null;
-            }
-
-            $answersPorQuestion = $this->mapearRespostasParaQuestions($fieldAnswers, $fields, $questions);
-
-            $data = [
-                'tenant_id'   => $tenantId,
-                'tenant'      => $tenantId,
-                'link_pagina' => $tenant->url ?? config('app.url'),
-            ];
-
-            foreach ($answersPorQuestion as $questionId => $value) {
-                $question = $questions->firstWhere('id', $questionId);
-                if ($question?->role) {
-                    $data[$question->role->value] = $value;
-                }
-            }
-
-            foreach ($templates as $template) {
-                $tel = $data['tel'] ?? ($data[$template->recipient_variable] ?? null);
-                if (! $tel) {
-                    Log::warning('SMS template sem telefone', [
-                        'template' => $template->name,
-                        'data_keys' => array_keys($data),
-                    ]);
-                    continue;
-                }
-
-                $message = $template->resolveMessage($data);
-
-                Log::info('SMS enviado via template', [
+                Log::warning('Tenant não encontrado', [
                     'tenant_id' => $tenantId,
-                    'form_id' => $form->id,
-                    'template' => $template->name,
-                    'phone' => $tel,
-                    'message' => $message,
                 ]);
 
-                $this->simpleSmsService->send($tel, $message, 'form-'.$form->id.'-tpl-'.$template->id);
+                return;
             }
+
+            $templates = $this->buscarTemplatesSms($tenantId, $form);
+
+            if ($templates->isEmpty()) {
+                Log::info('Nenhum template SMS encontrado', [
+                    'tenant_id' => $tenantId,
+                    'form_id'   => $form->id,
+                ]);
+
+                return;
+            }
+
+            $data = $this->montarDadosSms(
+                $tenant,
+                $form,
+                $processedAnswers
+            );
+
+            foreach ($templates as $template) {
+                $this->enviarTemplateSms(
+                    $template,
+                    $data,
+                    $tenantId,
+                    $form->id
+                );
+            }
+
         } catch (Throwable $e) {
-            Log::error('Erro ao enviar SMS template via formulário público', [
+
+            Log::error('Erro ao enviar SMS', [
                 'tenant_id' => $tenantId,
                 'form_id'   => $form->id,
                 'error'     => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
             ]);
         }
     }
+    private function enviarTemplateSms(
+        SmsTemplate $template,
+        array $data,
+        string $tenantId,
+        int $formId
+    ): void {
+
+        $telefone = $data['tel'] ?? ($data[$template->recipient_variable] ?? null);
+
+        if (blank($telefone)) {
+
+            Log::warning('SMS sem telefone', [
+                'template'           => $template->name,
+                'recipient_variable' => $template->recipient_variable,
+                'data'               => $data,
+            ]);
+
+            return;
+        }
+
+        $mensagem = $template->resolveMessage($data);
+
+        if (blank($mensagem)) {
+
+            Log::warning('Mensagem SMS vazia', [
+                'template' => $template->name,
+            ]);
+
+            return;
+        }
+
+        Log::info('Enviando SMS', [
+            'telefone' => $telefone,
+            'template' => $template->name,
+        ]);
+
+        $resultado = $this->smsSenderService->send($telefone, $mensagem, $tenantId);
+
+        Log::info('Resultado SMS', [
+            'tenant_id' => $tenantId,
+            'form_id'   => $formId,
+            'telefone'  => $telefone,
+            'resultado' => $resultado,
+        ]);
+    }
+    private function buscarTemplatesSms(
+        string $tenantId,
+        Form $form
+    ) {
+        $templateIds = DB::connection('mysql')
+            ->table('tenant_sms_templates')
+            ->where('tenant_id', $tenantId)
+            ->pluck('sms_template_id');
+
+        return SmsTemplate::where('event', 'patient.created')
+            ->where('is_active', true)
+            ->whereIn('id', $templateIds)
+            ->get()
+            ->filter(fn($template) =>
+                empty($template->form_ids)
+                || in_array($form->id, $template->form_ids)
+            );
+    }
+
+    private function montarDadosSms(
+        Tenant $tenant,
+        Form $form,
+        array $processedAnswers
+    ): array {
+
+        $fields = $form->fields()
+            ->orderBy('order')
+            ->get();
+
+        $questions = Question::all()->keyBy('id');
+
+        $fieldAnswers = [];
+
+        foreach ($fields as $field) {
+
+            $fieldAnswers[$field->id] =
+            $processedAnswers[$field->id] ?? null;
+        }
+
+        $answers = $this->mapearRespostasParaQuestions(
+            $fieldAnswers,
+            $fields,
+            $questions
+        );
+
+        $data = [
+            'tenant_id'   => $tenant->id,
+            'tenant'      => $tenant->id,
+            'link_pagina' => $tenant->url ?? config('app.url'),
+        ];
+
+        foreach ($answers as $questionId => $value) {
+
+            $question = $questions[$questionId] ?? null;
+
+            if ($question?->role) {
+                $data[$question->role->value] = $value;
+            }
+        }
+
+        return $data;
+    }
+    // private function enviarSmsTemplate(string $tenantId, Form $form, array $processedAnswers): void
+    // {
+    //     try {
+    //         $tenant = Tenant::find($tenantId);
+    //         if (! $tenant) {
+    //             return;
+    //         }
+
+    //         $fields    = $form->fields()->orderBy('order')->get();
+    //         $questions = Question::all();
+
+    //         $templates = SmsTemplate::where('event', 'patient.created')
+    //             ->where('is_active', true)
+    //             ->whereHas('tenants', fn($q) => $q->where('tenants.id', $tenantId))
+    //             ->get()
+    //             ->filter(fn($t) => empty($t->form_ids) || in_array($form->id, $t->form_ids));
+
+    //         if ($templates->isEmpty()) {
+    //             return;
+    //         }
+
+    //         $fieldAnswers = [];
+    //         foreach ($fields as $field) {
+    //             $fieldAnswers[$field->id] = $processedAnswers[$field->id] ?? null;
+    //         }
+
+    //         $answersPorQuestion = $this->mapearRespostasParaQuestions($fieldAnswers, $fields, $questions);
+
+    //         $data = [
+    //             'tenant_id'   => $tenantId,
+    //             'tenant'      => $tenantId,
+    //             'link_pagina' => $tenant->url ?? config('app.url'),
+    //         ];
+
+    //         foreach ($answersPorQuestion as $questionId => $value) {
+    //             $question = $questions->firstWhere('id', $questionId);
+    //             if ($question?->role) {
+    //                 $data[$question->role->value] = $value;
+    //             }
+    //         }
+
+    //         foreach ($templates as $template) {
+    //             $tel = $data['tel'] ?? ($data[$template->recipient_variable] ?? null);
+    //             if (! $tel) {
+    //                 Log::warning('SMS template sem telefone', [
+    //                     'template'  => $template->name,
+    //                     'data_keys' => array_keys($data),
+    //                 ]);
+    //                 continue;
+    //             }
+
+    //             $message = $template->resolveMessage($data);
+
+    //             // $this->smsSenderService->send($tel, $message, $tenantId);
+    //             // dd($message);
+    //             $this->simpleSmsService->send($tel, $message);
+    //             // break;
+    //             // dd($resultSms);
+    //             // if ($result['sent']) {
+    //             //     Log::info('SMS via template enviado', [
+    //             //         'tenant_id'  => $tenantId,
+    //             //         'form_id'    => $form->id,
+    //             //         'template'   => $template->name,
+    //             //         'phone'      => $tel,
+    //             //         'message_id' => $result['message_id'],
+    //             //     ]);
+    //             // } else {
+    //             //     Log::error('SMS via template falhou', [
+    //             //         'tenant_id' => $tenantId,
+    //             //         'form_id'   => $form->id,
+    //             //         'template'  => $template->name,
+    //             //         'phone'     => $tel,
+    //             //         'error'     => $result['error'],
+    //             //     ]);
+    //             // }
+    //         }
+    //     } catch (Throwable $e) {
+    //         Log::error('Erro ao enviar SMS template via formulário público', [
+    //             'tenant_id' => $tenantId,
+    //             'form_id'   => $form->id,
+    //             'error'     => $e->getMessage(),
+    //         ]);
+    //     }
+    // }
 
     private function extrairDadosPaciente(array $fieldAnswers, $fields, $questions): array
     {
@@ -748,14 +928,14 @@ class PublicFormController extends Controller
 
                 // Match por role + palavras-chave do label
                 $roleKeywords = [
-                    'tel' => ['celular', 'telefone', 'whatsapp', 'tel', 'telefone', 'fone', 'contato', 'numero'],
-                    'nome' => ['nome', 'name', 'completo'],
-                    'email' => ['email', 'e-mail', 'mail'],
-                    'cpf' => ['cpf', 'documento'],
-                    'sexo' => ['sexo', 'genero', 'gênero'],
+                    'tel'        => ['celular', 'telefone', 'whatsapp', 'tel', 'telefone', 'fone', 'contato', 'numero'],
+                    'nome'       => ['nome', 'name', 'completo'],
+                    'email'      => ['email', 'e-mail', 'mail'],
+                    'cpf'        => ['cpf', 'documento'],
+                    'sexo'       => ['sexo', 'genero', 'gênero'],
                     'birth_date' => ['nascimento', 'nasc', 'data', 'aniversario', 'aniversário'],
-                    'city' => ['cidade', 'municipio', 'município'],
-                    'rg' => ['rg', 'identidade'],
+                    'city'       => ['cidade', 'municipio', 'município'],
+                    'rg'         => ['rg', 'identidade'],
                 ];
 
                 if ($qRole && isset($roleKeywords[$qRole])) {
@@ -793,5 +973,139 @@ class PublicFormController extends Controller
         }
 
         return $result;
+    }
+
+    private function integrarSiprov(Form $form, array $processedAnswers): void
+    {
+        if (! $form->status_beneficio || ! $form->plano_id) {
+            return;
+        }
+
+        try {
+            $dados = $this->extrairDadosPacienteSiprov($form, $processedAnswers);
+
+            if (empty($dados['nome']) || empty($dados['cpf'])) {
+                Log::info('SIPROV | Dados insuficientes para integração via formulário', [
+                    'form_id'  => $form->id,
+                    'plano_id' => $form->plano_id,
+                    'dados'    => array_keys($dados),
+                ]);
+
+                return;
+            }
+
+            $planoKey = $this->resolverPlanoSiprov($form->plano_id);
+
+            $data = new SiprovIntegrationData(
+                codigoIntegracao: 'USR-'.preg_replace('/\D/', '', $dados['cpf']),
+                nomePessoa: $dados['nome'],
+                cpfCnpj: preg_replace('/\D/', '', $dados['cpf']),
+                email: $dados['email'] ?? '',
+                sexo: $dados['sexo'] ?? 'Outro',
+                dataNascimento: $dados['data_nascimento'] ?? '',
+                telefones: [['numero' => $dados['numero'] ?? '']],
+                plano: $planoKey,
+                ativo: (bool) $form->status_beneficio,
+                diaVencimento: (int) ($form->dia_vencimento ?: 10),
+                situacao: $form->situacao ?: 'Ativo',
+            );
+
+            $result = $this->siprovIntegrationService->execute($data);
+
+            $attributes = [
+                'nome_pessoa'     => $data->nomePessoa,
+                'email'           => $data->email,
+                'sexo'            => $data->sexo,
+                'data_nascimento' => $data->dataNascimento,
+                'cod_loja'        => (int) config('siprov.cod_loja'),
+                'dia_vencimento'  => $data->diaVencimento,
+                'ativo'           => $data->ativo,
+                'situacao'        => $data->situacao,
+                'associado'       => $result['associado'] ?? [],
+                'beneficio'       => $result['beneficio'] ?? [],
+                'status'          => Siprov::STATUS_SUCCESS,
+                'error_message'   => null,
+                'integrated_at'   => now(),
+            ];
+
+            $siprov = Siprov::withTrashed()
+                ->where('codigo_integracao', $data->codigoIntegracao)
+                ->where('cpf_cnpj', $data->cpfCnpj)
+                ->where('cod_plano', (string) $data->codPlano())
+                ->first();
+
+            if ($siprov) {
+                $siprov->update($attributes);
+            } else {
+                Siprov::create(array_merge([
+                    'user_id'           => auth()->id(),
+                    'codigo_integracao' => $data->codigoIntegracao,
+                    'cpf_cnpj'          => $data->cpfCnpj,
+                    'cod_plano'         => (string) $data->codPlano(),
+                ], $attributes));
+            }
+
+            Log::info('SIPROV | Integração via formulário público concluída', [
+                'form_id'  => $form->id,
+                'cpf'      => $data->cpfCnpj,
+                'plano'    => $planoKey,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('SIPROV | Erro na integração via formulário público', [
+                'form_id' => $form->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function extrairDadosPacienteSiprov(Form $form, array $processedAnswers): array
+    {
+        $fields = $form->fields()->orderBy('order')->get();
+
+        $dados = [
+            'nome'            => null,
+            'cpf'             => null,
+            'email'           => null,
+            'data_nascimento' => null,
+            'numero'          => null,
+            'sexo'            => null,
+        ];
+
+        foreach ($fields as $field) {
+            $valor = $processedAnswers[$field->id] ?? null;
+            if (empty($valor)) {
+                continue;
+            }
+            $label = mb_strtolower(trim($field->label));
+
+            if (empty($dados['nome']) && str_contains($label, 'nome')) {
+                $dados['nome'] = (string) $valor;
+            } elseif (empty($dados['cpf']) && str_contains($label, 'cpf')) {
+                $dados['cpf'] = preg_replace('/\D/', '', (string) $valor);
+            } elseif (empty($dados['email']) && (str_contains($label, 'e-mail') || str_contains($label, 'email') || $field->type === 'email')) {
+                $dados['email'] = mb_strtolower(trim((string) $valor));
+            } elseif (empty($dados['data_nascimento']) && (str_contains($label, 'nascimento') || ($field->type === 'date' && str_contains($label, 'nasc')))) {
+                $dados['data_nascimento'] = $this->convertBrazilianDateToISO((string) $valor);
+            } elseif (empty($dados['numero']) && (str_contains($label, 'celular') || str_contains($label, 'telefone') || str_contains($label, 'tel') || str_contains($label, 'whatsapp'))) {
+                $dados['numero'] = preg_replace('/\D/', '', (string) $valor);
+            } elseif (empty($dados['sexo']) && str_contains($label, 'sexo')) {
+                $dados['sexo'] = $this->normalizarSexo((string) $valor);
+            }
+        }
+
+        return $dados;
+    }
+
+    private function resolverPlanoSiprov(string $planoId): string
+    {
+        $planos = config('siprov.planos', []);
+
+        $key = array_search((int) $planoId, $planos, true);
+
+        if ($key === false) {
+            throw new \InvalidArgumentException("Plano SIPROV não mapeado para o código: {$planoId}");
+        }
+
+        return (string) $key;
     }
 }

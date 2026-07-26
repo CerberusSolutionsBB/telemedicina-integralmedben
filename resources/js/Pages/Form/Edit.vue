@@ -31,7 +31,8 @@ import {
     Home,
     Tag,
     Scale,
-    Palette, Paintbrush, IdCard
+    Palette, Paintbrush, IdCard,
+    Shield, CheckCircle, XCircle,
 } from "lucide-vue-next";
 
 const breadcrumbs = computed(() => [
@@ -60,6 +61,10 @@ const props = defineProps({
         default: () => []
     },
     credencias_clubles: {
+        type: Array,
+        default: () => []
+    },
+    planos: {
         type: Array,
         default: () => []
     },
@@ -95,6 +100,10 @@ const formData = ref({
     sub_descricao: props.form?.sub_descricao ?? null,
     observacao: props.form?.observacao ?? null,
     credencia_cluble_id: props.form?.credencia_cluble_id ?? null,
+    plano_id: props.form?.plano_id ?? '',
+    situacao: props.form?.situacao ?? '',
+    dia_vencimento: props.form?.dia_vencimento ?? '',
+    status_beneficio: props.form?.status_beneficio ?? true,
     logo: null,
     logo_url: props.form?.logo_url || null,
     existe_file: props.form?.existe_file || false,
@@ -412,6 +421,61 @@ const showPreview = ref(false);
                                 <Label for="response_limit" class="text-gray-700">Limite de Respostas</Label>
                                 <input id="response_limit" type="number" v-model="formData.response_limit"
                                     placeholder="Ilimitado" :class="inputClass" />
+                            </div>
+                        </div>
+
+                        <!-- Benefício / Telemedicina -->
+                        <div class="bg-gray-50 rounded-xl border border-gray-200 p-5 space-y-4">
+                            <div class="flex items-center gap-2 text-gray-900 font-semibold">
+                                <Shield class="w-5 h-5" />
+                                <h3>Benefício / Telemedicina</h3>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label for="plano_id" class="text-gray-700 pb-1">Plano</Label>
+                                    <select id="plano_id" v-model="formData.plano_id" :class="inputClass">
+                                        <option value="">Selecione um plano</option>
+                                        <option v-for="plano in planos" :key="plano.value" :value="plano.value">
+                                            {{ plano.label }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <Label for="dia_vencimento" class="text-gray-700 pb-1">Dia de Vencimento</Label>
+                                    <input id="dia_vencimento" type="number" v-model="formData.dia_vencimento"
+                                        placeholder="Ex: 10" :class="inputClass" min="1" max="31" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <Label for="situacao" class="text-gray-700 pb-1">Situação</Label>
+                                <select id="situacao" v-model="formData.situacao" :class="inputClass">
+                                    <option value="">Selecione...</option>
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                    <option value="Suspenso">Suspenso</option>
+                                    <option value="Cancelado">Cancelado</option>
+                                </select>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="status_beneficio" v-model="formData.status_beneficio"
+                                    class="w-5 h-5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer" />
+                                <div>
+                                    <Label for="status_beneficio"
+                                        class="mb-0 cursor-pointer font-medium text-gray-700 flex items-center gap-2">
+                                        <CheckCircle v-if="formData.status_beneficio" class="w-4 h-4 text-green-600" />
+                                        <XCircle v-else class="w-4 h-4 text-red-400" />
+                                        Benefício Ativo
+                                    </Label>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        {{ formData.status_beneficio
+                                            ? 'O benefício está ativo para este formulário'
+                                            : 'O benefício está inativo para este formulário'
+                                        }}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

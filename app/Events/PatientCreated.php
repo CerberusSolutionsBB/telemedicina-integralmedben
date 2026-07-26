@@ -13,5 +13,6 @@ class PatientCreated
         public int $tenantPatientId,
         public string $tenantId,
         public array $answers,
+        public bool $smsAlreadySent = false,
     ) {}
 }
