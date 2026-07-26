@@ -21,6 +21,8 @@ const props = defineProps({
   monthLabels:             { type: Array,  default: () => [] },
 });
 
+const monthValue = ref(props.selectedMonth || props.currentMonth);
+
 const selectedPage = ref(null);
 const pageSearch = ref('');
 
@@ -37,14 +39,16 @@ const filteredMonthlyGrowth = computed(() => {
 });
 
 const availableYears = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
-const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 const goToYear = (year) => {
   router.visit(route('dashboard', { year, month: props.selectedMonth || undefined }), { preserveState: true, preserveScroll: true, replace: true });
 };
 
 const goToMonth = (month) => {
-  router.visit(route('dashboard', { year: props.currentYear, month: month || undefined }), { preserveState: true, preserveScroll: true, replace: true });
+  const monthNum = Number(month);
+  monthValue.value = monthNum;
+  router.visit(route('dashboard', { year: props.currentYear, month: monthNum || undefined }), { preserveState: true, preserveScroll: true, replace: true });
 };
 
 const monthName = new Date().toLocaleString('pt-BR', { month: 'long' });
@@ -84,11 +88,11 @@ const yTicks = computed(() => {
         </div>
         <div class="flex items-center gap-2">
           <select
-            :value="selectedMonth || ''"
-            @change="goToMonth($event.target.value || null)"
+            :value="monthValue"
+            @change="goToMonth($event.target.value)"
             class="self-start sm:self-auto text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm"
           >
-            <option value="">Todos os meses</option>
+            <option :value="0">Todos os meses</option>
             <option v-for="(name, i) in monthNames" :key="i" :value="i + 1">{{ name }}</option>
           </select>
           <select
