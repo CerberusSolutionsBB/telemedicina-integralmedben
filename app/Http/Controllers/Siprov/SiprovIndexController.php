@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Siprov;
 use App\Data\SiprovAssociadoQueryData;
 use App\Exceptions\SiprovException;
 use App\Http\Controllers\Controller;
+use App\Services\Siprov\AssociadosTenantParcenteService;
 use App\Services\Siprov\SiprovAssociadoService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,6 +15,7 @@ class SiprovIndexController extends Controller
 {
     public function __construct(
         private readonly SiprovAssociadoService $siprovService,
+        private readonly AssociadosTenantParcenteService $associadosTenantService,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -25,8 +27,12 @@ class SiprovIndexController extends Controller
         try {
             $response = $this->siprovService->query($data);
 
+            $associados = $this->associadosTenantService->AssociadosTenant(
+                $response['itens'] ?? []
+            );
+
             return Inertia::render('Siprov/Index', [
-                'associados' => $response['itens'] ?? [],
+                'associados' => $associados,
                 'siprovError' => null,
                 'pagination' => [
                     'currentPage' => $response['paginaAtual'] ?? 1,
