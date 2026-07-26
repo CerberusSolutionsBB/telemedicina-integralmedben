@@ -4,6 +4,7 @@ import { Head, useForm, router, usePage } from "@inertiajs/vue3";
 import { Button } from "@/Components/ui/button";
 import { Label } from "@/Components/ui/label";
 import CentralAdminLayout from "@/Layouts/CentralAdminLayout.vue";
+import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import { showToast } from '@/Utils/toast';
 import Breadcrumb from "@/Components/Breadcrumb.vue";
 import InputError from "@/Components/InputError.vue";
@@ -35,10 +36,28 @@ const props = defineProps({
         default: null
     }
 });
+const isTenant = computed(() => {
+    const host = window.location.hostname;
+    return host !== 'localhost' && host !== '127.0.0.1';
+});
+
+const layout = computed(() => isTenant.value ? TenantAdminLayout : CentralAdminLayout);
+
+const tenantName = computed(() => {
+    if (!isTenant.value) return '';
+    return window.location.hostname.split('.')[0];
+});
+
+const homeRoute = computed(() => isTenant.value ? 'patients.index' : 'dashboard');
+
 const breadcrumbs = computed(() => [
-    { label: 'Início', href: route('dashboard'), icon: Home },
+    { label: 'Início', href: route(homeRoute.value), icon: Home },
     { label: 'Meu Perfil', href: null },
 ]);
+
+const goHome = () => {
+    router.visit(route(homeRoute.value));
+};
 const perfilForm = useForm({
     name: user.value?.name || '',
     email: user.value?.email || '',
@@ -116,13 +135,13 @@ const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
 const goBack = () => {
-    router.visit(route('dashboard'));
+    router.visit(route(homeRoute.value));
 };
 </script>
 <template>
 
     <Head title="Meu Perfil" />
-    <CentralAdminLayout>
+    <component :is="layout" :tenant-name="tenantName">
         <div class=" mx-auto space-y-6">
             <!-- Status Message -->
             <div v-if="status" class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
@@ -434,5 +453,5 @@ const goBack = () => {
                 </div>
             </template>
         </ConfirmDeleteModal>
-    </CentralAdminLayout>
+    </component>
 </template>

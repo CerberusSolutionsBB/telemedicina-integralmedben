@@ -8,6 +8,7 @@ import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import PomponeteLink from '@/Components/PomponeteLink.vue';
 import DetailCard from '@/Components/DetailCard.vue';
 import PaginationSimple from '@/Components/PaginationSimple.vue'
+import { showToast } from '@/Utils/toast';
 const props = defineProps({
     tenants: {
         type: Object,
@@ -30,6 +31,12 @@ const can = computed(() => page.props.authUser?.can?.paginas || {});
 const canManage = computed(() => page.props.authUser?.can?.manage || false);
 const flashMessage = computed(() => page.props.flash?.message);
 const flashType = computed(() => page.props.flash?.type);
+
+watch([flashMessage, flashType], ([message, type]) => {
+    if (message) {
+        showToast(message, type || 'success');
+    }
+});
 const search = ref(props.filters.search || '');
 const searchInput = ref(null);
 let searchTimer = null;
@@ -41,6 +48,11 @@ const deleteModal = ref({
 const statusModal = ref({
     show: false,
     tenant: null,
+    isProcessing: false
+});
+
+const bulkDisableModal = ref({
+    show: false,
     isProcessing: false
 });
 const tenantList = computed(() => props.tenants?.data || []);
@@ -103,10 +115,11 @@ const confirmDelete = () => {
         preserveScroll: true,
         onSuccess: () => {
             closeDeleteModal();
+            showToast('Página excluída com sucesso!', 'success');
         },
         onError: (errors) => {
-            const errorMessage = Object.values(errors).flat()[0] || 'Erro ao excluir tenant';
-            alert(errorMessage);
+            const errorMessage = Object.values(errors).flat()[0] || 'Erro ao excluir página';
+            showToast(errorMessage, 'error');
         },
         onFinish: () => {
             deleteModal.value.isProcessing = false;
@@ -184,9 +197,39 @@ const confirmToggleStatus = () => {
         preserveScroll: true,
         onSuccess: () => {
             closeStatusModal();
+            showToast('Status atualizado com sucesso!', 'success');
+        },
+        onError: (errors) => {
+            showToast('Erro ao alterar status.', 'error');
         },
         onFinish: () => {
             statusModal.value.isProcessing = false;
+        }
+    });
+};
+
+const openBulkDisableModal = () => {
+    bulkDisableModal.value = { show: true, isProcessing: false };
+};
+
+const closeBulkDisableModal = () => {
+    bulkDisableModal.value.show = false;
+};
+
+const confirmBulkDisable = () => {
+    bulkDisableModal.value.isProcessing = true;
+    router.put(route('pagina.bulk.disable'), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeBulkDisableModal();
+            showToast('Todas as páginas foram desativadas com sucesso!', 'success');
+        },
+        onError: (errors) => {
+            showToast('Erro ao desativar páginas. Tente novamente.', 'error');
+            console.error('bulkDisable error:', errors);
+        },
+        onFinish: () => {
+            bulkDisableModal.value.isProcessing = false;
         }
     });
 };
@@ -197,7 +240,7 @@ const confirmToggleStatus = () => {
 
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 uppercase tracking-wide">
-                    Gerenciar Páginas
+                    Página de Parceiros
                 </h2>
                 <p class="text-sm text-gray-500 mt-1">
                     {{ hasTenants ? `${props.tenants.total} tenant(s) cadastrado(s)` : 'Nenhum tenant cadastrado' }}
@@ -240,12 +283,22 @@ const confirmToggleStatus = () => {
                             Limpar filtros
                         </button> -->
                     </div>
-                    <Button v-if="can.create"
-                        class="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 px-5 py-2.5 text-white font-semibold shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-                        @click="navigateTo('pagina.create')">
-                        <Plus class="w-4 h-4" />
-                        Adicionar Página
-                    </Button>
+                    <template v-if="can.create">
+                        <div class="flex items-center gap-2">
+                            <Button
+                                class="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 px-5 py-2.5 text-white font-semibold shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                                @click="navigateTo('pagina.create')">
+                                <Plus class="w-4 h-4" />
+                                Adicionar Página
+                            </Button>
+                            <Button variant="outline"
+                                class="flex items-center gap-2 rounded-xl border-red-300 text-red-600 hover:bg-red-50 px-5 py-2.5 font-semibold transition-all"
+                                @click="openBulkDisableModal">
+                                <Power class="w-4 h-4" />
+                                Desativar todas
+                            </Button>
+                        </div>
+                    </template>
                     <div v-else
                         class="flex items-center gap-2 px-5 py-2.5 text-gray-400 text-sm bg-gray-100 rounded-xl cursor-not-allowed"
                         title="Você não tem permissão para criar páginas">
@@ -353,14 +406,12 @@ const confirmToggleStatus = () => {
                                                 title="Editar">
                                                 <User class="w-4 h-4" />
                                             </butto>
-                                            <button @click="openStatusModal(item)"
-                                                :class="[
-                                                    'p-2 rounded-lg transition-all',
-                                                    item.status
-                                                        ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
-                                                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                                                ]"
-                                                :title="item.status ? 'Desativar' : 'Ativar'">
+                                            <button @click="openStatusModal(item)" :class="[
+                                                'p-2 rounded-lg transition-all',
+                                                item.status
+                                                    ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
+                                                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                                            ]" :title="item.status ? 'Desativar' : 'Ativar'">
                                                 <Power class="w-4 h-4" />
                                             </button>
                                             <!-- <button v-if="can.edit" @click="navigateTo('pagina.edit', item.id)"
@@ -423,8 +474,14 @@ const confirmToggleStatus = () => {
             :title="statusModal.tenant?.status ? 'Desativar Parceiro' : 'Ativar Parceiro'"
             :message="statusModal.tenant?.status ? 'Tem certeza que deseja desativar este parceiro?' : 'Tem certeza que deseja ativar este parceiro?'"
             :warning-message="statusModal.tenant?.status ? 'Ao desativar, o parceiro ficará inacessível para os usuários.' : 'Ao ativar, o parceiro voltará a ficar acessível para os usuários.'"
-            :confirm-text="statusModal.tenant?.status ? 'Sim, Desativar' : 'Sim, Ativar'"
-            cancel-text="Cancelar" :is-processing="statusModal.isProcessing"
-            variant="warning" @close="closeStatusModal" @confirm="confirmToggleStatus" />
+            :confirm-text="statusModal.tenant?.status ? 'Sim, Desativar' : 'Sim, Ativar'" cancel-text="Cancelar"
+            :is-processing="statusModal.isProcessing" variant="warning" @close="closeStatusModal"
+            @confirm="confirmToggleStatus" />
+
+        <ConfirmDeleteModal :show="bulkDisableModal.show" title="Desativar todas as páginas"
+            message="Tem certeza que deseja desativar TODAS as páginas?"
+            warning-message="Apenas páginas ativas serão afetadas. Esta ação pode ser revertida manualmente."
+            confirm-text="Sim, Desativar todas" cancel-text="Cancelar" :is-processing="bulkDisableModal.isProcessing"
+            variant="danger" @close="closeBulkDisableModal" @confirm="confirmBulkDisable" />
     </CentralAdminLayout>
 </template>

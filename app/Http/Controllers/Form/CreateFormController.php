@@ -29,6 +29,7 @@ class CreateFormController extends Controller
             'categorias' => $this->getCategorias($request),
             'credencias_clubles' => $this->getCredenciasClubles($request),
             'leis' => $this->getLeis($request),
+            'planos' => $this->getPlanos(),
             'can' => [
                 'create' => $user->can('forms.create'),
                 'edit' => $user->can('forms.edit'),
@@ -66,6 +67,22 @@ class CreateFormController extends Controller
             ['value' => 'pausado', 'label' => 'Pausado'],
             ['value' => 'encerrado', 'label' => 'Encerrado'],
         ];
+    }
+
+    private function getPlanos(): array
+    {
+        return collect(config('siprov.planos', []))
+            ->map(fn ($codigo, $key) => [
+                'value' => (string) $codigo,
+                'label' => match ($key) {
+                    'clinica_familiar'  => 'Clínica Familiar',
+                    'clinica_individual' => 'Clínica Individual',
+                    'saude_mental'      => 'Saúde Mental',
+                    default             => ucfirst(str_replace('_', ' ', $key)),
+                },
+            ])
+            ->values()
+            ->toArray();
     }
 
     /**

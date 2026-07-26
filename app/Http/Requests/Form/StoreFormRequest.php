@@ -45,6 +45,10 @@ class StoreFormRequest extends FormRequest
             'btn_confirmar_descricao' => ['nullable', 'string', 'max:500'],
             'sub_descricao' => ['nullable', 'string', 'max:500'],
             'observacao' => ['nullable', 'string'],
+            'plano_id' => ['nullable', 'string', 'max:255'],
+            'situacao' => ['nullable', 'string', 'max:255'],
+            'dia_vencimento' => ['nullable', 'integer', 'min:1', 'max:31'],
+            'status_beneficio' => ['nullable', 'boolean'],
             'configuracao' => ['nullable', 'array'],
         ];
     }
@@ -122,6 +126,12 @@ class StoreFormRequest extends FormRequest
         if ($this->has('is_public')) {
             $this->merge([
                 'is_public' => filter_var($this->is_public, FILTER_VALIDATE_BOOLEAN),
+            ]);
+        }
+
+        if ($this->has('status_beneficio')) {
+            $this->merge([
+                'status_beneficio' => filter_var($this->status_beneficio, FILTER_VALIDATE_BOOLEAN),
             ]);
         }
 

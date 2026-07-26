@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers\Tenant\Configuracao;
 
+use App\Data\SiprovAssociadoQueryData;
+use App\Enums\QuestionRoleEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ExpiresAtRequest;
 use App\Http\Requests\TenantFormsRequest;
+use App\Models\Question;
+use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
 use App\Models\TenantForm;
 use App\Models\TenantsDetail;
+use App\Services\Siprov\SiprovAssociadoService;
 use App\Services\Tenant\TenantConfigurationService;
 use App\Services\Tenant\TenantFormService;
 use Illuminate\Http\Request;
@@ -21,6 +26,7 @@ class ConfiguracaoController extends Controller
     public function __construct(
         private readonly TenantConfigurationService $configuracaoService,
         private TenantFormService $tenantFormService,
+        private readonly SiprovAssociadoService $siprovAssociadoService,
     ) {}
 
     private function tenantId(): string
@@ -224,6 +230,148 @@ class ConfiguracaoController extends Controller
                 ->back()
                 ->with('message', 'Não foi possível atualizar o status.')
                 ->with('type', 'error');
+        }
+    }
+
+    public function syncTelemedicina(Request $request, Tenant $tenant)
+    {
+        try {
+            $request->validate([
+                'enabled' => ['boolean'],
+                'questions' => ['array'],
+                'questions.*' => ['integer', 'exists:questions,id'],
+                'siprov_items' => ['array'],
+                'siprov_items.*.codPessoa' => ['required'],
+                'siprov_items.*.nomePessoa' => ['required', 'string'],
+                'siprov_items.*.cpfCnpj' => ['nullable', 'string'],
+                'siprov_items.*.planos' => ['nullable', 'array'],
+                'siprov_items.*.codBeneficio' => ['nullable'],
+            ]);
+
+            $detail = TenantsDetail::firstOrCreate([
+                'tenant_id' => $tenant->id,
+            ]);
+
+            $config = $detail->configuracao ?? [];
+            $config['telemedicina_enabled'] = $request->boolean('enabled');
+            $detail->update(['configuracao' => $config]);
+
+            if ($request->boolean('enabled') && !empty($request->input('questions'))) {
+                $questions = Question::whereIn('id', $request->input('questions'))->get();
+
+                $existingIds = TelemedicinaTenant::where('tenant_id', $tenant->id)
+                    ->pluck('data->question_id')
+                    ->toArray();
+
+                foreach ($questions as $question) {
+                    if (in_array($question->id, $existingIds)) {
+                        continue;
+                    }
+
+                    TelemedicinaTenant::create([
+                        'tenant_id' => $tenant->id,
+                        'data' => [
+                            'question_id' => $question->id,
+                            'title' => $question->title,
+                            'type' => $question->type,
+                            'options' => $question->options,
+                        ],
+                    ]);
+                }
+            }
+
+            if (!empty($request->input('siprov_items'))) {
+                foreach ($request->input('siprov_items') as $item) {
+                    $planos = $item['planos'] ?? [];
+                    $primeiroPlano = !empty($planos) ? $planos[0] : [];
+
+                    TelemedicinaTenant::create([
+                        'tenant_id' => $tenant->id,
+                        'data' => [
+                            'siprov_id' => $item['codPessoa'] ?? null,
+                            'title' => $item['nomePessoa'] ?? '',
+                            'cpf_cnpj' => $item['cpfCnpj'] ?? '',
+                            'cod_plano' => $primeiroPlano['codPlano'] ?? null,
+                            'plano_label' => $primeiroPlano['nome'] ?? '',
+                            'codigo_integracao' => $item['codPessoa'] ?? null,
+                            'codBeneficio' => $item['codBeneficio'] ?? null,
+                        ],
+                    ]);
+                }
+            }
+
+            return redirect()
+                ->route('pagina.show', $tenant->id)
+                ->with('message', 'Configuração de telemedicina atualizada com sucesso.')
+                ->with('type', 'success');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao atualizar telemedicina', [
+                'tenant_id' => $tenant->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('message', 'Não foi possível atualizar a configuração de telemedicina.')
+                ->with('type', 'error');
+        }
+    }
+
+    public function unlinkTelemedicina(Tenant $tenant, TelemedicinaTenant $telemedicinaTenant)
+    {
+        try {
+            $telemedicinaTenant->delete();
+
+            return redirect()
+                ->route('pagina.show', $tenant->id)
+                ->with('message', 'Item de telemedicina desvinculado com sucesso.')
+                ->with('type', 'success');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao desvincular telemedicina', [
+                'tenant_id' => $tenant->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('message', 'Não foi possível desvincular o item.')
+                ->with('type', 'error');
+        }
+    }
+
+    public function searchSiprov(Request $request)
+    {
+        $query = $request->input('q', '');
+        $pagina = (int) $request->input('pagina', 1);
+
+        $dto = new SiprovAssociadoQueryData(
+            situacaoBeneficio: 'Ativo',
+            nomePessoa: $query ?: null,
+            pagina: $pagina > 1 ? $pagina : null,
+        );
+
+        try {
+            $response = $this->siprovAssociadoService->query($dto);
+
+            return response()->json([
+                'itens' => $response['itens'] ?? [],
+                'paginaAtual' => $response['paginaAtual'] ?? 1,
+                'proximaPagina' => $response['proximaPagina'] ?? false,
+                'quantidade' => $response['quantidade'] ?? 0,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erro ao buscar associados SIPROV no modal', [
+                'query' => $query,
+                'pagina' => $pagina,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'itens' => [],
+                'paginaAtual' => 1,
+                'proximaPagina' => false,
+                'quantidade' => 0,
+            ], 500);
         }
     }
 

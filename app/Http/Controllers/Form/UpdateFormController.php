@@ -38,6 +38,10 @@ class UpdateFormController extends Controller
                 'sub_descricao' => $validated['sub_descricao'] ?? null,
                 'observacao' => $validated['observacao'] ?? null,
                 'credencia_cluble_id' => $validated['credencia_cluble_id'] ?? null,
+                'plano_id' => $validated['plano_id'] ?? null,
+                'situacao' => $validated['situacao'] ?? null,
+                'dia_vencimento' => $validated['dia_vencimento'] ?? null,
+                'status_beneficio' => $validated['status_beneficio'] ?? true,
                 'configuracao' => $validated['configuracao'] ?? null,
             ]);
             $this->syncLogo($form, $request, $validated);

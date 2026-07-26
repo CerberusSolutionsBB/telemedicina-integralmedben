@@ -48,6 +48,10 @@ class Form extends Model
         'observacao',
         'status',
         'configuracao',
+        'plano_id',
+        'situacao',
+        'dia_vencimento',
+        'status_beneficio',
     ];
 
     protected $appends = [
@@ -67,6 +71,8 @@ class Form extends Model
         'responses_count' => 'integer',
         'primary_color' => 'string',
         'secondary_color' => 'string',
+        'dia_vencimento' => 'integer',
+        'status_beneficio' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SimpleSmsService
 {
@@ -36,7 +37,7 @@ class SimpleSmsService
         ])->withoutVerifying()->post("{$this->baseUrl}/message", [
             'destination_addr' => $destinationAddr,
             'message' => $message,
-            'reference_id' => 'teste-001',
+            'reference_id' => $ref ?? (string) Str::uuid(),
         ]);
 
         $data = $response->json();
@@ -49,12 +50,12 @@ class SimpleSmsService
 
         if ($result['sent']) {
             Log::info('SMS | Enviado com sucesso', [
-                'phone' => $destinationAddr,
+                'phone' => $phone,
                 'message_id' => $result['message_id'],
             ]);
         } else {
             Log::error('SMS | Erro ao enviar', [
-                'phone' => $destinationAddr,
+                'phone' => $phone,
                 'error' => $result['error'],
                 'status' => $response->status(),
                 'response' => $data,

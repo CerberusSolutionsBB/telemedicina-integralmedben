@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('create', PaginaCreateController::class)->name('create');
 Route::get('/', PaginaIndexController::class)->name('index');
 Route::post('store', PaginaStoreController::class)->name('store');
+Route::put('/bulk/disable', [PaginaStatusController::class, 'bulkDisable'])->name('bulk.disable');
 Route::get('/{tenant}', PaginaShowController::class)->name('show');
 Route::delete('/{tenant}', PaginaDestroyController::class)->name('destroy');
 Route::put('/{tenant}/status', PaginaStatusController::class)->name('status');
@@ -30,4 +31,7 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::put('{tenantForm}/expires-at', [ConfiguracaoController::class, 'createExpiresAt'])->name('expires-at');
     Route::delete('{tenantForm}/unlink', [ConfiguracaoController::class, 'removeVinculo'])->name('unlink');
     Route::put('/{tenant}/status-formulario-dinamico', [ConfiguracaoController::class, 'toggleStatusFormularioDinamico'])->name('status-formulario-dinamico');
+    Route::put('/{tenant}/telemedicina', [ConfiguracaoController::class, 'syncTelemedicina'])->name('telemedicina');
+    Route::delete('/{tenant}/telemedicina/{telemedicinaTenant}', [ConfiguracaoController::class, 'unlinkTelemedicina'])->name('telemedicina.unlink');
+    Route::get('/siprov/search', [ConfiguracaoController::class, 'searchSiprov'])->name('telemedicina.searchSiprov');
 });

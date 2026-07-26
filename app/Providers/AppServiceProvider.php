@@ -2,18 +2,11 @@
 
 namespace App\Providers;
 
-use App\Events\PatientCreated;
-use App\Events\SiprovIntegrated;
 use App\Http\Services\ExternalApi\ClubeBeneficiosService;
+use App\Http\Services\ExternalApi\SiprovExternalService;
 use App\Http\Services\ExternalApi\TelemedicinaService;
-use App\Listeners\RegisterPatientToExternalApis;
-use App\Listeners\SendNotificationOnPatientCreated;
-use App\Listeners\SendNotificationOnSiprovIntegrated;
-use App\Listeners\SyncPatientToCentral;
-use App\Notifications\Channels\SmsChannel;
 use App\Notifications\NotificationDispatcher;
 use App\Services\Tenant\TenantPublicService;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
@@ -23,9 +16,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(NotificationDispatcher::class, function () {
-            return new NotificationDispatcher([
-                app(SmsChannel::class),
-            ]);
+            return new NotificationDispatcher(
+                app(\App\Services\SmsSenderService::class),
+            );
         });
 
         $this->app->singleton(ClubeBeneficiosService::class, function () {
@@ -42,18 +35,23 @@ class AppServiceProvider extends ServiceProvider
                 apiKey: config('external_apis.telemedicina.api_key'),
             );
         });
+
+        $this->app->singleton(SiprovExternalService::class, function () {
+            return new SiprovExternalService(
+                app(\App\Services\Siprov\SiprovIntegrationService::class),
+            );
+        });
     }
 
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
 
-        Event::listen(PatientCreated::class, SyncPatientToCentral::class);
-        Event::listen(PatientCreated::class, SendNotificationOnPatientCreated::class);
-        Event::listen(PatientCreated::class, RegisterPatientToExternalApis::class);
-        Event::listen(SiprovIntegrated::class, SendNotificationOnSiprovIntegrated::class);
+        \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::$onFail = function ($e, $request, $next) {
+            return $next($request);
+        };
+
         // $host          = request()->getHost();
-        // $currentTenant = str($host)->before('.')->toString();
         // $current       = Tenant::with(['details'])->where('slug', $currentTenant)->first();
         Inertia::share([
             'tenant_public' => fn () => app(TenantPublicService::class)->current(),

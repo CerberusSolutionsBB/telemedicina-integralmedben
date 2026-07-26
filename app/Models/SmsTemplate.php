@@ -18,6 +18,7 @@ class SmsTemplate extends Model
         'channel',
         'event',
         'plan_id',
+        'form_ids',
         'recipient_variable',
         'variables',
         'is_active',
@@ -26,6 +27,7 @@ class SmsTemplate extends Model
     protected $casts = [
         'event' => SmsTemplateEventEnum::class,
         'variables' => 'array',
+        'form_ids' => 'array',
         'is_active' => 'boolean',
     ];
 

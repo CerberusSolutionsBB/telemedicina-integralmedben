@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Siprov;
 
 use App\Http\Controllers\Controller;
@@ -13,40 +12,31 @@ class SiprovCartaoController extends Controller
     public function __invoke(Request $request): Response
     {
         $associado = $request->validate([
-            'nomePessoa' => 'required|string',
-            'cpfCnpj' => 'required|string',
-            'email' => 'nullable|string',
-            'telefoneCelular' => 'nullable|string',
-            'codPessoa' => 'required|numeric',
-            'codBeneficio' => 'required|numeric',
-            'planos' => 'required|array',
+            'nomePessoa'        => 'required|string',
+            'cpfCnpj'           => 'required|string',
+            'email'             => 'nullable|string',
+            'telefoneCelular'   => 'nullable|string',
+            'codPessoa'         => 'required|numeric',
+            'codBeneficio'      => 'required|numeric',
+            'planos'            => 'required|array',
             'planos.*.codPlano' => 'required|numeric',
-            'planos.*.nome' => 'required|string',
-            'dataCadastro' => 'nullable|string',
-            'dataAdesao' => 'nullable|string',
-            'dataAtivacao' => 'nullable|string',
-            'situacao' => 'nullable|string',
+            'planos.*.nome'     => 'required|string',
+            'dataCadastro'      => 'nullable|string',
+            'dataAdesao'        => 'nullable|string',
+            'dataAtivacao'      => 'nullable|string',
+            'situacao'          => 'nullable|string',
         ]);
 
         $cpfFormatado = $this->formatCpf($associado['cpfCnpj']);
-        $planoNome = collect($associado['planos'])->pluck('nome')->implode(', ');
-        $situacao = 'Ativo';
+        $planoNome    = collect($associado['planos'])->pluck('nome')->implode(', ');
 
         $template = File::get(resource_path('views/pdf/siprov-cartao.tex'));
 
         $replacements = [
-            '\\nomeVar' => $this->escapeLatex($associado['nomePessoa']),
+            '\\nomeVar'      => $this->escapeLatex($associado['nomePessoa']),
+            '\\cpfVar'       => $this->escapeLatex($cpfFormatado),
+            '\\planoVar'     => $this->escapeLatex($planoNome),
             '\\codPessoaVar' => (string) $associado['codPessoa'],
-            '\\cpfVar' => $this->escapeLatex($cpfFormatado),
-            '\\codBeneficioVar' => (string) $associado['codBeneficio'],
-            '\\planoVar' => $this->escapeLatex($planoNome),
-            '\\statusVar' => $situacao,
-            '\\emailVar' => $this->escapeLatex($associado['email'] ?? '-'),
-            '\\telefoneVar' => $this->escapeLatex($associado['telefoneCelular'] ?? '-'),
-            '\\cadastroVar' => $this->escapeLatex($associado['dataCadastro'] ?? '-'),
-            '\\adesaoVar' => $this->escapeLatex($associado['dataAdesao'] ?? '-'),
-            '\\ativacaoVar' => $this->escapeLatex($associado['dataAtivacao'] ?? '-'),
-            '\\cpfCnpjVar' => $this->escapeLatex($associado['cpfCnpj']),
         ];
 
         $texContent = str_replace(array_keys($replacements), array_values($replacements), $template);
@@ -55,8 +45,8 @@ class SiprovCartaoController extends Controller
         File::makeDirectory($tempDir, 0755, true, true);
 
         $filename = 'cartao-' . $associado['codPessoa'];
-        $texFile = $tempDir . '/' . $filename . '.tex';
-        $pdfFile = $tempDir . '/' . $filename . '.pdf';
+        $texFile  = $tempDir . '/' . $filename . '.tex';
+        $pdfFile  = $tempDir . '/' . $filename . '.pdf';
 
         File::put($texFile, $texContent);
 
@@ -68,24 +58,24 @@ class SiprovCartaoController extends Controller
             escapeshellarg($texFile)
         );
 
-        Log::info('SIPROV Cartão | Executando pdflatex', [
-            'command' => $command,
+        Log::info('SIPROV Cartao | Executando pdflatex', [
+            'command'   => $command,
             'codPessoa' => $associado['codPessoa'],
         ]);
 
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0 || ! File::exists($pdfFile)) {
-            Log::error('SIPROV Cartão | Erro ao gerar PDF', [
-                'codPessoa' => $associado['codPessoa'],
+            Log::error('SIPROV Cartao | Erro ao gerar PDF', [
+                'codPessoa'  => $associado['codPessoa'],
                 'returnCode' => $returnCode,
-                'output' => implode("\n", array_slice($output, -20)),
+                'output'     => implode("\n", array_slice($output, -20)),
             ]);
 
             File::delete([$texFile, $pdfFile]);
 
             return back()->withErrors([
-                'pdf' => 'Erro ao gerar cartão PDF. Detalhes: ' . implode("\n", array_slice($output, -10)),
+                'pdf' => 'Erro ao gerar cartao PDF. Detalhes: ' . implode("\n", array_slice($output, -10)),
             ]);
         }
 
@@ -98,12 +88,12 @@ class SiprovCartaoController extends Controller
             $tempDir . '/' . $filename . '.log',
         ]);
 
-        Log::info('SIPROV Cartão | PDF gerado com sucesso', [
+        Log::info('SIPROV Cartao | PDF gerado com sucesso', [
             'codPessoa' => $associado['codPessoa'],
         ]);
 
         return response($pdfContent, 200, [
-            'Content-Type' => 'application/pdf',
+            'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '.pdf"',
         ]);
     }
@@ -127,15 +117,15 @@ class SiprovCartaoController extends Controller
     {
         $specialChars = [
             '\\' => '\\textbackslash{}',
-            '&' => '\\&',
-            '%' => '\\%',
-            '$' => '\\$',
-            '#' => '\\#',
-            '_' => '\\_',
-            '{' => '\\{',
-            '}' => '\\}',
-            '~' => '\\textasciitilde{}',
-            '^' => '\\textasciicircum{}',
+            '&'  => '\\&',
+            '%'  => '\\%',
+            '$'  => '\\$',
+            '#'  => '\\#',
+            '_'  => '\\_',
+            '{'  => '\\{',
+            '}'  => '\\}',
+            '~'  => '\\textasciitilde{}',
+            '^'  => '\\textasciicircum{}',
         ];
 
         $text = str_replace(array_keys($specialChars), array_values($specialChars), $text);
@@ -154,18 +144,18 @@ class SiprovCartaoController extends Controller
             'Ú', 'Ù', 'Û', 'Ü',
             'Ç', 'Ñ',
         ], [
-            '{\\' . "a}", '{\\' . "a}", '{\\' . "a}", '{\\' . "a}", '{\\' . "a}",
-            '{\\' . "e}", '{\\' . "e}", '{\\' . "e}", '{\\' . "e}",
-            '{\\' . "i}", '{\\' . "i}", '{\\' . "i}", '{\\' . "i}",
-            '{\\' . "o}", '{\\' . "o}", '{\\' . "o}", '{\\' . "o}", '{\\' . "o}",
-            '{\\' . "u}", '{\\' . "u}", '{\\' . "u}", '{\\' . "u}",
-            '{\\' . "c}", '{\\' . "n}",
-            '{\\' . "A}", '{\\' . "A}", '{\\' . "A}", '{\\' . "A}", '{\\' . "A}",
-            '{\\' . "E}", '{\\' . "E}", '{\\' . "E}", '{\\' . "E}",
-            '{\\' . "I}", '{\\' . "I}", '{\\' . "I}", '{\\' . "I}",
-            '{\\' . "O}", '{\\' . "O}", '{\\' . "O}", '{\\' . "O}", '{\\' . "O}",
-            '{\\' . "U}", '{\\' . "U}", '{\\' . "U}", '{\\' . "U}",
-            '{\\' . "C}", '{\\' . "N}",
+            '{\\' . "a}", '{\\' . "a}", '{\\~' . "a}", '{\\^' . "a}", '{\\"' . "a}",
+            '{\\' . "e}", '{\\' . "e}", '{\\^' . "e}", '{\\"' . "e}",
+            '{\\' . "i}", '{\\' . "i}", '{\\^' . "i}", '{\\"' . "i}",
+            '{\\' . "o}", '{\\' . "o}", '{\\~' . "o}", '{\\^' . "o}", '{\\"' . "o}",
+            '{\\' . "u}", '{\\' . "u}", '{\\^' . "u}", '{\\"' . "u}",
+            '{\\c' . "c}", '{\\~' . "n}",
+            '{\\' . "A}", '{\\' . "A}", '{\\~' . "A}", '{\\^' . "A}", '{\\"' . "A}",
+            '{\\' . "E}", '{\\' . "E}", '{\\^' . "E}", '{\\"' . "E}",
+            '{\\' . "I}", '{\\' . "I}", '{\\^' . "I}", '{\\"' . "I}",
+            '{\\' . "O}", '{\\' . "O}", '{\\~' . "O}", '{\\^' . "O}", '{\\"' . "O}",
+            '{\\' . "U}", '{\\' . "U}", '{\\^' . "U}", '{\\"' . "U}",
+            '{\\c' . "C}", '{\\~' . "N}",
         ], $text);
 
         return $text;

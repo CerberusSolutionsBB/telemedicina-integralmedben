@@ -9,8 +9,11 @@ class DashboardController extends Controller
 {
     public function __construct(private DashboardService $dashboardService) {}
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        return Inertia::render('Dashboard', $this->dashboardService->getData());
+        $year = (int) $request->input('year', now()->year);
+        $month = $request->input('month');
+
+        return Inertia::render('Dashboard', $this->dashboardService->getData($year, $month));
     }
 }

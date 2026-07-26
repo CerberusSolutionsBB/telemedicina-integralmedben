@@ -29,19 +29,29 @@ class SmsTemplateController extends Controller
             'message' => 'required|string',
             'event' => 'required|string|in:patient.created,siprov.integrated',
             'plan_id' => 'nullable|string',
+            'form_ids' => 'nullable|array',
             'variables' => 'nullable|array',
             'is_active' => 'boolean',
+            'tenant_ids' => 'nullable|array',
+            'tenant_ids.*' => 'exists:tenants,id',
         ]);
 
         try {
             $template = SmsTemplate::create([
                 'name' => $validated['name'],
                 'message' => $validated['message'],
+                'channel' => 'sms',
                 'event' => $validated['event'],
                 'plan_id' => $validated['plan_id'] ?? null,
+                'form_ids' => $validated['form_ids'] ?? [],
+                'recipient_variable' => 'tel',
                 'variables' => $validated['variables'] ?? [],
                 'is_active' => $validated['is_active'] ?? true,
             ]);
+
+            if (!empty($validated['tenant_ids'])) {
+                $template->tenants()->sync($validated['tenant_ids']);
+            }
 
             return response()->json([
                 'message' => 'Template criado com sucesso.',
@@ -64,8 +74,11 @@ class SmsTemplateController extends Controller
             'name' => 'required|string|max:255',
             'message' => 'required|string',
             'plan_id' => 'nullable|string',
+            'form_ids' => 'nullable|array',
             'variables' => 'nullable|array',
             'is_active' => 'boolean',
+            'tenant_ids' => 'nullable|array',
+            'tenant_ids.*' => 'exists:tenants,id',
         ]);
 
         try {
@@ -73,9 +86,14 @@ class SmsTemplateController extends Controller
                 'name' => $validated['name'],
                 'message' => $validated['message'],
                 'plan_id' => $validated['plan_id'] ?? $smsTemplate->plan_id,
+                'form_ids' => $validated['form_ids'] ?? $smsTemplate->form_ids,
                 'variables' => $validated['variables'] ?? $smsTemplate->variables,
                 'is_active' => $validated['is_active'] ?? $smsTemplate->is_active,
             ]);
+
+            if (array_key_exists('tenant_ids', $validated)) {
+                $smsTemplate->tenants()->sync($validated['tenant_ids'] ?? []);
+            }
 
             return response()->json([
                 'message' => 'Template atualizado com sucesso.',

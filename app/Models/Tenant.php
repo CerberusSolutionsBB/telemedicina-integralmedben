@@ -16,6 +16,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 
     protected $casts = [
         'data' => 'array',
+        'status' => 'boolean',
     ];
 
     protected $appends = [
@@ -109,5 +110,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             'form_id'
         )
             ->withTimestamps();
+    }
+
+    public function telemedicinaItems()
+    {
+        return $this->hasMany(TelemedicinaTenant::class, 'tenant_id', 'id');
     }
 }

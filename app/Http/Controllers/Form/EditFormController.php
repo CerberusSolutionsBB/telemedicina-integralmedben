@@ -39,6 +39,7 @@ class EditFormController extends Controller
             'statusOptions' => $this->getStatusOptions(),
             'categorias' => $this->getCategorias($request),
             'leis' => $this->getLeis($request),
+            'planos' => $this->getPlanos(),
             'can' => $this->getPermissions($user, $form),
         ]);
     }
@@ -116,6 +117,10 @@ class EditFormController extends Controller
             'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
             'sub_descricao' => $form->sub_descricao ?? null,
             'observacao' => $form->observacao ?? null,
+            'plano_id' => $form->plano_id ?? '',
+            'situacao' => $form->situacao ?? '',
+            'dia_vencimento' => $form->dia_vencimento ?? '',
+            'status_beneficio' => $form->status_beneficio ?? true,
             'fields' => $form->fields->map(fn ($field) => [
                 'id' => $field->id,
                 'type' => $field->type,
@@ -216,6 +221,22 @@ class EditFormController extends Controller
                 'type' => $l->type,
                 'title' => $l->title,
             ])
+            ->toArray();
+    }
+
+    public function getPlanos(): array
+    {
+        return collect(config('siprov.planos', []))
+            ->map(fn ($codigo, $key) => [
+                'value' => (string) $codigo,
+                'label' => match ($key) {
+                    'clinica_familiar'  => 'Clínica Familiar',
+                    'clinica_individual' => 'Clínica Individual',
+                    'saude_mental'      => 'Saúde Mental',
+                    default             => ucfirst(str_replace('_', ' ', $key)),
+                },
+            ])
+            ->values()
             ->toArray();
     }
 
