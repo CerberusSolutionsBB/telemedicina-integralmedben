@@ -16,6 +16,7 @@ import {
     CreditCard,
     ChevronLeft,
     ChevronRight,
+    Building2,
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -72,6 +73,7 @@ const allAssociados = ref(extractItens(props.associados));
 
 const search = ref('');
 const selectedPlano = ref('');
+const selectedParceiro = ref('');
 const searchInput = ref(null);
 
 const planoOptions = computed(() => {
@@ -86,6 +88,22 @@ const planoOptions = computed(() => {
     return [
         { value: '', label: 'Todos os planos' },
         ...Array.from(planosSet.values()),
+    ];
+});
+
+const parceiroOptions = computed(() => {
+    const parceirosSet = new Map();
+    allAssociados.value.forEach((item) => {
+        (item.tenants || []).forEach((t) => {
+            const descricao = t.details?.[0]?.descricao || t.tenant_domain;
+            if (descricao && !parceirosSet.has(descricao)) {
+                parceirosSet.set(descricao, { value: descricao, label: descricao });
+            }
+        });
+    });
+    return [
+        { value: '', label: 'Todos os parceiros' },
+        ...Array.from(parceirosSet.values()),
     ];
 });
 
@@ -104,17 +122,22 @@ const filteredAssociados = computed(() => {
             (p) => String(p.codPlano) === String(selectedPlano.value)
         );
 
-        return matchSearch && matchPlano;
+        const matchParceiro = !selectedParceiro.value || (item.tenants || []).some(
+            (t) => (t.details?.[0]?.descricao || t.tenant_domain) === selectedParceiro.value
+        );
+
+        return matchSearch && matchPlano && matchParceiro;
     });
 });
 
 const hasResults = computed(() => filteredAssociados.value.length > 0);
 
-const hasActiveFilters = computed(() => search.value.length > 0 || selectedPlano.value !== '' || currentSituacao.value !== 'Ativo');
+const hasActiveFilters = computed(() => search.value.length > 0 || selectedPlano.value !== '' || selectedParceiro.value !== '' || currentSituacao.value !== 'Ativo');
 
 const clearSearch = () => {
     search.value = '';
     selectedPlano.value = '';
+    selectedParceiro.value = '';
     if (currentSituacao.value !== 'Ativo' || currentPage.value !== 1) {
         currentSituacao.value = 'Ativo';
         currentPage.value = 1;
@@ -207,6 +230,7 @@ const confirmGerarCartao = async () => {
 </script>
 
 <template>
+
     <Head title="Telemedicina - Associados" />
 
     <CentralAdminLayout>
@@ -276,6 +300,13 @@ const confirmGerarCartao = async () => {
                             <option value="Suspenso">Suspenso</option>
                         </select>
 
+                        <select v-model="selectedParceiro"
+                            class="block w-full sm:w-64 py-2.5 px-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-shadow cursor-pointer">
+                            <option v-for="parceiro in parceiroOptions" :key="parceiro.value" :value="parceiro.value">
+                                {{ parceiro.label }}
+                            </option>
+                        </select>
+
                         <button v-if="hasActiveFilters" type="button" @click="clearSearch"
                             class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-cyan-700 bg-cyan-100 rounded-full hover:bg-cyan-200 transition-colors">
                             <X class="w-3 h-3" />
@@ -291,7 +322,8 @@ const confirmGerarCartao = async () => {
                         </div>
                         <p class="text-lg font-semibold text-gray-900 mb-2">Serviço SIPROV Indisponível</p>
                         <p class="text-sm text-gray-500 max-w-md mx-auto mb-4">
-                            Não foi possível conectar à API da SIPROV. Verifique sua conexão com a internet e tente novamente.
+                            Não foi possível conectar à API da SIPROV. Verifique sua conexão com a internet e tente
+                            novamente.
                         </p>
                         <p class="text-xs text-gray-400 mb-4">Detalhes: {{ siprovError }}</p>
                         <Button variant="outline" size="sm" @click="navigateTo('siprov.index')">
@@ -303,14 +335,33 @@ const confirmGerarCartao = async () => {
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">#</th>
-                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Associado</th>
-                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">CPF/CNPJ</th>
-                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Plano</th>
-                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Benefício</th>
-                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Cadastro</th>
-                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Situação</th>
-                                    <th class="px-6 py-3 text-right text-xs font-semibold uppercase text-gray-500 tracking-wider">Ações</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        #</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Associado</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        CPF/CNPJ</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Plano</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Benefício</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Cadastro</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Situação</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Página de Parceiros</th>
+                                    <th
+                                        class="px-6 py-3 text-right text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Ações</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
@@ -320,13 +371,15 @@ const confirmGerarCartao = async () => {
                                         #{{ item.codPessoa }}
                                     </td>
                                     <td class="px-6 py-4 text-sm">
-                                        <div class="font-medium text-gray-900 group-hover:text-cyan-600 transition-colors">
+                                        <div
+                                            class="font-medium text-gray-900 group-hover:text-cyan-600 transition-colors">
                                             {{ item.nomePessoa }}
                                         </div>
                                         <div class="text-xs text-gray-500 truncate max-w-xs mt-0.5">
                                             {{ item.email || 'Sem e-mail' }}
                                         </div>
-                                        <div v-if="item.telefoneCelular" class="text-xs text-gray-400 truncate max-w-xs mt-0.5">
+                                        <div v-if="item.telefoneCelular"
+                                            class="text-xs text-gray-400 truncate max-w-xs mt-0.5">
                                             {{ item.telefoneCelular }}
                                         </div>
                                     </td>
@@ -345,14 +398,37 @@ const confirmGerarCartao = async () => {
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                                         <div>{{ formatDate(item.dataCadastro) }}</div>
-                                        <div class="text-xs text-gray-400">Adesão: {{ formatDate(item.dataAdesao) }}</div>
-                                        <div class="text-xs text-gray-400">Ativação: {{ formatDate(item.dataAtivacao) }}</div>
+                                        <div class="text-xs text-gray-400">Adesão: {{ formatDate(item.dataAdesao) }}
+                                        </div>
+                                        <div class="text-xs text-gray-400">Ativação: {{ formatDate(item.dataAtivacao) }}
+                                        </div>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-sm">
                                         <span
                                             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
                                             <CheckCircle class="w-3.5 h-3.5" />
                                             {{ item.situacao }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        <template v-if="item.tenants && item.tenants.length > 0">
+                                            <div v-for="(tenant, tIdx) in item.tenants" :key="tIdx"
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-50 text-cyan-700 border border-cyan-200 mr-1 mb-1">
+                                                <Building2 class="w-3 h-3" />
+                                                <a v-if="tenant.tenant_domain"
+                                                    :href="tenant.url"
+                                                    target="_blank"
+                                                    class="hover:underline">
+                                                    {{ tenant.details?.[0]?.descricao || tenant.tenant_domain || tenant.id }}
+                                                </a>
+                                                <span v-else>
+                                                    {{ tenant.details?.[0]?.descricao || tenant.tenant_domain || tenant.id }}
+                                                </span>
+                                            </div>
+                                        </template>
+                                        <span v-else
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-400 border border-gray-200">
+                                            —
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
@@ -374,10 +450,12 @@ const confirmGerarCartao = async () => {
                                 Página {{ currentPage }} · {{ props.pagination.total }} resultado(s)
                             </div>
                             <div class="flex items-center gap-2">
-                                <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
+                                <Button variant="outline" size="sm" :disabled="currentPage <= 1"
+                                    @click="goToPage(currentPage - 1)">
                                     Anterior
                                 </Button>
-                                <Button variant="outline" size="sm" :disabled="!props.pagination.hasNextPage" @click="goToPage(currentPage + 1)">
+                                <Button variant="outline" size="sm" :disabled="!props.pagination.hasNextPage"
+                                    @click="goToPage(currentPage + 1)">
                                     Próxima
                                 </Button>
                             </div>
@@ -385,7 +463,8 @@ const confirmGerarCartao = async () => {
 
                         <div v-if="!hasResults" class="text-center py-16 text-gray-500">
                             <div v-if="hasActiveFilters" class="space-y-3">
-                                <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                                <div
+                                    class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
                                     <Search class="w-8 h-8 text-gray-400" />
                                 </div>
                                 <p class="text-lg font-medium text-gray-900">Nenhum resultado encontrado</p>
@@ -412,11 +491,9 @@ const confirmGerarCartao = async () => {
             </div>
         </div>
     </CentralAdminLayout>
-    <ConfirmDeleteModal :show="cartaoModal.show"
-        title="Gerar Cartão de Benefício"
+    <ConfirmDeleteModal :show="cartaoModal.show" title="Gerar Cartão de Benefício"
         :message="'Deseja gerar o cartão de benefício para ' + (cartaoModal.item?.nomePessoa || 'este associado') + '?'"
-        warning-message="O cartão será baixado automaticamente como arquivo PDF."
-        confirm-text="Sim, Gerar" cancel-text="Cancelar"
-        :is-processing="cartaoModal.isProcessing"
-        variant="info" @close="closeCartaoModal" @confirm="confirmGerarCartao" />
+        warning-message="O cartão será baixado automaticamente como arquivo PDF." confirm-text="Sim, Gerar"
+        cancel-text="Cancelar" :is-processing="cartaoModal.isProcessing" variant="info" @close="closeCartaoModal"
+        @confirm="confirmGerarCartao" />
 </template>
