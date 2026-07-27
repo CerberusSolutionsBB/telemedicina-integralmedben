@@ -1,17 +1,21 @@
 <script setup>
-import { Head, Link, router, useForm } from "@inertiajs/vue3";
+import { Head, router, useForm } from "@inertiajs/vue3";
 import CentralAdminLayout from "@/Layouts/CentralAdminLayout.vue";
+import PaginationSimple from "@/Components/PaginationSimple.vue";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/Components/ui/table";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/Components/ui/dialog";
+import ConfirmResendSmsDialog from "@/Components/ConfirmResendSmsDialog.vue";
+import SearchInput from "@/Components/SearchInput.vue";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
-import { CheckCircle2, Clock, XCircle, PlusCircle, Wallet } from "lucide-vue-next";
+import { PlusCircle, Wallet, RefreshCw } from "lucide-vue-next";
 import { ref, watch } from "vue";
+import { showToast } from "@/Utils/toast";
 
 const props = defineProps({
   logs:          { type: Object, required: true },
@@ -24,14 +28,21 @@ const props = defineProps({
 
 const tenantId = ref(props.filters.tenant_id ?? "");
 const status   = ref(props.filters.status ?? "");
+const search   = ref(props.filters.search ?? "");
 
-watch([tenantId, status], () => {
+const applyFilters = () => {
   router.get(
     route("admin.sms-logs.index"),
-    { tenant_id: tenantId.value || undefined, status: status.value || undefined },
+    {
+      tenant_id: tenantId.value || undefined,
+      status: status.value || undefined,
+      search: search.value || undefined,
+    },
     { preserveScroll: true, replace: true }
   );
-});
+};
+
+watch([tenantId, status], applyFilters);
 
 // Recarga global
 const rechargeOpen = ref(false);
@@ -43,17 +54,35 @@ const submitRecharge = () => {
   });
 };
 
-const statusConfig = {
-  sent:    { label: "Enviado",  icon: CheckCircle2, class: "text-green-600" },
-  pending: { label: "Pendente", icon: Clock,         class: "text-yellow-600" },
-  failed:  { label: "Falhou",   icon: XCircle,       class: "text-red-600" },
-};
-
 const formatDate = (date) => {
   if (!date) return "-";
   return new Date(date).toLocaleDateString("pt-BR", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
+  });
+};
+
+// Reenvio de SMS
+const logToResend = ref(null);
+const resendDialogOpen = ref(false);
+
+const openResendDialog = (log) => {
+  logToResend.value = log;
+  resendDialogOpen.value = true;
+};
+
+const resendLog = () => {
+  if (!logToResend.value) return;
+  router.post(route("admin.sms-logs.resend", logToResend.value.id), {}, {
+    preserveScroll: true,
+    preserveState: true,
+    onSuccess: (visitedPage) => {
+      const successMsg = visitedPage.props.flash?.success;
+      const errorMsg = visitedPage.props.flash?.error;
+      if (successMsg) showToast(successMsg, "success");
+      else if (errorMsg) showToast(errorMsg, "error");
+    },
+    onError: () => showToast("Erro ao reenviar SMS.", "error"),
   });
 };
 </script>
@@ -94,7 +123,8 @@ const formatDate = (date) => {
       </div>
 
       <!-- Filtros -->
-      <div class="flex flex-wrap gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <SearchInput v-model="search" placeholder="Buscar por paciente, destinatário ou mensagem..." width="w-full sm:w-80" @search="applyFilters" />
         <select v-model="tenantId"
           class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
           <option value="">Todos os credenciados</option>
@@ -118,35 +148,33 @@ const formatDate = (date) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead class="text-center">#</TableHead>
+                <TableHead class="text-center">Id</TableHead>
                 <TableHead class="text-center">Credenciado</TableHead>
                 <TableHead class="text-center">Paciente</TableHead>
-                <TableHead class="text-center">Status</TableHead>
                 <TableHead>Mensagem</TableHead>
                 <TableHead class="text-center">Destinatário</TableHead>
                 <TableHead class="text-center">Enviado em</TableHead>
                 <TableHead class="text-center">Registrado em</TableHead>
+                <TableHead class="text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-for="log in logs.data" :key="log.id">
                 <TableCell class="text-center text-sm text-muted-foreground">{{ log.id }}</TableCell>
-                <TableCell class="text-center text-sm font-medium">{{ log.tenant_id }}</TableCell>
-                <TableCell class="text-center text-sm">{{ log.patient_id }}</TableCell>
-                <TableCell class="text-center">
-                  <span class="inline-flex items-center gap-1 text-xs font-semibold"
-                        :class="statusConfig[log.status]?.class"
-                        :title="log.error_message ?? undefined">
-                    <component :is="statusConfig[log.status]?.icon" class="w-4 h-4" />
-                    {{ statusConfig[log.status]?.label }}
-                  </span>
-                </TableCell>
+                <TableCell class="text-center text-sm font-medium">{{ log.tenant_descricao ?? log.tenant_id ?? "-" }}</TableCell>
+                <TableCell class="text-center text-sm">{{ log.patient_nome ?? log.patient_id ?? "-" }}</TableCell>
                 <TableCell class="max-w-xs">
                   <span class="text-sm line-clamp-2" :title="log.message">{{ log.message }}</span>
                 </TableCell>
                 <TableCell class="text-center text-sm">{{ log.recipient ?? "-" }}</TableCell>
                 <TableCell class="text-center text-sm">{{ formatDate(log.sent_at) }}</TableCell>
                 <TableCell class="text-center text-sm">{{ formatDate(log.created_at) }}</TableCell>
+                <TableCell class="text-center">
+                  <Button size="sm" variant="outline" @click="openResendDialog(log)">
+                    <RefreshCw class="w-4 h-4 mr-1" />
+                    Reenviar
+                  </Button>
+                </TableCell>
               </TableRow>
               <TableRow v-if="logs.data.length === 0">
                 <TableCell colspan="8" class="text-center text-sm text-muted-foreground py-8">Nenhum log encontrado.</TableCell>
@@ -154,16 +182,11 @@ const formatDate = (date) => {
             </TableBody>
           </Table>
         </div>
-      </div>
 
-      <!-- Paginação -->
-      <div v-if="logs.links" class="flex gap-2 justify-center">
-        <template v-for="link in logs.links" :key="link.label">
-          <Link v-if="link.url" :href="link.url"
-            :class="['px-3 py-1 rounded text-sm', link.active ? 'bg-cyan-600 text-white' : 'bg-gray-200']"
-            v-html="link.label" />
-          <span v-else class="px-3 py-1 rounded bg-gray-100 text-gray-400 text-sm" v-html="link.label" />
-        </template>
+        <div class="border-t border-gray-100 bg-gray-50/50 px-4 py-3">
+          <PaginationSimple :data="logs" :links="logs.links || []"
+            :has-data="(logs.data?.length ?? 0) > 0" label="logs" />
+        </div>
       </div>
 
       <!-- Histórico do pool global -->
@@ -274,5 +297,12 @@ const formatDate = (date) => {
         </form>
       </DialogContent>
     </Dialog>
+
+    <ConfirmResendSmsDialog
+      v-model:open="resendDialogOpen"
+      :recipient="logToResend?.recipient"
+      :tenant-id="logToResend?.tenant_id"
+      @confirm="resendLog"
+    />
   </CentralAdminLayout>
 </template>

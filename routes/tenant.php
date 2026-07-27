@@ -56,6 +56,7 @@ Route::middleware([
         Route::get('/patients/{patient}', [PatientController::class, 'show'])->name('patients.show');
         Route::get('/patients/{patient}/pdf', [PatientController::class, 'downloadPdf'])->name('patients.pdf');
         Route::post('/patients/{patient}/resend-sms', [PatientController::class, 'resendSms'])->name('patients.resend-sms');
+        Route::post('/patients/{patient}/sms-logs/{smsLog}/resend', [PatientController::class, 'resendSmsLog'])->name('patients.sms-logs.resend');
         Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->name('patients.toggle-status');
 
         Route::prefix('meus-formularios')->name('meus-formularios.')->group(function () {

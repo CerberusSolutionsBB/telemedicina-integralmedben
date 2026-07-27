@@ -325,6 +325,7 @@ const confirmGerarCartao = async () => {
                 </p>
             </div>
 
+
             <div class="flex items-center gap-3">
                 <Button v-if="can.create"
                     class="flex items-center justify-center gap-2 w-full sm:w-auto rounded-xl bg-cyan-500 hover:bg-cyan-600 px-5 py-2.5 text-white font-semibold shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
@@ -338,7 +339,6 @@ const confirmGerarCartao = async () => {
                 </div>
             </div>
         </div>
-
         <div class="py-6">
             <div v-if="flashMessage" :class="[
                 'mb-4 p-4 rounded-lg text-sm font-medium',
@@ -356,56 +356,43 @@ const confirmGerarCartao = async () => {
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Search class="h-5 w-5 text-gray-400" />
                         </div>
-                        <input
-                            ref="searchInput"
-                            v-model="search"
-                            type="text"
-                            placeholder="Buscar associado..."
+                        <input ref="searchInput" v-model="search" type="text" placeholder="Buscar associado..."
                             class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-shadow"
-                            @keyup.esc="clearAllFilters"
-                        />
+                            @keyup.esc="clearAllFilters" />
                         <button v-if="hasActiveFilters" type="button" @click="clearAllFilters"
                             class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
                             <X class="h-4 w-4" />
                         </button>
                     </div>
 
-                    <button
-                        @click="filtersOpen = !filtersOpen"
-                        :class="[
-                            'flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors shrink-0',
-                            filtersOpen || hasActiveFilters
-                                ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
-                                : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50',
-                        ]">
+                    <button @click="filtersOpen = !filtersOpen" :class="[
+                        'flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors shrink-0',
+                        filtersOpen || hasActiveFilters
+                            ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
+                            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50',
+                    ]">
                         <SlidersHorizontal class="w-4 h-4" />
                         <span class="hidden sm:inline">Filtros</span>
-                        <ChevronDown
-                            :class="['w-4 h-4 transition-transform', filtersOpen ? 'rotate-180' : '']" />
+                        <ChevronDown :class="['w-4 h-4 transition-transform', filtersOpen ? 'rotate-180' : '']" />
                     </button>
                 </div>
 
                 <!-- Chips de filtros ativos -->
                 <div v-if="activeFilterChips.length" class="flex flex-wrap items-center gap-2">
-                    <span
-                        v-for="chip in activeFilterChips"
-                        :key="chip.type"
+                    <span v-for="chip in activeFilterChips" :key="chip.type"
                         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-50 text-cyan-700 border border-cyan-200">
                         {{ chip.label }}
                         <button @click="removeFilter(chip.type)" class="hover:text-cyan-900 p-1 -mr-1">
                             <X class="w-4 h-4" />
                         </button>
                     </span>
-                    <button
-                        @click="clearAllFilters"
-                        class="text-xs text-cyan-600 hover:underline ml-1">
+                    <button @click="clearAllFilters" class="text-xs text-cyan-600 hover:underline ml-1">
                         Limpar todos
                     </button>
                 </div>
 
                 <!-- Selects colapsáveis -->
-                <div
-                    v-if="filtersOpen"
+                <div v-if="filtersOpen"
                     class="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
 
                     <select v-model="selectedPlano"
@@ -454,7 +441,8 @@ const confirmGerarCartao = async () => {
                         de {{ allAssociados.length }} associado{{ allAssociados.length !== 1 ? 's' : '' }}
                     </span>
 
-                    <div v-if="hasResults && (currentPage > 1 || props.pagination.hasNextPage)" class="flex items-center gap-2">
+                    <div v-if="hasResults && (currentPage > 1 || props.pagination.hasNextPage)"
+                        class="flex items-center gap-2">
                         <Button variant="outline" size="sm" :disabled="currentPage <= 1"
                             @click="goToPage(currentPage - 1)">
                             <ChevronLeft class="w-4 h-4" />
@@ -469,9 +457,7 @@ const confirmGerarCartao = async () => {
 
                 <!-- ═══ CARDS (MOBILE) ═══ -->
                 <div class="md:hidden space-y-3">
-                    <div
-                        v-for="item in filteredAssociados"
-                        :key="'card-' + item.codPessoa"
+                    <div v-for="item in filteredAssociados" :key="'card-' + item.codPessoa"
                         class="bg-white rounded-xl border shadow-sm overflow-hidden transition-all active:bg-gray-50/80 active:scale-[0.98]"
                         :class="item.tenants?.length > 0
                             ? 'border-l-4 border-l-cyan-400'
@@ -495,9 +481,8 @@ const confirmGerarCartao = async () => {
                                         <span :class="['w-2 h-2 rounded-full', situacaoDot(item.situacao)]" />
                                         {{ item.situacao }}
                                     </span>
-                                    <ChevronDown
-                                        :class="['w-4 h-4 text-gray-400 transition-transform duration-200',
-                                                 expandedCards.has(item.codPessoa) ? 'rotate-180' : '']" />
+                                    <ChevronDown :class="['w-4 h-4 text-gray-400 transition-transform duration-200',
+                                        expandedCards.has(item.codPessoa) ? 'rotate-180' : '']" />
                                 </div>
                             </div>
 
@@ -506,7 +491,8 @@ const confirmGerarCartao = async () => {
                                     <span
                                         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-50 text-cyan-700 border border-cyan-200">
                                         <Building2 class="w-3 h-3" />
-                                        {{ item.tenants[0]?.details?.[0]?.descricao || item.tenants[0]?.tenant_domain || item.tenants[0]?.id }}
+                                        {{ item.tenants[0]?.details?.[0]?.descricao || item.tenants[0]?.tenant_domain ||
+                                            item.tenants[0]?.id }}
                                     </span>
                                 </template>
                                 <span v-else
@@ -514,22 +500,18 @@ const confirmGerarCartao = async () => {
                                     Sem vínculo
                                 </span>
 
-                                <span
-                                    v-for="plano in (item.planos || []).slice(0, 2)"
-                                    :key="'plano-' + plano.codPlano"
+                                <span v-for="plano in (item.planos || []).slice(0, 2)" :key="'plano-' + plano.codPlano"
                                     class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                                     <FileText class="w-3 h-3" />
                                     {{ plano.nome }}
                                 </span>
-                                <span v-if="(item.planos || []).length > 2"
-                                    class="text-xs text-gray-400">
+                                <span v-if="(item.planos || []).length > 2" class="text-xs text-gray-400">
                                     +{{ item.planos.length - 2 }}
                                 </span>
                             </div>
                         </div>
 
-                        <div
-                            v-if="expandedCards.has(item.codPessoa)"
+                        <div v-if="expandedCards.has(item.codPessoa)"
                             class="px-4 pb-4 space-y-2.5 border-t border-gray-100 pt-3 bg-gray-50/50">
 
                             <div v-if="item.email" class="text-xs text-gray-500 break-all">
@@ -557,11 +539,11 @@ const confirmGerarCartao = async () => {
                             </div>
 
                             <div v-if="item.tenants?.length > 1" class="text-xs text-gray-500">
-                                <span class="font-medium text-gray-600">+{{ item.tenants.length - 1 }} parceiro(s) adicional(is)</span>
+                                <span class="font-medium text-gray-600">+{{ item.tenants.length - 1 }} parceiro(s)
+                                    adicional(is)</span>
                             </div>
 
-                            <button
-                                @click.stop="openCartaoModal(item)"
+                            <button @click.stop="openCartaoModal(item)"
                                 class="flex items-center gap-2 w-full justify-center mt-2 px-4 py-3 rounded-lg text-sm font-medium text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 transition-colors min-h-[44px]">
                                 <CreditCard class="w-4 h-4" />
                                 Gerar Cartão
@@ -600,37 +582,46 @@ const confirmGerarCartao = async () => {
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
                                     #</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                     Associado</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
                                     CPF</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
+                                    Data de Nascimento</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                     Plano</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
                                     Adesão</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
                                     Situação</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                     Página de Parceiros</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
                                     Ações</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 bg-white">
-                            <tr
-                                v-for="(item, idx) in filteredAssociados"
-                                :key="'row-' + item.codPessoa + '-' + idx"
-                                class="even:bg-gray-50/50 hover:bg-cyan-50/30 transition-colors group"
-                                :class="item.tenants?.length > 0
+                            <tr v-for="(item, idx) in filteredAssociados" :key="'row-' + item.codPessoa + '-' + idx"
+                                class="even:bg-gray-50/50 hover:bg-cyan-50/30 transition-colors group" :class="item.tenants?.length > 0
                                     ? 'border-l-4 border-l-cyan-400'
                                     : 'border-l-4 border-l-transparent'">
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 font-mono tabular-nums">
                                     {{ item.codPessoa }}
                                 </td>
                                 <td class="px-6 py-4 text-sm">
-                                    <div class="font-semibold text-gray-900 group-hover:text-cyan-700 transition-colors">
+                                    <div
+                                        class="font-semibold text-gray-900 group-hover:text-cyan-700 transition-colors">
                                         {{ item.nomePessoa }}
                                     </div>
                                     <div v-if="item.email" class="text-xs text-gray-400 truncate max-w-xs mt-0.5">
@@ -639,6 +630,9 @@ const confirmGerarCartao = async () => {
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-700 tabular-nums">
                                     {{ formatCpf(item.cpfCnpj) }}
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 tabular-nums">
+                                    {{ formatDate(item.dataNascimento) || '—' }}
                                 </td>
                                 <td class="px-6 py-4 text-sm">
                                     <div class="flex flex-wrap gap-1">
@@ -666,15 +660,15 @@ const confirmGerarCartao = async () => {
                                         <div v-for="(tenant, tIdx) in item.tenants" :key="tIdx"
                                             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-50 text-cyan-700 border border-cyan-200 mr-1 mb-1">
                                             <Building2 class="w-3 h-3" />
-                                            <a v-if="tenant.tenant_domain"
-                                                :href="tenant.url"
-                                                target="_blank"
+                                            <a v-if="tenant.tenant_domain" :href="tenant.url" target="_blank"
                                                 class="hover:underline inline-flex items-center gap-1">
-                                                {{ tenant.details?.[0]?.descricao || tenant.tenant_domain || tenant.id }}
+                                                {{ tenant.details?.[0]?.descricao || tenant.tenant_domain || tenant.id
+                                                }}
                                                 <ExternalLink class="w-3 h-3 opacity-50" />
                                             </a>
                                             <span v-else>
-                                                {{ tenant.details?.[0]?.descricao || tenant.tenant_domain || tenant.id }}
+                                                {{ tenant.details?.[0]?.descricao || tenant.tenant_domain || tenant.id
+                                                }}
                                             </span>
                                         </div>
                                     </template>
@@ -684,8 +678,7 @@ const confirmGerarCartao = async () => {
                                     </span>
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
-                                    <button
-                                        @click="openCartaoModal(item)"
+                                    <button @click="openCartaoModal(item)"
                                         class="p-2.5 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
                                         title="Gerar Cartão">
                                         <CreditCard class="w-5 h-5" />
@@ -744,15 +737,9 @@ const confirmGerarCartao = async () => {
         </div>
     </CentralAdminLayout>
 
-    <ConfirmDeleteModal
-        :show="cartaoModal.show"
-        title="Gerar Cartão de Benefício"
+    <ConfirmDeleteModal :show="cartaoModal.show" title="Gerar Cartão de Benefício"
         :message="'Deseja gerar o cartão de benefício para ' + (cartaoModal.item?.nomePessoa || 'este associado') + '?'"
-        warning-message="O cartão será baixado automaticamente como arquivo PDF."
-        confirm-text="Sim, Gerar"
-        cancel-text="Cancelar"
-        :is-processing="cartaoModal.isProcessing"
-        variant="info"
-        @close="closeCartaoModal"
+        warning-message="O cartão será baixado automaticamente como arquivo PDF." confirm-text="Sim, Gerar"
+        cancel-text="Cancelar" :is-processing="cartaoModal.isProcessing" variant="info" @close="closeCartaoModal"
         @confirm="confirmGerarCartao" />
 </template>

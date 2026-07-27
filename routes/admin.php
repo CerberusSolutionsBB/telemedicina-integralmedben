@@ -37,4 +37,5 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth'])->group(funct
     Route::get('sms-logs', [SmsLogsController::class, 'index'])->name('sms-logs.index');
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::post('sms-logs/global-balance', [SmsLogsController::class, 'addGlobalBalance'])->name('sms-logs.add-global-balance');
+    Route::post('sms-logs/{smsLog}/resend', [SmsLogsController::class, 'resendSmsLog'])->name('sms-logs.resend');
 });

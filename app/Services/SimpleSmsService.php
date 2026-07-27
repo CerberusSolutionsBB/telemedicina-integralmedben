@@ -23,11 +23,14 @@ class SimpleSmsService
     public function send(string $phone, string $message, ?string $ref = null): array
     {
         $destinationAddr = $this->formatPhone($phone);
+        $shortenedMessage = $this->shortenUrls($message);
 
         Log::info('SMS | Enviando mensagem', [
             'phone_original' => $phone,
             'phone_formatted' => $destinationAddr,
-            'message' => $message,
+            'message_original_length' => strlen($message),
+            'message_shortened_length' => strlen($shortenedMessage),
+            'message' => $shortenedMessage,
             'reference' => $ref,
         ]);
 
@@ -36,16 +39,23 @@ class SimpleSmsService
             'Authorization' => 'Basic '.$this->auth,
         ])->withoutVerifying()->post("{$this->baseUrl}/message", [
             'destination_addr' => $destinationAddr,
-            'message' => $message,
+            'message' => $shortenedMessage,
             'reference_id' => $ref ?? (string) Str::uuid(),
         ]);
 
         $data = $response->json();
 
+        Log::info('SMS | Resposta Zoug', [
+            'status_code' => $response->status(),
+            'response' => $data,
+        ]);
+
         $result = [
-            'sent' => empty($data['error']),
+            'sent' => $response->successful()
+                && empty($data['error'])
+                && ! empty($data['message_id']),
             'message_id' => $data['message_id'] ?? null,
-            'error' => $data['message'] ?? null,
+            'error' => $data['message'] ?? $data['error'] ?? null,
         ];
 
         if ($result['sent']) {
@@ -71,5 +81,41 @@ class SimpleSmsService
         $numbers = ltrim($numbers, '55');
 
         return '55'.$numbers;
+    }
+
+    private function shortenUrls(string $message): string
+    {
+        return preg_replace_callback(
+            '/(https?:\/\/[^\s]{20,})/i',
+            fn ($matches) => $this->getShortUrl($matches[1]),
+            $message
+        );
+    }
+
+    private function getShortUrl(string $url): string
+    {
+        try {
+            $response = Http::timeout(5)->get('https://tinyurl.com/api-create.php', [
+                'url' => $url,
+            ]);
+
+            if ($response->successful() && $response->body() !== 'Error') {
+                $shortUrl = $response->body();
+
+                Log::info('SMS | URL encurtada', [
+                    'original' => $url,
+                    'short' => $shortUrl,
+                ]);
+
+                return $shortUrl;
+            }
+        } catch (\Exception $e) {
+            Log::warning('SMS | Erro ao encurtar URL', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $url;
     }
 }
