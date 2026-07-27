@@ -8,6 +8,7 @@ enum StatusRegistroEnum: string
     case FormDinamico = 'form-dinamico';
     case Importacao = 'importacao';
     case FormPublico = 'form-publico';
+    case Vinculo = 'vinculo';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum StatusRegistroEnum: string
             self::FormDinamico => 'Formulario Dinamico',
             self::Importacao => 'Importacao',
             self::FormPublico => 'Formulario Publico',
+            self::Vinculo => 'Vinculo',
         };
     }
 
@@ -26,6 +28,7 @@ enum StatusRegistroEnum: string
             self::FormDinamico => 'bg-purple-100 text-purple-800',
             self::Importacao => 'bg-orange-100 text-orange-800',
             self::FormPublico => 'bg-teal-100 text-teal-800',
+            self::Vinculo => 'bg-cyan-100 text-cyan-800',
         };
     }
 }
