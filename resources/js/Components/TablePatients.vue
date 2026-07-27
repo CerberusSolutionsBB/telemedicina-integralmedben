@@ -88,6 +88,7 @@ const registroLabel = (registro) => {
         'form-dinamico': 'Form. Dinamico',
         'importacao': 'Importacao',
         'form-publico': 'Form. Publico',
+        'vinculo': 'Vinculo',
     };
     return map[registro] || registro || '-';
 };
@@ -98,6 +99,7 @@ const registroColor = (registro) => {
         'form-dinamico': 'bg-purple-50 text-purple-700 border border-purple-200',
         'importacao': 'bg-orange-50 text-orange-700 border border-orange-200',
         'form-publico': 'bg-teal-50 text-teal-700 border border-teal-200',
+        'vinculo': 'bg-cyan-50 text-cyan-700 border border-cyan-200',
     };
     return map[registro] || 'bg-gray-50 text-gray-600 border border-gray-200';
 };
@@ -108,6 +110,7 @@ const registroIcon = (registro) => {
         'form-dinamico': '⚡',
         'importacao': '📥',
         'form-publico': '🌐',
+        'vinculo': '🔗',
     };
     return map[registro] || '•';
 };
@@ -177,6 +180,7 @@ const onFilterChange = () => {
                         <option value="form-dinamico">Form. Dinamico</option>
                         <option value="importacao">Importacao</option>
                         <option value="form-publico">Form. Publico</option>
+                        <option value="vinculo">Vinculo</option>
                     </select>
                 </div>
             </div>

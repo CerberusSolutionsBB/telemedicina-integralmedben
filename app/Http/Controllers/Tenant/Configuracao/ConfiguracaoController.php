@@ -7,6 +7,8 @@ use App\Enums\QuestionRoleEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ExpiresAtRequest;
 use App\Http\Requests\TenantFormsRequest;
+use App\Models\CentralPatient;
+use App\Models\CentralPatientAnswer;
 use App\Models\Question;
 use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
@@ -281,6 +283,9 @@ class ConfiguracaoController extends Controller
             }
 
             if (!empty($request->input('siprov_items'))) {
+                $cpfQuestion = Question::where('role', QuestionRoleEnum::Cpf)->first();
+                $nomeQuestion = Question::where('role', QuestionRoleEnum::Nome)->first();
+
                 foreach ($request->input('siprov_items') as $item) {
                     $planos = $item['planos'] ?? [];
                     $primeiroPlano = !empty($planos) ? $planos[0] : [];
@@ -297,6 +302,95 @@ class ConfiguracaoController extends Controller
                             'codBeneficio' => $item['codBeneficio'] ?? null,
                         ],
                     ]);
+
+                    $cpf = preg_replace('/\D/', '', $item['cpfCnpj'] ?? '');
+
+                    if ($cpf && $cpfQuestion && $nomeQuestion) {
+                        $existing = CentralPatientAnswer::where('question_id', $cpfQuestion->id)
+                            ->where('answer', $cpf)
+                            ->whereHas('patient', function ($q) use ($tenant) {
+                                $q->where('tenant_id', $tenant->id);
+                            })
+                            ->exists();
+
+                        if (!$existing) {
+                            $centralPatient = CentralPatient::create([
+                                'tenant_id' => $tenant->id,
+                            ]);
+
+                            CentralPatientAnswer::create([
+                                'central_patient_id' => $centralPatient->id,
+                                'question_id' => $nomeQuestion->id,
+                                'answer' => $item['nomePessoa'] ?? '',
+                            ]);
+
+                            CentralPatientAnswer::create([
+                                'central_patient_id' => $centralPatient->id,
+                                'question_id' => $cpfQuestion->id,
+                                'answer' => $cpf,
+                            ]);
+
+                            $centralPatientId = $centralPatient->id;
+
+                            Log::info('Telemedicina | Paciente criado via SIPROV (central)', [
+                                'tenant_id' => $tenant->id,
+                                'cpf' => $cpf,
+                                'nome' => $item['nomePessoa'] ?? '',
+                            ]);
+                        } else {
+                            $centralAnswer = CentralPatientAnswer::where('question_id', $cpfQuestion->id)
+                                ->where('answer', $cpf)
+                                ->whereHas('patient', function ($q) use ($tenant) {
+                                    $q->where('tenant_id', $tenant->id);
+                                })
+                                ->first();
+
+                            $centralPatientId = $centralAnswer?->central_patient_id;
+                        }
+
+                        if ($centralPatientId) {
+                            $hasPatient = $tenant->run(function () use ($cpf) {
+                                return \App\Models\Patient::where('cpf', $cpf)->exists();
+                            });
+
+                            if (!$hasPatient) {
+                                $tenant->run(function () use ($centralPatientId, $item, $cpf) {
+                                    $sexo = match (strtoupper($item['sexo'] ?? '')) {
+                                        'M', 'MASCULINO' => 'masculino',
+                                        'F', 'FEMININO' => 'feminino',
+                                        default => null,
+                                    };
+
+                                    $dataNascimento = null;
+                                    if (!empty($item['dataNascimento'])) {
+                                        try {
+                                            $dataNascimento = \Carbon\Carbon::createFromFormat('d/m/Y', $item['dataNascimento']);
+                                        } catch (\Exception $e) {
+                                            $dataNascimento = null;
+                                        }
+                                    }
+
+                                    \App\Models\Patient::create([
+                                        'central_patient_id' => $centralPatientId,
+                                        'nome' => $item['nomePessoa'] ?? '',
+                                        'cpf' => $cpf,
+                                        'email' => $item['email'] ?? null,
+                                        'numero' => preg_replace('/\D/', '', $item['telefoneCelular'] ?? '') ?: null,
+                                        'sexo' => $sexo,
+                                        'data_nascimento' => $dataNascimento,
+                                        'status' => true,
+                                        'status_registro' => 'vinculo',
+                                    ]);
+                                });
+
+                                Log::info('Telemedicina | Paciente criado via SIPROV (tenant)', [
+                                    'tenant_id' => $tenant->id,
+                                    'cpf' => $cpf,
+                                    'nome' => $item['nomePessoa'] ?? '',
+                                ]);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -320,11 +414,28 @@ class ConfiguracaoController extends Controller
     public function unlinkTelemedicina(Tenant $tenant, TelemedicinaTenant $telemedicinaTenant)
     {
         try {
+            $cpf = preg_replace('/\D/', '', $telemedicinaTenant->data['cpf_cnpj'] ?? '');
+
+            if ($cpf) {
+                $tenant->run(function () use ($cpf) {
+                    \App\Models\Patient::where('cpf', $cpf)
+                        ->where('status_registro', 'vinculo')
+                        ->delete();
+                });
+
+                $cpfQuestion = Question::where('role', QuestionRoleEnum::Cpf)->first();
+                if ($cpfQuestion) {
+                    CentralPatientAnswer::where('question_id', $cpfQuestion->id)
+                        ->where('answer', $cpf)
+                        ->delete();
+                }
+            }
+
             $telemedicinaTenant->delete();
 
             return redirect()
                 ->route('pagina.show', $tenant->id)
-                ->with('message', 'Item de telemedicina desvinculado com sucesso.')
+                ->with('message', 'Vínculo e paciente removidos com sucesso.')
                 ->with('type', 'success');
         } catch (\Throwable $e) {
             Log::error('Erro ao desvincular telemedicina', [

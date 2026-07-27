@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Pagina;
 
 use App\Enums\QuestionRoleEnum;
 use App\Http\Controllers\Controller;
+use App\Models\CentralPatient;
+use App\Models\CentralPatientAnswer;
 use App\Models\Form;
 use App\Models\Question;
 use App\Models\SmsTemplate;
@@ -34,10 +36,28 @@ class PaginaShowController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
+        $patients = $tenant->run(function () {
+            return \App\Models\Patient::orderByDesc('created_at')
+                ->get()
+                ->map(fn ($p) => [
+                    'id' => $p->id,
+                    'nome' => $p->nome,
+                    'cpf' => $p->cpf,
+                    'email' => $p->email,
+                    'telefone' => $p->numero,
+                    'sexo' => $p->sexo?->value ?? $p->sexo,
+                    'data_nascimento' => $p->data_nascimento?->format('d/m/Y'),
+                    'status' => (bool) $p->status,
+                    'status_registro' => $p->status_registro?->value ?? null,
+                    'created_at' => $p->created_at?->format('d/m/Y H:i'),
+                ]);
+        });
+
         return Inertia::render('Pagina/Show', [
             'tenant' => $tenant,
             'forms' => $forms,
             'fomrs_tenants' => $fomrsTenants,
+            'patients' => $patients,
             'statusFormularioDinamico' => $statusFormularioDinamico,
             'telemedicinaEnabled' => $telemedicinaEnabled,
             'telemedicinaQuestions' => $telemedicinaQuestions,
