@@ -36,6 +36,9 @@ import {
     Search,
     CheckCircle,
     Users,
+    Info,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -72,6 +75,10 @@ const props = defineProps({
         default: () => [],
     },
     allTenants: {
+        type: Array,
+        default: () => [],
+    },
+    patients: {
         type: Array,
         default: () => [],
     },
@@ -131,6 +138,131 @@ const siprovTotal = ref(0)
 const isSearchingSiprov = ref(false)
 const isSavingSiprov = ref(false)
 
+const patientSearch = ref('')
+const patientPage = ref(1)
+const perPage = 25
+
+const filteredPatients = computed(() => {
+    const q = patientSearch.value.toLowerCase().trim()
+    if (!q) return props.patients
+    return props.patients.filter(p =>
+        (p.nome || '').toLowerCase().includes(q) ||
+        (p.cpf || '').includes(q) ||
+        (p.email || '').toLowerCase().includes(q) ||
+        (p.telefone || '').includes(q)
+    )
+})
+
+const paginatedPatients = computed(() => {
+    const start = (patientPage.value - 1) * perPage
+    return filteredPatients.value.slice(start, start + perPage)
+})
+
+const totalPatientPages = computed(() => Math.ceil(filteredPatients.value.length / perPage))
+
+const showingFrom = computed(() => filteredPatients.value.length === 0 ? 0 : (patientPage.value - 1) * perPage + 1)
+const showingTo = computed(() => Math.min(patientPage.value * perPage, filteredPatients.value.length))
+
+const patientPageLinks = computed(() => {
+    const total = totalPatientPages.value
+    const current = patientPage.value
+    const pages = []
+
+    if (total <= 7) {
+        for (let i = 1; i <= total; i++) {
+            pages.push({ label: String(i), active: i === current, page: i })
+        }
+        return pages
+    }
+
+    pages.push({ label: '1', active: current === 1, page: 1 })
+
+    if (current > 3) {
+        pages.push({ label: '...', active: false, page: null })
+    }
+
+    const start = Math.max(2, current - 1)
+    const end = Math.min(total - 1, current + 1)
+
+    for (let i = start; i <= end; i++) {
+        pages.push({ label: String(i), active: i === current, page: i })
+    }
+
+    if (current < total - 2) {
+        pages.push({ label: '...', active: false, page: null })
+    }
+
+    pages.push({ label: String(total), active: current === total, page: total })
+
+    return pages
+})
+
+const goToPatientPage = (page) => {
+    if (page < 1 || page > totalPatientPages.value) return
+    patientPage.value = page
+}
+
+const formatCpf = (cpf) => {
+    if (!cpf) return '—'
+    const cleaned = cpf.replace(/\D/g, '')
+    if (cleaned.length !== 11) return cpf
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+}
+
+const formatDateShort = (date) => {
+    if (!date) return '—'
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return date
+    return d.toLocaleDateString('pt-BR')
+}
+
+const patientSexoIcon = (sexo) => {
+    if (!sexo) return null
+    const s = String(sexo).toLowerCase()
+    return s === 'm' || s === 'masculino' ? 'M' : 'F'
+}
+
+const patientSexoColor = (sexo) => {
+    if (!sexo) return 'bg-gray-100 text-gray-500'
+    const s = String(sexo).toLowerCase()
+    return s === 'm' || s === 'masculino'
+        ? 'bg-blue-100 text-blue-700'
+        : 'bg-pink-100 text-pink-700'
+}
+
+const registroLabel = (registro) => {
+    const map = {
+        formulario: 'Formulário',
+        'form-dinamico': 'Form. Dinâmico',
+        importacao: 'Importação',
+        'form-publico': 'Form. Público',
+        vinculo: 'Vínculo',
+    }
+    return map[registro] || registro || '—'
+}
+
+const registroColor = (registro) => {
+    const map = {
+        formulario: 'bg-blue-50 text-blue-700 border border-blue-200',
+        'form-dinamico': 'bg-purple-50 text-purple-700 border border-purple-200',
+        importacao: 'bg-orange-50 text-orange-700 border border-orange-200',
+        'form-publico': 'bg-teal-50 text-teal-700 border border-teal-200',
+        vinculo: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
+    }
+    return map[registro] || 'bg-gray-50 text-gray-600 border border-gray-200'
+}
+
+const registroIcon = (registro) => {
+    const map = {
+        formulario: '📝',
+        'form-dinamico': '⚡',
+        importacao: '📥',
+        'form-publico': '🌐',
+        vinculo: '🔗',
+    }
+    return map[registro] || '•'
+}
+
 const detail = computed(() => props.tenant?.details?.[0] ?? null)
 const user = computed(() => detail.value?.user ?? null)
 const availableForms = computed(() => props.forms ?? [])
@@ -185,6 +317,12 @@ const tabs = computed(() => [
         label: 'Telemedicina',
         icon: HeartPulse,
         badge: props.telemedicinaVinculados.length || null,
+    },
+    {
+        key: 'patients',
+        label: 'Pacientes',
+        icon: Users,
+        badge: props.patients.length || null,
     },
     {
         key: 'config',
@@ -584,8 +722,8 @@ const vincularSiprov = () => {
 
     const selectedItems = siprovResults.value
         .filter(r => siprovSelected.value.includes(getSiprovKey(r)))
-        .map(({ codPessoa, nomePessoa, cpfCnpj, planos, codBeneficio }) => ({
-            codPessoa, nomePessoa, cpfCnpj, planos, codBeneficio
+        .map(({ codPessoa, nomePessoa, cpfCnpj, planos, codBeneficio, email, dataNascimento, telefoneCelular, sexo }) => ({
+            codPessoa, nomePessoa, cpfCnpj, planos, codBeneficio, email, dataNascimento, telefoneCelular, sexo
         }))
 
     router.put(
@@ -1134,6 +1272,156 @@ const confirmRemoveLink = () => {
                         </div>
                     </div>
 
+                    <!-- Pacientes -->
+                    <div v-if="activeTab === 'patients'" class="space-y-5">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-base font-semibold flex items-center gap-2 text-gray-800">
+                                    <Users class="w-5 h-5 text-cyan-500" />
+                                    Pacientes
+                                </h2>
+                                <p class="text-sm text-gray-500 mt-0.5">
+                                    Pacientes cadastrados neste parceiro.
+                                </p>
+                            </div>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
+                                :class="patients.length ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-500 border border-gray-200'">
+                                <Users class="w-4 h-4" />
+                                {{ patients.length }} paciente{{ patients.length !== 1 ? 's' : '' }}
+                            </span>
+                        </div>
+
+                        <div v-if="patients.length">
+                            <div class="relative w-full">
+                                <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    v-model="patientSearch"
+                                    type="text"
+                                    placeholder="Buscar paciente..."
+                                    class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+                                    @input="patientPage = 1"
+                                />
+                                <button v-if="patientSearch" type="button" @click="patientSearch = ''"
+                                    class="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                    <X class="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div v-if="patientSearch" class="text-xs text-gray-500 mt-2">
+                                {{ filteredPatients.length }} de {{ patients.length }} resultado(s)
+                            </div>
+
+                            <div class="border rounded-xl border-gray-200 bg-white shadow-sm overflow-hidden mt-3">
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Código</th>
+                                            <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Nome</th>
+                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">CPF</th>
+                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Email</th>
+                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Sexo</th>
+                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Nascimento</th>
+                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Status</th>
+                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Registro</th>
+                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Cadastro</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        <tr v-for="patient in paginatedPatients" :key="patient.id"
+                                            class="even:bg-gray-50/50 hover:bg-cyan-50/30 transition-colors">
+                                            <td class="px-3 py-3 text-center">
+                                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-xs font-bold text-gray-600">
+                                                    {{ patient.id }}
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-3 text-sm">
+                                                <span class="font-semibold text-gray-900">{{ patient.nome || '—' }}</span>
+                                            </td>
+                                            <td class="px-3 py-3 text-center">
+                                                <span class="font-mono text-xs bg-gray-50 px-2 py-1 rounded">{{ formatCpf(patient.cpf) }}</span>
+                                            </td>
+                                            <td class="px-3 py-3 text-center text-sm text-gray-600">
+                                                {{ patient.email || '—' }}
+                                            </td>
+                                            <td class="px-3 py-3 text-center">
+                                                <span v-if="patient.sexo"
+                                                    :class="['inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold', patientSexoColor(patient.sexo)]">
+                                                    {{ patientSexoIcon(patient.sexo) }}
+                                                </span>
+                                                <span v-else class="text-gray-300">—</span>
+                                            </td>
+                                            <td class="px-3 py-3 text-center text-sm text-gray-600 whitespace-nowrap">
+                                                {{ patient.data_nascimento || '—' }}
+                                            </td>
+                                            <td class="px-3 py-3 text-center">
+                                                <span v-if="patient.status"
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                                    Ativo
+                                                </span>
+                                                <span v-else
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                    Inativo
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-3 text-center">
+                                                <span v-if="patient.status_registro"
+                                                    :class="['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', registroColor(patient.status_registro)]">
+                                                    <span class="text-[10px]">{{ registroIcon(patient.status_registro) }}</span>
+                                                    {{ registroLabel(patient.status_registro) }}
+                                                </span>
+                                                <span v-else class="text-gray-300 text-xs">—</span>
+                                            </td>
+                                            <td class="px-3 py-3 text-center text-sm text-gray-500 whitespace-nowrap">
+                                                {{ formatDateShort(patient.created_at) || '—' }}
+                                            </td>
+                                        </tr>
+                                        <tr v-if="!paginatedPatients.length">
+                                            <td colspan="9" class="text-center py-12 text-gray-400 text-sm">
+                                                Nenhum paciente encontrado para "{{ patientSearch }}"
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                                    <div class="text-sm text-gray-500">
+                                        Mostrando {{ showingFrom }} a {{ showingTo }} de {{ filteredPatients.length }} resultados
+                                    </div>
+                                    <div v-if="totalPatientPages > 1" class="flex gap-1">
+                                        <Button variant="outline" size="sm" class="px-2 py-1 text-sm h-8" :disabled="patientPage <= 1" @click="goToPatientPage(patientPage - 1)">
+                                            <ChevronLeft class="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            v-for="link in patientPageLinks"
+                                            :key="link.page ?? 'dots-' + link.label"
+                                            :variant="link.active ? 'primary' : 'outline'"
+                                            :disabled="link.page === null"
+                                            size="sm"
+                                            class="px-3 py-1 text-sm h-8"
+                                            @click="link.page && goToPatientPage(link.page)">
+                                            {{ link.label }}
+                                        </Button>
+                                        <Button variant="outline" size="sm" class="px-2 py-1 text-sm h-8" :disabled="patientPage >= totalPatientPages" @click="goToPatientPage(patientPage + 1)">
+                                            <ChevronRight class="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-else class="text-center py-16 text-gray-500">
+                            <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <Users class="w-8 h-8 text-gray-400" />
+                            </div>
+                            <p class="text-lg font-medium text-gray-900">Nenhum paciente</p>
+                            <p class="text-sm text-gray-500 mt-1">Nenhum paciente cadastrado neste parceiro.</p>
+                        </div>
+                    </div>
+
                     <!-- Telemedicina -->
                     <div v-if="activeTab === 'telemedicina'" class="rounded-2xl border border-gray-100 bg-white p-5 space-y-5 shadow-sm">
                         <div class="flex items-center justify-between">
@@ -1142,7 +1430,7 @@ const confirmRemoveLink = () => {
                                     <HeartPulse class="w-5 h-5 text-red-500" />
                                     Telemedicina
                                 </h2>
-                                <p class="text-sm text-gray-600 mt-0.5">Gerencie os vínculos de telemedicina deste tenant.</p>
+                                <p class="text-sm text-gray-600 mt-0.5">Gerencie os vínculos de telemedicina deste parceiro. Ao vincular um associado SIPROV, o registro também será vinculado à página e um paciente será criado automaticamente caso ainda não exista.</p>
                             </div>
                             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
                                 :class="telemedicinaVinculados.length ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-50 text-gray-500 border border-gray-200'">
@@ -1243,8 +1531,9 @@ const confirmRemoveLink = () => {
             message="Deseja remover esse vínculo?" confirm-text="Sim, remover"
             cancel-text="Cancelar" :isProcessing="isRemoving" @close="closeRemoveLinkDialog" @confirm="confirmRemoveLink" />
 
-        <ConfirmDeleteModal :show="telemedicinaUnlinkModal" title="Desvincular item"
+        <ConfirmDeleteModal :show="telemedicinaUnlinkModal" title="Desvincular associado"
             :message="telemedicinaUnlinkItem ? 'Deseja desvincular ' + telemedicinaUnlinkItem.data?.title + '?' : 'Deseja desvincular este item?'"
+            warning-message="O paciente vinculado por este associado também será removido. Esta ação não pode ser desfeita."
             confirm-text="Sim, desvincular" cancel-text="Cancelar"
             :isProcessing="isUnlinkingTelemedicina"
             @close="closeUnlinkTelemedicina" @confirm="confirmUnlinkTelemedicina" />
@@ -1266,7 +1555,17 @@ const confirmRemoveLink = () => {
                 <div class="flex items-center justify-between p-6 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">Vincular SIPROV</h3>
-                        <p class="text-sm text-gray-500 mt-0.5">Busque e selecione registros do SIPROV para vincular a este tenant.</p>
+                        <p class="text-sm text-gray-500 mt-0.5">Busque e selecione registros do SIPROV para vincular a este parceiro.</p>
+                        <div class="mt-3 p-3 bg-cyan-50 border border-cyan-200 rounded-lg text-xs text-cyan-800 space-y-1.5">
+                            <div class="flex items-start gap-2">
+                                <Info class="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>Ao criar o vínculo, um <strong>paciente</strong> será gerado automaticamente com o CPF do associado e o status de registro <strong>Vínculo</strong>, caso ainda não exista.</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <Users class="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>O paciente ficará disponível na aba <strong>Pacientes</strong> vinculado a este parceiro.</span>
+                            </div>
+                        </div>
                     </div>
                     <button
                         @click="siprovModalOpen = false"
