@@ -47,10 +47,6 @@ const formatDate = (date) => {
     });
 };
 
-const formatDateShort = (date) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString('pt-BR');
-};
 
 const formatCpf = (cpf) => {
     if (!cpf) return '-';
@@ -269,7 +265,7 @@ const onFilterChange = () => {
                             </TableCell>
 
                             <TableCell class="text-center text-sm text-gray-600">
-                                {{ formatDateShort(patient.data_nascimento) }}
+                                {{ patient.data_nascimento_formatada || '-' }}
                             </TableCell>
 
                             <TableCell class="text-center">

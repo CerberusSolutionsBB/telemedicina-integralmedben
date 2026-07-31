@@ -3,6 +3,7 @@
 namespace App\Http\Services\Patient;
 
 use App\Models\Patient;
+use App\Support\PatientAnswerFormatter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -76,12 +77,12 @@ class ExportPatientsService
         foreach ($patients as $patient) {
             $row = [
                 $patient->nome ?? '',
-                $patient->cpf ?? '',
+                PatientAnswerFormatter::maskCpf($patient->cpf),
                 $patient->rg ?? '',
-                $patient->data_nascimento?->format('Y-m-d') ?? '',
+                $patient->data_nascimento?->format('d/m/Y') ?? '',
                 $patient->sexo?->value ?? '',
                 $patient->email ?? '',
-                $patient->numero ?? '',
+                PatientAnswerFormatter::maskTelefone($patient->numero),
                 $patient->status ? '1' : '0',
                 $patient->id,
                 $patient->created_at->format('d/m/Y H:i'),
@@ -89,7 +90,7 @@ class ExportPatientsService
 
             $answers = $patient->answers->keyBy('question_id');
             foreach ($questions as $question) {
-                $row[] = $answers->get($question->id)?->answer ?? '';
+                $row[] = PatientAnswerFormatter::formatAnswer($answers->get($question->id)?->answer, $question);
             }
 
             $rows[] = $row;

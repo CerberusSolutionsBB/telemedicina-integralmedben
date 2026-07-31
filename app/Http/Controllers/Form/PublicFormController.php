@@ -332,8 +332,8 @@ class PublicFormController extends Controller
 
             if ($currentTenant != null) {
                 $this->integrarSiprov($form, $processedAnswers);
-                $this->enviarSmsTemplate($currentTenant, $form, $processedAnswers);
-                $this->criarPacienteDinamico($currentTenant, $form, $formResponse, $processedAnswers);
+                $patientId = $this->criarPacienteDinamico($currentTenant, $form, $formResponse, $processedAnswers);
+                $this->enviarSmsTemplate($currentTenant, $form, $processedAnswers, $patientId);
             }
 
             return redirect()
@@ -549,17 +549,17 @@ class PublicFormController extends Controller
         Form $form,
         FormResponse $formResponse,
         array $processedAnswers,
-    ): void {
+    ): ?int {
         try {
             $tenant = Tenant::find($tenantId);
             if (! $tenant) {
-                return;
+                return null;
             }
 
             $detail = TenantsDetail::where('tenant_id', $tenantId)->first();
             $config = $detail->configuracao ?? [];
             if (empty($config['status_formulario_dinamico'])) {
-                return;
+                return null;
             }
 
             $fields       = $form->fields()->orderBy('order')->get();
@@ -610,19 +610,24 @@ class PublicFormController extends Controller
             if ($patientId) {
                 \App\Events\PatientCreated::dispatch($patientId, $tenantId, $answersPorQuestion, smsAlreadySent: true);
             }
+
+            return $patientId;
         } catch (Throwable $e) {
             Log::error('Erro ao criar paciente dinamicamente', [
                 'tenant_id' => $tenantId,
                 'form_id'   => $form->id,
                 'error'     => $e->getMessage(),
             ]);
+
+            return null;
         }
     }
 
     private function enviarSmsTemplate(
         string $tenantId,
         Form $form,
-        array $processedAnswers
+        array $processedAnswers,
+        ?int $patientId = null
     ): void {
         try {
 
@@ -658,7 +663,8 @@ class PublicFormController extends Controller
                     $template,
                     $data,
                     $tenantId,
-                    $form->id
+                    $form->id,
+                    $patientId
                 );
             }
 
@@ -676,7 +682,8 @@ class PublicFormController extends Controller
         SmsTemplate $template,
         array $data,
         string $tenantId,
-        int $formId
+        int $formId,
+        ?int $patientId = null
     ): void {
 
         $telefone = $data['tel'] ?? ($data[$template->recipient_variable] ?? null);
@@ -708,7 +715,7 @@ class PublicFormController extends Controller
             'template' => $template->name,
         ]);
 
-        $resultado = $this->smsSenderService->send($telefone, $mensagem, $tenantId);
+        $resultado = $this->smsSenderService->send($telefone, $mensagem, $tenantId, $patientId);
 
         Log::info('Resultado SMS', [
             'tenant_id' => $tenantId,

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Data;
 
 class SiprovAssociadoData
@@ -17,7 +16,7 @@ class SiprovAssociadoData
     public static function fromIntegrationData(SiprovIntegrationData $data): self
     {
         return new self(
-            codigoIntegracao: $data->codigoIntegracao ?: 'USR-'.self::onlyNumbers($data->cpfCnpj),
+            codigoIntegracao: $data->codigoIntegracao ?: 'USR-' . self::onlyNumbers($data->cpfCnpj),
             nomePessoa: $data->nomePessoa,
             cpfCnpj: $data->cpfCnpj,
             email: $data->email,
@@ -30,17 +29,18 @@ class SiprovAssociadoData
     public function toPayload(): array
     {
         return [
-            'codLoja' => (int) config('siprov.cod_loja'),
-            'codigoIntegracao' => $this->codigoIntegracao ?: 'USR-'.$this->onlyNumbers($this->cpfCnpj),
-            'nomePessoa' => $this->nomePessoa,
-            'cpfCnpj' => $this->onlyNumbers($this->cpfCnpj),
-            'email' => $this->email,
-            'natureza' => 'F',
-            'sexo' => $this->normalizeSexo(),
-            'dataNascimento' => $this->dataNascimento,
-            'recebeEmail' => true,
-            'recebeWhatsApp' => true,
-            'telefones' => $this->normalizeTelefones(),
+            'codLoja'          => (int) config('siprov.cod_loja'),
+            'codigoIntegracao' => $this->codigoIntegracao ?: 'USR-' . $this->onlyNumbers($this->cpfCnpj),
+            'nomePessoa'       => $this->nomePessoa,
+            'cpfCnpj'          => $this->onlyNumbers($this->cpfCnpj),
+            'email'            => $this->email,
+            'natureza'         => pessoa_tipo($this->cpfCnpj),
+            'sexo'             => $this->normalizeSexo(),
+            'dataNascimento'   => $this->dataNascimento,
+            'recebeEmail'      => true,
+            'recebeWhatsApp'   => true,
+            'telefones'        => $this->normalizeTelefones(),
+            // 'dataExpedicao'    => data_expedicao(),
         ];
     }
 
@@ -48,8 +48,8 @@ class SiprovAssociadoData
     {
         return match ($this->sexo) {
             'M', 'Masculino' => 'Masculino',
-            'F', 'Feminino' => 'Feminino',
-            'I', 'Outro' => 'Outro',
+            'F', 'Feminino'  => 'Feminino',
+            'I', 'Outro'     => 'Outro',
             default => 'Outro',
         };
     }
@@ -57,12 +57,12 @@ class SiprovAssociadoData
     private function normalizeTelefones(): array
     {
         return collect($this->telefones)
-            ->filter(fn ($telefone) => ! empty($telefone['numero']))
+            ->filter(fn($telefone) => ! empty($telefone['numero']))
             ->map(function ($telefone) {
                 return [
-                    'ddi' => (int) ($telefone['ddi'] ?? 55),
+                    'ddi'    => (int) ($telefone['ddi'] ?? 55),
                     'numero' => $this->onlyNumbers($telefone['numero']),
-                    'tipo' => $telefone['tipo'] ?? 'Celular',
+                    'tipo'   => $telefone['tipo'] ?? 'Celular',
                 ];
             })
             ->values()

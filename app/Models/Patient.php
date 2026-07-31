@@ -28,12 +28,21 @@ class Patient extends Model
     ];
 
     protected $casts = [
-        'data_nascimento' => 'date',
+        'data_nascimento' => 'date:Y-m-d',
         'status' => 'boolean',
         'status_registro' => \App\Enums\StatusRegistroEnum::class,
         'enderecos' => 'array',
         'sexo' => PatientSexoEnum::class,
     ];
+
+    protected $appends = [
+        'data_nascimento_formatada',
+    ];
+
+    public function getDataNascimentoFormatadaAttribute(): ?string
+    {
+        return $this->data_nascimento?->format('d/m/Y');
+    }
 
     public function user(): BelongsTo
     {

@@ -339,7 +339,6 @@ const confirmGerarCartao = async () => {
                 </div>
             </div>
         </div>
-
         <div class="py-6">
             <div v-if="flashMessage" :class="[
                 'mb-4 p-4 rounded-lg text-sm font-medium',
@@ -593,6 +592,9 @@ const confirmGerarCartao = async () => {
                                     class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
                                     CPF</th>
                                 <th
+                                    class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider whitespace-nowrap">
+                                    Data de Nascimento</th>
+                                <th
                                     class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                     Plano</th>
                                 <th
@@ -628,6 +630,9 @@ const confirmGerarCartao = async () => {
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-700 tabular-nums">
                                     {{ formatCpf(item.cpfCnpj) }}
+                                </td>
+                                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600 tabular-nums">
+                                    {{ formatDate(item.dataNascimento) || '—' }}
                                 </td>
                                 <td class="px-6 py-4 text-sm">
                                     <div class="flex flex-wrap gap-1">

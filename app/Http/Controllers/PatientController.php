@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ImportPatientRequest;
 use App\Http\Requests\StorePatientRequest;
 use App\Http\Services\Patient\PatientService;
+use App\Http\Services\Patient\PatientsReportPdfService;
 use App\Http\Services\Sms\ResendSmsService;
 use App\Models\Patient;
 use App\Models\SmsLogs;
 use App\Models\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Inertia\Inertia;
 
 class PatientController extends Controller
@@ -18,6 +20,7 @@ class PatientController extends Controller
     public function __construct(
         private PatientService $patientService,
         private ResendSmsService $resendSmsService,
+        private PatientsReportPdfService $patientsReportPdfService,
     ) {}
 
     public function index(Request $request)
@@ -144,31 +147,24 @@ class PatientController extends Controller
         );
     }
 
+    public function resendSmsLog(Patient $patient, SmsLogs $smsLog)
+    {
+        $result = $this->resendSmsService->executeOne($patient, $smsLog, tenant('id'));
+
+        return back()->with(
+            $result['success'] ? 'success' : 'error',
+            $result['message']
+        );
+    }
+
     public function reportPdf()
     {
-        $patients = Patient::with('answers.question')
-            ->latest()
-            ->get();
+        $pdf = $this->patientsReportPdfService->generate(tenant('id'));
 
-        $questions = $patients->flatMap(fn ($p) => $p->answers->pluck('question'))->unique('id')->values();
-
-        $tenant = Tenant::find(tenant('id'));
-        $logoBase64 = null;
-        if ($tenant->photo_path) {
-            $absolutePath = base_path('storage/app/public/'.$tenant->photo_path);
-            if (file_exists($absolutePath)) {
-                $logoBase64 = 'data:'.mime_content_type($absolutePath).';base64,'.base64_encode(file_get_contents($absolutePath));
-            }
-        }
-
-        $pdf = Pdf::loadView('pdf.patients-report', [
-            'patients' => $patients,
-            'questions' => $questions,
-            'tenant' => $tenant,
-            'logoBase64' => $logoBase64,
-        ])->setPaper('a4', 'landscape');
-
-        return $pdf->download('relatorio-pacientes.pdf');
+        return new Response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="relatorio-pacientes.pdf"',
+        ]);
     }
 
     public function downloadPdf(Patient $patient)
