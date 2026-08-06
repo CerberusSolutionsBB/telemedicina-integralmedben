@@ -13,7 +13,7 @@ import FormLinkedCard from '@/Components/Cards/FormLinkedCard.vue'
 import { showToast } from '@/Utils/toast'
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue'
 import SmsTemplateModal from '@/Components/SmsTemplateModal.vue'
-
+import EbaLogo from '@/Components/Ebas/EbaLogo.vue'
 import {
     Home,
     Building2,
@@ -39,6 +39,7 @@ import {
     Info,
     ChevronLeft,
     ChevronRight,
+    ImagesIcon
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -79,6 +80,10 @@ const props = defineProps({
         default: () => [],
     },
     patients: {
+        type: Array,
+        default: () => [],
+    },
+    arquivos: {
         type: Array,
         default: () => [],
     },
@@ -323,6 +328,12 @@ const tabs = computed(() => [
         label: 'Pacientes',
         icon: Users,
         badge: props.patients.length || null,
+    },
+    {
+        key: 'logo',
+        label: 'Logos',
+        icon: ImagesIcon,
+        badge: null,
     },
     {
         key: 'config',
@@ -1124,7 +1135,8 @@ const confirmRemoveLink = () => {
                                     <MessageSquare class="w-5 h-5 text-cyan-500" />
                                     Templates SMS
                                 </h2>
-                                <p class="text-sm text-gray-500 mt-1">Gerencie as mensagens enviadas por SMS aos pacientes.</p>
+                                <p class="text-sm text-gray-500 mt-1">Gerencie as mensagens enviadas por SMS aos
+                                    pacientes.</p>
                             </div>
                             <Button variant="primary" @click="openSmsModal()">
                                 <Plus class="w-4 h-4 mr-1" />
@@ -1134,11 +1146,14 @@ const confirmRemoveLink = () => {
 
                         <div v-if="props.smsTemplates.length === 0"
                             class="bg-white p-12 rounded-xl border border-gray-200 text-center">
-                            <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <div
+                                class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                 <MessageSquare class="w-8 h-8 text-gray-400" />
                             </div>
                             <p class="text-lg font-medium text-gray-900">Nenhum template SMS</p>
-                            <p class="text-sm text-gray-500 mt-1">Crie um template para enviar mensagens automáticas aos pacientes.</p>
+                            <p class="text-sm text-gray-500 mt-1">Crie um template para enviar mensagens automáticas aos
+                                pacientes.
+                            </p>
                         </div>
 
                         <div v-else class="space-y-4">
@@ -1157,7 +1172,8 @@ const confirmRemoveLink = () => {
                                         </div>
                                         <p class="text-sm text-gray-600 whitespace-pre-line">{{ template.message }}</p>
                                         <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
-                                            <span>Atualizado: {{ new Date(template.updated_at).toLocaleDateString('pt-BR') }}</span>
+                                            <span>Atualizado: {{ new
+                                                Date(template.updated_at).toLocaleDateString('pt-BR') }}</span>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-1 flex-shrink-0">
@@ -1184,41 +1200,42 @@ const confirmRemoveLink = () => {
                                 <Settings class="w-5 h-5 text-cyan-500" />
                                 Configuração
                             </h2>
-                            <p class="text-sm text-gray-500 mt-1">Configure comportamentos dinâmicos e envio de SMS para este tenant.</p>
+                            <p class="text-sm text-gray-500 mt-1">Configure comportamentos dinâmicos e envio de SMS para
+                                este
+                                tenant.</p>
                         </div>
 
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                             <!-- Status Formulário Dinâmico -->
-                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div
+                                class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3">
                                         <div class="p-3 bg-purple-50 rounded-lg">
                                             <Settings class="w-6 h-6 text-purple-600" />
                                         </div>
                                         <div>
-                                            <h4 class="text-sm font-semibold text-gray-900">Status Formulário Dinâmico</h4>
-                                            <p class="text-xs text-gray-500 mt-0.5">Atualização automática do paciente</p>
+                                            <h4 class="text-sm font-semibold text-gray-900">Status Formulário Dinâmico
+                                            </h4>
+                                            <p class="text-xs text-gray-500 mt-0.5">Atualização automática do paciente
+                                            </p>
                                         </div>
                                     </div>
-                                    <button
-                                        @click="toggleStatusFormularioDinamico"
-                                        :disabled="isTogglingStatus"
-                                        :class="[
-                                            'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2',
-                                            statusFormularioDinamico ? 'bg-purple-600' : 'bg-gray-200',
-                                            isTogglingStatus ? 'opacity-50 cursor-not-allowed' : ''
-                                        ]"
-                                    >
-                                        <span
-                                            :class="[
-                                                'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
-                                                statusFormularioDinamico ? 'translate-x-5' : 'translate-x-0'
-                                            ]"
-                                        />
+                                    <button @click="toggleStatusFormularioDinamico" :disabled="isTogglingStatus" :class="[
+                                        'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2',
+                                        statusFormularioDinamico ? 'bg-purple-600' : 'bg-gray-200',
+                                        isTogglingStatus ? 'opacity-50 cursor-not-allowed' : ''
+                                    ]">
+                                        <span :class="[
+                                            'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
+                                            statusFormularioDinamico ? 'translate-x-5' : 'translate-x-0'
+                                        ]" />
                                     </button>
                                 </div>
                                 <p class="text-sm text-gray-500 mt-4">
-                                    Quando ativado, o formulário vinculado ao paciente será atualizado dinamicamente conforme as respostas recebidas.
+                                    Quando ativado, o formulário vinculado ao paciente será atualizado dinamicamente
+                                    conforme as
+                                    respostas recebidas.
                                 </p>
                                 <div class="mt-3">
                                     <span :class="[
@@ -1227,14 +1244,16 @@ const confirmRemoveLink = () => {
                                             ? 'bg-purple-100 text-purple-700 border border-purple-200'
                                             : 'bg-gray-100 text-gray-500 border border-gray-200'
                                     ]">
-                                        <span :class="['w-1.5 h-1.5 rounded-full', statusFormularioDinamico ? 'bg-purple-500' : 'bg-gray-400']" />
+                                        <span
+                                            :class="['w-1.5 h-1.5 rounded-full', statusFormularioDinamico ? 'bg-purple-500' : 'bg-gray-400']" />
                                         {{ statusFormularioDinamico ? 'Ativado' : 'Desativado' }}
                                     </span>
                                 </div>
                             </div>
 
                             <!-- Template SMS Vinculado -->
-                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div
+                                class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                                 <div class="flex items-center gap-3 mb-4">
                                     <div class="p-3 bg-green-50 rounded-lg">
                                         <MessageSquare class="w-6 h-6 text-green-600" />
@@ -1253,7 +1272,8 @@ const confirmRemoveLink = () => {
                                 <div v-else class="space-y-2">
                                     <div v-for="template in props.smsTemplates" :key="template.id"
                                         class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white">
-                                        <div :class="['w-3 h-3 rounded-full shrink-0', template.is_active ? 'bg-green-500' : 'bg-gray-300']" />
+                                        <div
+                                            :class="['w-3 h-3 rounded-full shrink-0', template.is_active ? 'bg-green-500' : 'bg-gray-300']" />
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-2">
                                                 <p class="text-sm font-medium text-gray-900">{{ template.name }}</p>
@@ -1284,7 +1304,8 @@ const confirmRemoveLink = () => {
                                     Pacientes cadastrados neste parceiro.
                                 </p>
                             </div>
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
                                 :class="patients.length ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-500 border border-gray-200'">
                                 <Users class="w-4 h-4" />
                                 {{ patients.length }} paciente{{ patients.length !== 1 ? 's' : '' }}
@@ -1294,13 +1315,9 @@ const confirmRemoveLink = () => {
                         <div v-if="patients.length">
                             <div class="relative w-full">
                                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input
-                                    v-model="patientSearch"
-                                    type="text"
-                                    placeholder="Buscar paciente..."
+                                <input v-model="patientSearch" type="text" placeholder="Buscar paciente..."
                                     class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
-                                    @input="patientPage = 1"
-                                />
+                                    @input="patientPage = 1" />
                                 <button v-if="patientSearch" type="button" @click="patientSearch = ''"
                                     class="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
                                     <X class="w-4 h-4" />
@@ -1314,98 +1331,123 @@ const confirmRemoveLink = () => {
                             <div class="border rounded-xl border-gray-200 bg-white shadow-sm overflow-hidden mt-3">
                                 <div class="overflow-x-auto">
                                     <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Código</th>
-                                            <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Nome</th>
-                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">CPF</th>
-                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Email</th>
-                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Sexo</th>
-                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Nascimento</th>
-                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Status</th>
-                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Registro</th>
-                                            <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">Cadastro</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-200 bg-white">
-                                        <tr v-for="patient in paginatedPatients" :key="patient.id"
-                                            class="even:bg-gray-50/50 hover:bg-cyan-50/30 transition-colors">
-                                            <td class="px-3 py-3 text-center">
-                                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-xs font-bold text-gray-600">
-                                                    {{ patient.id }}
-                                                </span>
-                                            </td>
-                                            <td class="px-3 py-3 text-sm">
-                                                <span class="font-semibold text-gray-900">{{ patient.nome || '—' }}</span>
-                                            </td>
-                                            <td class="px-3 py-3 text-center">
-                                                <span class="font-mono text-xs bg-gray-50 px-2 py-1 rounded">{{ formatCpf(patient.cpf) }}</span>
-                                            </td>
-                                            <td class="px-3 py-3 text-center text-sm text-gray-600">
-                                                {{ patient.email || '—' }}
-                                            </td>
-                                            <td class="px-3 py-3 text-center">
-                                                <span v-if="patient.sexo"
-                                                    :class="['inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold', patientSexoColor(patient.sexo)]">
-                                                    {{ patientSexoIcon(patient.sexo) }}
-                                                </span>
-                                                <span v-else class="text-gray-300">—</span>
-                                            </td>
-                                            <td class="px-3 py-3 text-center text-sm text-gray-600 whitespace-nowrap">
-                                                {{ patient.data_nascimento || '—' }}
-                                            </td>
-                                            <td class="px-3 py-3 text-center">
-                                                <span v-if="patient.status"
-                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                                    Ativo
-                                                </span>
-                                                <span v-else
-                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                                    Inativo
-                                                </span>
-                                            </td>
-                                            <td class="px-3 py-3 text-center">
-                                                <span v-if="patient.status_registro"
-                                                    :class="['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', registroColor(patient.status_registro)]">
-                                                    <span class="text-[10px]">{{ registroIcon(patient.status_registro) }}</span>
-                                                    {{ registroLabel(patient.status_registro) }}
-                                                </span>
-                                                <span v-else class="text-gray-300 text-xs">—</span>
-                                            </td>
-                                            <td class="px-3 py-3 text-center text-sm text-gray-500 whitespace-nowrap">
-                                                {{ formatDateShort(patient.created_at) || '—' }}
-                                            </td>
-                                        </tr>
-                                        <tr v-if="!paginatedPatients.length">
-                                            <td colspan="9" class="text-center py-12 text-gray-400 text-sm">
-                                                Nenhum paciente encontrado para "{{ patientSearch }}"
-                                            </td>
-                                        </tr>
-                                    </tbody>
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th
+                                                    class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    Código</th>
+                                                <th
+                                                    class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    Nome</th>
+                                                <th
+                                                    class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    CPF</th>
+                                                <th
+                                                    class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    Email</th>
+                                                <th
+                                                    class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    Sexo</th>
+                                                <th
+                                                    class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    Nascimento</th>
+                                                <th
+                                                    class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    Status</th>
+                                                <th
+                                                    class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    Registro</th>
+                                                <th
+                                                    class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                                    Cadastro</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200 bg-white">
+                                            <tr v-for="patient in paginatedPatients" :key="patient.id"
+                                                class="even:bg-gray-50/50 hover:bg-cyan-50/30 transition-colors">
+                                                <td class="px-3 py-3 text-center">
+                                                    <span
+                                                        class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-xs font-bold text-gray-600">
+                                                        {{ patient.id }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-3 text-sm">
+                                                    <span class="font-semibold text-gray-900">{{ patient.nome || '—'
+                                                        }}</span>
+                                                </td>
+                                                <td class="px-3 py-3 text-center">
+                                                    <span class="font-mono text-xs bg-gray-50 px-2 py-1 rounded">{{
+                                                        formatCpf(patient.cpf) }}</span>
+                                                </td>
+                                                <td class="px-3 py-3 text-center text-sm text-gray-600">
+                                                    {{ patient.email || '—' }}
+                                                </td>
+                                                <td class="px-3 py-3 text-center">
+                                                    <span v-if="patient.sexo"
+                                                        :class="['inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold', patientSexoColor(patient.sexo)]">
+                                                        {{ patientSexoIcon(patient.sexo) }}
+                                                    </span>
+                                                    <span v-else class="text-gray-300">—</span>
+                                                </td>
+                                                <td
+                                                    class="px-3 py-3 text-center text-sm text-gray-600 whitespace-nowrap">
+                                                    {{ patient.data_nascimento || '—' }}
+                                                </td>
+                                                <td class="px-3 py-3 text-center">
+                                                    <span v-if="patient.status"
+                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                                        Ativo
+                                                    </span>
+                                                    <span v-else
+                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                        Inativo
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-3 text-center">
+                                                    <span v-if="patient.status_registro"
+                                                        :class="['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', registroColor(patient.status_registro)]">
+                                                        <span class="text-[10px]">{{
+                                                            registroIcon(patient.status_registro) }}</span>
+                                                        {{ registroLabel(patient.status_registro) }}
+                                                    </span>
+                                                    <span v-else class="text-gray-300 text-xs">—</span>
+                                                </td>
+                                                <td
+                                                    class="px-3 py-3 text-center text-sm text-gray-500 whitespace-nowrap">
+                                                    {{ formatDateShort(patient.created_at) || '—' }}
+                                                </td>
+                                            </tr>
+                                            <tr v-if="!paginatedPatients.length">
+                                                <td colspan="9" class="text-center py-12 text-gray-400 text-sm">
+                                                    Nenhum paciente encontrado para "{{ patientSearch }}"
+                                                </td>
+                                            </tr>
+                                        </tbody>
                                     </table>
                                 </div>
 
                                 <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                                     <div class="text-sm text-gray-500">
-                                        Mostrando {{ showingFrom }} a {{ showingTo }} de {{ filteredPatients.length }} resultados
+                                        Mostrando {{ showingFrom }} a {{ showingTo }} de {{ filteredPatients.length }}
+                                        resultados
                                     </div>
                                     <div v-if="totalPatientPages > 1" class="flex gap-1">
-                                        <Button variant="outline" size="sm" class="px-2 py-1 text-sm h-8" :disabled="patientPage <= 1" @click="goToPatientPage(patientPage - 1)">
+                                        <Button variant="outline" size="sm" class="px-2 py-1 text-sm h-8"
+                                            :disabled="patientPage <= 1" @click="goToPatientPage(patientPage - 1)">
                                             <ChevronLeft class="w-4 h-4" />
                                         </Button>
-                                        <Button
-                                            v-for="link in patientPageLinks"
+                                        <Button v-for="link in patientPageLinks"
                                             :key="link.page ?? 'dots-' + link.label"
                                             :variant="link.active ? 'primary' : 'outline'"
-                                            :disabled="link.page === null"
-                                            size="sm"
-                                            class="px-3 py-1 text-sm h-8"
+                                            :disabled="link.page === null" size="sm" class="px-3 py-1 text-sm h-8"
                                             @click="link.page && goToPatientPage(link.page)">
                                             {{ link.label }}
                                         </Button>
-                                        <Button variant="outline" size="sm" class="px-2 py-1 text-sm h-8" :disabled="patientPage >= totalPatientPages" @click="goToPatientPage(patientPage + 1)">
+                                        <Button variant="outline" size="sm" class="px-2 py-1 text-sm h-8"
+                                            :disabled="patientPage >= totalPatientPages"
+                                            @click="goToPatientPage(patientPage + 1)">
                                             <ChevronRight class="w-4 h-4" />
                                         </Button>
                                     </div>
@@ -1414,7 +1456,8 @@ const confirmRemoveLink = () => {
                         </div>
 
                         <div v-else class="text-center py-16 text-gray-500">
-                            <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <div
+                                class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                 <Users class="w-8 h-8 text-gray-400" />
                             </div>
                             <p class="text-lg font-medium text-gray-900">Nenhum paciente</p>
@@ -1422,21 +1465,31 @@ const confirmRemoveLink = () => {
                         </div>
                     </div>
 
+                    <!-- Logo -->
+                    <EbaLogo :activeTab="activeTab" :list="list" />
+
                     <!-- Telemedicina -->
-                    <div v-if="activeTab === 'telemedicina'" class="rounded-2xl border border-gray-100 bg-white p-5 space-y-5 shadow-sm">
+                    <div v-if="activeTab === 'telemedicina'"
+                        class="rounded-2xl border border-gray-100 bg-white p-5 space-y-5 shadow-sm">
                         <div class="flex items-center justify-between">
                             <div>
                                 <h2 class="text-base font-semibold flex items-center gap-2 text-gray-800">
                                     <HeartPulse class="w-5 h-5 text-red-500" />
                                     Telemedicina
                                 </h2>
-                                <p class="text-sm text-gray-600 mt-0.5">Gerencie os vínculos de telemedicina deste parceiro. Ao vincular um associado SIPROV, o registro também será vinculado à página e um paciente será criado automaticamente caso ainda não exista.</p>
+                                <p class="text-sm text-gray-600 mt-0.5">Gerencie os vínculos de telemedicina deste
+                                    parceiro. Ao
+                                    vincular um associado SIPROV, o registro também será vinculado à página e um
+                                    paciente será
+                                    criado automaticamente caso ainda não exista.</p>
                             </div>
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
                                 :class="telemedicinaVinculados.length ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-50 text-gray-500 border border-gray-200'">
                                 <CheckCircle v-if="telemedicinaVinculados.length" class="w-4 h-4" />
                                 <Users v-else class="w-4 h-4" />
-                                {{ telemedicinaVinculados.length }} associado{{ telemedicinaVinculados.length !== 1 ? 's' : '' }}
+                                {{ telemedicinaVinculados.length }} associado{{ telemedicinaVinculados.length !== 1 ?
+                                    's' : '' }}
                             </span>
                         </div>
 
@@ -1444,12 +1497,9 @@ const confirmRemoveLink = () => {
                         <div class="space-y-3">
                             <div class="relative">
                                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input
-                                    v-model="siprovSearch"
-                                    type="text"
+                                <input v-model="siprovSearch" type="text"
                                     placeholder="Filtrar vinculados por nome, CPF ou plano..."
-                                    class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
-                                />
+                                    class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all" />
                                 <button v-if="siprovSearch" type="button" @click="siprovSearch = ''"
                                     class="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
                                     <X class="w-4 h-4" />
@@ -1457,7 +1507,8 @@ const confirmRemoveLink = () => {
                             </div>
 
                             <div v-if="siprovSearch && telemedicinaVinculados.length" class="text-xs text-gray-500">
-                                {{ filteredTelemedicinaVinculados.length }} de {{ telemedicinaVinculados.length }} resultado(s)
+                                {{ filteredTelemedicinaVinculados.length }} de {{ telemedicinaVinculados.length }}
+                                resultado(s)
                             </div>
                         </div>
 
@@ -1489,11 +1540,9 @@ const confirmRemoveLink = () => {
                                         </template>
                                     </p>
                                 </div>
-                                <button
-                                    @click="unlinkTelemedicina(item)"
+                                <button @click="unlinkTelemedicina(item)"
                                     class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                    title="Desvincular"
-                                >
+                                    title="Desvincular">
                                     <Trash2 class="w-3.5 h-3.5" />
                                     Desvincular
                                 </button>
@@ -1506,10 +1555,15 @@ const confirmRemoveLink = () => {
                                 <Search v-if="telemedicinaVinculados.length" class="w-6 h-6 text-amber-400" />
                                 <HeartPulse v-else class="w-6 h-6 text-gray-300" />
                             </div>
-                            <p class="text-sm font-medium text-gray-700 mt-3" v-if="telemedicinaVinculados.length">Nenhum resultado para "{{ siprovSearch }}"</p>
+                            <p class="text-sm font-medium text-gray-700 mt-3" v-if="telemedicinaVinculados.length">
+                                Nenhum resultado
+                                para "{{ siprovSearch }}"</p>
                             <p class="text-sm font-medium text-gray-700 mt-3" v-else>Nenhum associado vinculado</p>
-                            <p class="text-xs text-gray-400 mt-1" v-if="telemedicinaVinculados.length">Tente outro termo de busca.</p>
-                            <p class="text-xs text-gray-400 mt-1" v-else>Adicione associados da SIPROV para habilitar a telemedicina.</p>
+                            <p class="text-xs text-gray-400 mt-1" v-if="telemedicinaVinculados.length">Tente outro termo
+                                de busca.
+                            </p>
+                            <p class="text-xs text-gray-400 mt-1" v-else>Adicione associados da SIPROV para habilitar a
+                                telemedicina.</p>
                         </div>
 
                         <!-- Ação principal: Adicionar -->
@@ -1527,50 +1581,53 @@ const confirmRemoveLink = () => {
         <FormSelectorDialog v-model:open="dialogOpen" v-model="selectedFormIds" :forms="availableForms"
             @confirm="syncForms" />
 
-        <ConfirmDeleteModal :show="confirmDialogOpen" title="Remover vínculo"
-            message="Deseja remover esse vínculo?" confirm-text="Sim, remover"
-            cancel-text="Cancelar" :isProcessing="isRemoving" @close="closeRemoveLinkDialog" @confirm="confirmRemoveLink" />
+        <ConfirmDeleteModal :show="confirmDialogOpen" title="Remover vínculo" message="Deseja remover esse vínculo?"
+            confirm-text="Sim, remover" cancel-text="Cancelar" :isProcessing="isRemoving" @close="closeRemoveLinkDialog"
+            @confirm="confirmRemoveLink" />
 
         <ConfirmDeleteModal :show="telemedicinaUnlinkModal" title="Desvincular associado"
             :message="telemedicinaUnlinkItem ? 'Deseja desvincular ' + telemedicinaUnlinkItem.data?.title + '?' : 'Deseja desvincular este item?'"
             warning-message="O paciente vinculado por este associado também será removido. Esta ação não pode ser desfeita."
-            confirm-text="Sim, desvincular" cancel-text="Cancelar"
-            :isProcessing="isUnlinkingTelemedicina"
+            confirm-text="Sim, desvincular" cancel-text="Cancelar" :isProcessing="isUnlinkingTelemedicina"
             @close="closeUnlinkTelemedicina" @confirm="confirmUnlinkTelemedicina" />
 
         <ConfirmDeleteModal :show="smsDeleteModal" title="Remover template SMS"
             :message="smsDeleteItem ? `Deseja remover o template '${smsDeleteItem.name}'?` : 'Deseja remover este template?'"
-            confirm-text="Sim, remover" cancel-text="Cancelar"
-            :isProcessing="isDeletingSms"
+            confirm-text="Sim, remover" cancel-text="Cancelar" :isProcessing="isDeletingSms"
             @close="closeSmsDeleteModal" @confirm="confirmDeleteSmsTemplate" />
 
         <SmsTemplateModal :show="smsModalOpen" :template="smsModalTemplate" event="patient.created"
-            :tenants="allTenants || []"
-            @close="closeSmsModal" />
+            :tenants="allTenants || []" @close="closeSmsModal" />
 
         <!-- SIPROV Modal -->
         <div v-if="siprovModalOpen"
             class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div class="mx-4 w-full max-w-6xl max-h-[80vh] rounded-2xl bg-white shadow-2xl border border-gray-100 flex flex-col">
+            <div
+                class="mx-4 w-full max-w-6xl max-h-[80vh] rounded-2xl bg-white shadow-2xl border border-gray-100 flex flex-col">
                 <div class="flex items-center justify-between p-6 border-b border-gray-100">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">Vincular SIPROV</h3>
-                        <p class="text-sm text-gray-500 mt-0.5">Busque e selecione registros do SIPROV para vincular a este parceiro.</p>
-                        <div class="mt-3 p-3 bg-cyan-50 border border-cyan-200 rounded-lg text-xs text-cyan-800 space-y-1.5">
+                        <p class="text-sm text-gray-500 mt-0.5">Busque e selecione registros do SIPROV para vincular a
+                            este
+                            parceiro.</p>
+                        <div
+                            class="mt-3 p-3 bg-cyan-50 border border-cyan-200 rounded-lg text-xs text-cyan-800 space-y-1.5">
                             <div class="flex items-start gap-2">
                                 <Info class="w-4 h-4 shrink-0 mt-0.5" />
-                                <span>Ao criar o vínculo, um <strong>paciente</strong> será gerado automaticamente com o CPF do associado e o status de registro <strong>Vínculo</strong>, caso ainda não exista.</span>
+                                <span>Ao criar o vínculo, um <strong>paciente</strong> será gerado automaticamente com o
+                                    CPF do
+                                    associado e o status de registro <strong>Vínculo</strong>, caso ainda não
+                                    exista.</span>
                             </div>
                             <div class="flex items-start gap-2">
                                 <Users class="w-4 h-4 shrink-0 mt-0.5" />
-                                <span>O paciente ficará disponível na aba <strong>Pacientes</strong> vinculado a este parceiro.</span>
+                                <span>O paciente ficará disponível na aba <strong>Pacientes</strong> vinculado a este
+                                    parceiro.</span>
                             </div>
                         </div>
                     </div>
-                    <button
-                        @click="siprovModalOpen = false"
-                        class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
+                    <button @click="siprovModalOpen = false"
+                        class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
@@ -1578,21 +1635,20 @@ const confirmRemoveLink = () => {
                 <div class="p-6 border-b border-gray-100">
                     <div class="relative">
                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            v-model="siprovSearch"
-                            type="text"
+                        <input v-model="siprovSearch" type="text"
                             placeholder="Buscar por nome, CPF, e-mail ou código de integração..."
                             class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
-                            @keyup.enter="searchSiprov(1)"
-                        />
-                        <Button variant="primary" size="sm" class="absolute right-1.5 top-1/2 -translate-y-1/2" :disabled="isSearchingSiprov" @click="searchSiprov(1)">
+                            @keyup.enter="searchSiprov(1)" />
+                        <Button variant="primary" size="sm" class="absolute right-1.5 top-1/2 -translate-y-1/2"
+                            :disabled="isSearchingSiprov" @click="searchSiprov(1)">
                             <Loader2 v-if="isSearchingSiprov" class="w-4 h-4 animate-spin" />
                             <Search v-else class="w-4 h-4" />
                         </Button>
                     </div>
                 </div>
 
-                <div v-if="siprovError" class="mx-6 mt-3 p-4 rounded-lg text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                <div v-if="siprovError"
+                    class="mx-6 mt-3 p-4 rounded-lg text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200">
                     {{ siprovError }}
                 </div>
 
@@ -1613,7 +1669,8 @@ const confirmRemoveLink = () => {
                     </span>
                     <span class="text-gray-300">→</span>
                     <span class="flex items-center gap-1.5 text-xs font-medium text-gray-400">
-                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-500">3</span>
+                        <span
+                            class="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-500">3</span>
                         Confirmar
                     </span>
                 </div>
@@ -1629,41 +1686,49 @@ const confirmRemoveLink = () => {
                             <thead class="bg-gray-50 sticky top-0 z-10">
                                 <tr>
                                     <th class="w-10 px-4 py-3 text-left">
-                                        <input
-                                            type="checkbox"
-                                            :checked="siprovSelected.length === siprovResults.length"
+                                        <input type="checkbox" :checked="siprovSelected.length === siprovResults.length"
                                             @change="toggleSelectAllSiprov"
-                                            class="w-4 h-4 text-cyan-600 bg-gray-100 border-gray-300 rounded focus:ring-cyan-500"
-                                        />
+                                            class="w-4 h-4 text-cyan-600 bg-gray-100 border-gray-300 rounded focus:ring-cyan-500" />
                                     </th>
-                                    <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">#</th>
-                                    <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Associado</th>
-                                    <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">CPF/CNPJ</th>
-                                    <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Plano</th>
-                                    <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Benefício</th>
-                                    <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Cadastro</th>
-                                    <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">Situação</th>
+                                    <th
+                                        class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        #</th>
+                                    <th
+                                        class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Associado</th>
+                                    <th
+                                        class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        CPF/CNPJ</th>
+                                    <th
+                                        class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Plano</th>
+                                    <th
+                                        class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Benefício</th>
+                                    <th
+                                        class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Cadastro</th>
+                                    <th
+                                        class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Situação</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
                                 <tr v-for="item in siprovResults" :key="getSiprovKey(item)"
                                     class="hover:bg-gray-50 transition-colors cursor-pointer"
                                     :class="{ 'bg-cyan-50 hover:bg-cyan-100': siprovSelected.includes(getSiprovKey(item)) }"
-                                    @click="toggleSiprovItem(item)"
-                                >
+                                    @click="toggleSiprovItem(item)">
                                     <td class="px-4 py-3" @click.stop>
-                                        <input
-                                            type="checkbox"
-                                            :checked="siprovSelected.includes(getSiprovKey(item))"
+                                        <input type="checkbox" :checked="siprovSelected.includes(getSiprovKey(item))"
                                             @change="toggleSiprovItem(item)"
-                                            class="w-4 h-4 text-cyan-600 bg-gray-100 border-gray-300 rounded focus:ring-cyan-500"
-                                        />
+                                            class="w-4 h-4 text-cyan-600 bg-gray-100 border-gray-300 rounded focus:ring-cyan-500" />
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 font-mono">
                                         #{{ item.codPessoa }}
                                     </td>
                                     <td class="px-3 py-3 text-sm">
-                                        <div class="font-medium text-gray-900 group-hover:text-cyan-600 transition-colors">
+                                        <div
+                                            class="font-medium text-gray-900 group-hover:text-cyan-600 transition-colors">
                                             {{ item.nomePessoa }}
                                         </div>
                                         <div class="text-xs text-gray-500 truncate max-w-xs mt-0.5">
@@ -1685,7 +1750,8 @@ const confirmRemoveLink = () => {
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">
                                         <div>{{ item.dataCadastro || '-' }}</div>
-                                        <div v-if="item.dataAdesao" class="text-xs text-gray-400">Adesão: {{ item.dataAdesao }}</div>
+                                        <div v-if="item.dataAdesao" class="text-xs text-gray-400">Adesão: {{
+                                            item.dataAdesao }}</div>
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-3 text-sm">
                                         <span
@@ -1704,10 +1770,12 @@ const confirmRemoveLink = () => {
                                 Página {{ siprovPage }} · {{ siprovTotal }} resultado(s)
                             </div>
                             <div class="flex items-center gap-2">
-                                <Button variant="outline" size="sm" :disabled="siprovPage <= 1 || isSearchingSiprov" @click="goToSiprovPage(siprovPage - 1)">
+                                <Button variant="outline" size="sm" :disabled="siprovPage <= 1 || isSearchingSiprov"
+                                    @click="goToSiprovPage(siprovPage - 1)">
                                     Anterior
                                 </Button>
-                                <Button variant="outline" size="sm" :disabled="!siprovHasNext || isSearchingSiprov" @click="goToSiprovPage(siprovPage + 1)">
+                                <Button variant="outline" size="sm" :disabled="!siprovHasNext || isSearchingSiprov"
+                                    @click="goToSiprovPage(siprovPage + 1)">
                                     Próxima
                                 </Button>
                             </div>
@@ -1723,10 +1791,12 @@ const confirmRemoveLink = () => {
 
                 <div class="flex items-center justify-between p-4 border-t border-gray-100 bg-gray-50/50"
                     :class="{ 'bg-cyan-50/70 border-cyan-200': siprovSelected.length > 0 }">
-                    <span class="text-sm font-medium" :class="siprovSelected.length > 0 ? 'text-cyan-800' : 'text-gray-500'">
+                    <span class="text-sm font-medium"
+                        :class="siprovSelected.length > 0 ? 'text-cyan-800' : 'text-gray-500'">
                         <template v-if="siprovSelected.length > 0">
                             <CheckCircle class="w-4 h-4 inline-block mr-1.5" />
-                            {{ siprovSelected.length }} associado{{ siprovSelected.length !== 1 ? 's' : '' }} selecionado{{ siprovSelected.length !== 1 ? 's' : '' }}
+                            {{ siprovSelected.length }} associado{{ siprovSelected.length !== 1 ? 's' : '' }}
+                            selecionado{{ siprovSelected.length !== 1 ? 's' : '' }}
                         </template>
                         <template v-else>
                             {{ siprovResults.length }} resultado(s)
@@ -1736,7 +1806,8 @@ const confirmRemoveLink = () => {
                         <Button variant="secondary" @click="siprovModalOpen = false">
                             Cancelar
                         </Button>
-                        <Button variant="primary" :disabled="!siprovSelected.length || isSavingSiprov" @click="vincularSiprov">
+                        <Button variant="primary" :disabled="!siprovSelected.length || isSavingSiprov"
+                            @click="vincularSiprov">
                             <Loader2 v-if="isSavingSiprov" class="w-4 h-4 mr-2 animate-spin" />
                             <Plus v-else class="w-4 h-4 mr-2" />
                             Vincular {{ siprovSelected.length || '' }}

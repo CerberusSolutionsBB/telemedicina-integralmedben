@@ -36,7 +36,7 @@ const navLinks = [
     { label: "Formulários", routeName: "forms.index", icon: ClipboardList },
     { label: "Leis", routeName: "leis.index", icon: LandmarkIcon },
     { label: "Usuários", routeName: "central-users.index", icon: Users },
-    { label: "SMS Templates", routeName: "sms-templates.index", icon: MessageSquare },
+    // { label: "SMS Templates", routeName: "sms-templates.index", icon: MessageSquare },
     { label: "Logs de SMS", routeName: "admin.sms-logs.index", icon: ScrollText },
     { label: "Página de Parceiros", routeName: "pagina.index", icon: AppWindowIcon },
     { label: "Telemedicina", routeName: "siprov.index", icon: Activity },
