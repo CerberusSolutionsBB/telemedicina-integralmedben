@@ -1,7 +1,7 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue'
 import { router } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ActionDropdown from '@/Components/ActionDropdown.vue'
 import PomponeteLink from '@/Components/PomponeteLink.vue'
 import FormSelectorDialog from '@/Components/FormSelectorDialog.vue'
@@ -90,6 +90,11 @@ const props = defineProps({
 })
 
 const activeTab = ref('overview')
+const arquivosLocal = ref([...props.arquivos])
+
+watch(() => props.arquivos, (newVal) => {
+  arquivosLocal.value = [...newVal]
+})
 
 const isGeneratingDetail = ref(false)
 const dialogOpen = ref(false)
@@ -1466,7 +1471,7 @@ const confirmRemoveLink = () => {
                     </div>
 
                     <!-- Logo -->
-                    <EbaLogo :activeTab="activeTab" :list="list" />
+                    <EbaLogo v-if="activeTab === 'logo'" :tenant-id="tenant.id" :upload-url="route('pagina.configuracao.logo.store', tenant.id)" v-model:list="arquivosLocal" />
 
                     <!-- Telemedicina -->
                     <div v-if="activeTab === 'telemedicina'"

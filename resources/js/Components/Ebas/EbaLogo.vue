@@ -1,5 +1,5 @@
 <template>
-  <div v-if="activeTab === 'logo'" class="space-y-5">
+  <div class="space-y-5">
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
@@ -15,25 +15,26 @@
       <div class="flex items-center gap-3">
         <span
           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
-          :class="list.length ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-500 border border-gray-200'"
+          :class="localList.length ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-gray-50 text-gray-500 border border-gray-200'"
         >
           <ImageIcon class="w-4 h-4" />
-          {{ list.length }}
+          {{ localList.length }}
         </span>
 
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm"
-          @click="openUploadModal"
+        <label
+          for="eba-logo-upload"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm cursor-pointer"
+          :class="{ 'opacity-50 cursor-not-allowed pointer-events-none': isUploading }"
         >
-          <Upload class="w-4 h-4" />
-          Nova Logo
-        </button>
+          <Loader2 v-if="isUploading" class="w-4 h-4 animate-spin" />
+          <Upload v-else class="w-4 h-4" />
+          {{ isUploading ? 'Enviando...' : 'Nova Logo' }}
+        </label>
       </div>
     </div>
 
     <!-- Conteúdo com dados -->
-    <div v-if="list.length">
+    <div v-if="localList.length">
       <!-- Busca -->
       <div class="relative w-full max-w-md">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -55,7 +56,7 @@
       </div>
 
       <div v-if="search" class="text-xs text-gray-500">
-        {{ filteredList.length }} de {{ list.length }} resultado(s)
+        {{ filteredList.length }} de {{ localList.length }} resultado(s)
       </div>
 
       <!-- Tabela -->
@@ -103,7 +104,8 @@
                       v-if="logo.url"
                       :src="logo.url"
                       :alt="logo.nome"
-                      class="w-full h-full object-contain"
+                      class="w-full h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                      @click="previewLogo(logo)"
                       @error="$event.target.style.display = 'none'"
                     />
                     <ImageIcon v-else class="w-5 h-5 text-gray-300" />
@@ -238,15 +240,25 @@
       </div>
       <p class="text-lg font-medium text-gray-900">Nenhuma logo</p>
       <p class="text-sm text-gray-500 mt-1">Nenhuma logo cadastrada para este parceiro.</p>
-      <button
-        type="button"
-        class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm"
-        @click="openUploadModal"
-      >
-        <Upload class="w-4 h-4" />
-        Fazer upload
-      </button>
+    <label
+      for="eba-logo-upload"
+      class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm cursor-pointer"
+      :class="{ 'opacity-50 cursor-not-allowed pointer-events-none': isUploading }"
+    >
+      <Loader2 v-if="isUploading" class="w-4 h-4 animate-spin" />
+      <Upload v-else class="w-4 h-4" />
+      {{ isUploading ? 'Enviando...' : 'Fazer upload' }}
+    </label>
     </div>
+
+    <!-- Input de arquivo oculto -->
+    <input
+      id="eba-logo-upload"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      @change="handleFileChange"
+    />
 
     <!-- Modal de Preview (simples) -->
     <div
@@ -271,15 +283,10 @@
       </div>
     </div>
   </div>
-
-  <!-- Fallback para outras tabs -->
-  <div v-else class="text-center py-16 text-gray-400">
-    <p class="text-sm">Aba "{{ activeTab }}" não implementada.</p>
-  </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   Image as ImageIcon,
   Search,
@@ -289,35 +296,48 @@ import {
   Upload,
   Eye,
   Trash2,
+  Loader2,
 } from 'lucide-vue-next'
 
 /* ── Props ─────────────────────────────────────────────── */
 const props = defineProps({
-  activeTab: {
-    type: String,
-    default: null,
-  },
   list: {
     type: Array,
     default: () => [],
   },
+  tenantId: {
+    type: [String, Number],
+    default: null,
+  },
+  uploadUrl: {
+    type: String,
+    default: '',
+  },
 })
 
 /* ── Emits ─────────────────────────────────────────────── */
-const emit = defineEmits(['upload', 'delete'])
+const emit = defineEmits(['update:list', 'upload', 'delete'])
 
 /* ── Estado local ──────────────────────────────────────── */
 const search = ref('')
 const page = ref(1)
 const perPage = ref(10)
 const previewUrl = ref(null)
+const isUploading = ref(false)
+const selectedFile = ref(null)
+
+const localList = ref([...props.list])
+
+watch(() => props.list, (newList) => {
+  localList.value = [...newList]
+})
 
 /* ── Computeds ─────────────────────────────────────────── */
 
 const filteredList = computed(() => {
-  if (!search.value.trim()) return props.list
+  if (!search.value.trim()) return localList.value
   const term = search.value.toLowerCase()
-  return props.list.filter((logo) =>
+  return localList.value.filter((logo) =>
     logo.nome?.toLowerCase().includes(term)
   )
 })
@@ -378,6 +398,56 @@ const pageLinks = computed(() => {
 function goToPage(newPage) {
   if (newPage >= 1 && newPage <= totalPages.value) {
     page.value = newPage
+  }
+}
+
+function handleFileChange(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  selectedFile.value = file
+  uploadLogo(file)
+  event.target.value = ''
+}
+
+async function uploadLogo(file) {
+  if (!props.tenantId) {
+    alert('Tenant não identificado para upload.')
+    return
+  }
+
+  isUploading.value = true
+
+  try {
+    const formData = new FormData()
+    formData.append('logo', file)
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+
+    const response = await fetch(props.uploadUrl, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      credentials: 'same-origin',
+      body: formData,
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Erro ao enviar logo.')
+    }
+
+    localList.value = [data.logo]
+    emit('update:list', localList.value)
+    emit('upload', data.logo)
+  } catch (error) {
+    alert(error.message || 'Erro ao enviar logo. Tente novamente.')
+  } finally {
+    isUploading.value = false
+    selectedFile.value = null
   }
 }
 

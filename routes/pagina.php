@@ -3,6 +3,7 @@
 use App\Http\Controllers\Pagina\PaginaCreateController;
 use App\Http\Controllers\Pagina\PaginaDestroyController;
 use App\Http\Controllers\Pagina\PaginaIndexController;
+use App\Http\Controllers\Pagina\PaginaLogoController;
 use App\Http\Controllers\Pagina\PaginaShowController;
 use App\Http\Controllers\Pagina\PaginaStoreController;
 use App\Http\Controllers\Pagina\PaginaStatusController;
@@ -34,4 +35,5 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::put('/{tenant}/telemedicina', [ConfiguracaoController::class, 'syncTelemedicina'])->name('telemedicina');
     Route::delete('/{tenant}/telemedicina/{telemedicinaTenant}', [ConfiguracaoController::class, 'unlinkTelemedicina'])->name('telemedicina.unlink');
     Route::get('/siprov/search', [ConfiguracaoController::class, 'searchSiprov'])->name('telemedicina.searchSiprov');
+    Route::post('/{tenant}/logo', [PaginaLogoController::class, 'store'])->middleware('auth')->name('logo.store');
 });
