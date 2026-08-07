@@ -13,6 +13,7 @@ use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
 use App\Models\TenantsDetail;
 use App\Models\TenantForm;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,11 +54,28 @@ class PaginaShowController extends Controller
                 ]);
         });
 
+        $logo = null;
+        if ($detail && $detail->logo) {
+            $logoPath = $tenant->id.'/'.$detail->logo;
+            $logo = [
+                'id' => $detail->id,
+                'url' => Storage::disk('tenants')->url($logoPath),
+                'nome' => $detail->logo,
+                'formato' => strtoupper(pathinfo($detail->logo, PATHINFO_EXTENSION)),
+                'tamanho' => Storage::disk('tenants')->exists($logoPath) ? Storage::disk('tenants')->size($logoPath) : null,
+                'largura' => null,
+                'altura' => null,
+                'ativo' => true,
+                'created_at' => $detail->created_at?->format('d/m/Y H:i'),
+            ];
+        }
+
         return Inertia::render('Pagina/Show', [
             'tenant' => $tenant,
             'forms' => $forms,
             'fomrs_tenants' => $fomrsTenants,
             'patients' => $patients,
+            'arquivos' => $logo ? [$logo] : [],
             'statusFormularioDinamico' => $statusFormularioDinamico,
             'telemedicinaEnabled' => $telemedicinaEnabled,
             'telemedicinaQuestions' => $telemedicinaQuestions,
