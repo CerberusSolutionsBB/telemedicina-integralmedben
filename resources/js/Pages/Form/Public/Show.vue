@@ -157,7 +157,10 @@ const submitForm = () => {
     errors.value = {};
 
     // ⭐ ENVIA rawAnswers (CPF = números, Data = DD/MM/YYYY)
-    router.post(route('forms.public.store', { slug }), { answers: rawAnswers.value }, {
+    router.post(route('forms.public.store', { slug }), { 
+        answers: rawAnswers.value, 
+        accepted_terms: acceptedTerms.value 
+    }, {
         onSuccess: () => showToast('Cadastro realizado com sucesso!', 'success'),
         onError: (e) => {
             errors.value = e;

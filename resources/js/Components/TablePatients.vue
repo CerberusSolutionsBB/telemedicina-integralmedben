@@ -58,13 +58,23 @@ const formatCpf = (cpf) => {
 const questions = computed(() => {
     const data = props.patients?.data;
     if (!data || data.length === 0) return [];
-    return data[0]?.answers?.map(a => a.question) || [];
+    const allQuestions = data.flatMap(p => p.answers?.map(a => a.question) || []);
+    const unique = [...new Map(allQuestions.map(q => [q.id, q])).values()];
+    return unique;
 });
 
 const getAnswer = (patient, questionId) => {
     const answer = patient.answers?.find(a => a.question_id === questionId);
     return answer?.answer || '-';
 };
+
+const termsQuestionId = computed(() => {
+    const q = questions.value.find(q => {
+        const title = (q.title || '').toLowerCase();
+        return title.includes('aceito') || title.includes('termo') || title.includes('concordo');
+    });
+    return q?.id || null;
+});
 
 const sexoIcon = (sexo) => {
     if (!sexo) return null;
@@ -221,6 +231,10 @@ const onFilterChange = () => {
                                 class="text-center whitespace-nowrap text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                 Cadastro
                             </TableHead>
+                            <TableHead
+                                class="text-center whitespace-nowrap text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Termos
+                            </TableHead>
                             <!-- <TableHead v-for="question in questions" :key="question.id" class="text-center whitespace-nowrap text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                 <div class="truncate max-w-[150px]" :title="question.title">
                                     {{ question.title }}
@@ -294,6 +308,14 @@ const onFilterChange = () => {
                                 {{ formatDate(patient.created_at) }}
                             </TableCell>
 
+                            <TableCell class="text-center text-sm text-gray-600">
+                                <span v-if="termsQuestionId && getAnswer(patient, termsQuestionId) !== '-'"
+                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                                    ✓ Sim
+                                </span>
+                                <span v-else class="text-gray-300 text-xs">-</span>
+                            </TableCell>
+
                             <!-- <TableCell v-for="question in questions" :key="question.id"
                                 class="text-center text-sm text-gray-600">
                                 <div class="truncate max-w-[200px]" :title="getAnswer(patient, question.id)">
@@ -328,7 +350,7 @@ const onFilterChange = () => {
                         </TableRow>
 
                         <TableRow v-if="patients.data && patients.data.length === 0">
-                            <TableCell :colspan="10 + questions.length" class="text-center py-12">
+                            <TableCell :colspan="11 + questions.length" class="text-center py-12">
                                 <div class="flex flex-col items-center gap-2">
                                     <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
                                         <Search class="w-6 h-6 text-gray-400" />

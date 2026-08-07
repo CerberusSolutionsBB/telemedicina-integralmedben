@@ -300,6 +300,7 @@ class PublicFormController extends Controller
                 $rules["answers.{$field->id}"] = $fieldRules;
             }
             $validated        = $request->validate($rules, $messages);
+            $acceptedTerms    = $request->boolean('accepted_terms', false);
             $processedAnswers = [];
             foreach ($form->fields as $field) {
                 $answer = $validated['answers'][$field->id] ?? null;
@@ -310,11 +311,13 @@ class PublicFormController extends Controller
                 }
             }
             $formResponse = FormResponse::create([
-                'form_id'    => $form->id,
-                'user_id'    => auth()->id(),
-                'answers'    => $processedAnswers,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
+                'form_id'         => $form->id,
+                'user_id'         => auth()->id(),
+                'answers'         => $processedAnswers,
+                'ip_address'      => $request->ip(),
+                'user_agent'      => $request->userAgent(),
+                'accepted_terms'  => $acceptedTerms,
+                'accepted_at'     => $acceptedTerms ? now() : null,
             ]);
             // $form->increment('responses_count');
             // if ($form->credencia_cluble_id) {
@@ -332,7 +335,7 @@ class PublicFormController extends Controller
 
             if ($currentTenant != null) {
                 $this->integrarSiprov($form, $processedAnswers);
-                $patientId = $this->criarPacienteDinamico($currentTenant, $form, $formResponse, $processedAnswers);
+                $patientId = $this->criarPacienteDinamico($currentTenant, $form, $formResponse, $processedAnswers, $acceptedTerms);
                 $this->enviarSmsTemplate($currentTenant, $form, $processedAnswers, $patientId);
             }
 
@@ -549,6 +552,7 @@ class PublicFormController extends Controller
         Form $form,
         FormResponse $formResponse,
         array $processedAnswers,
+        ?bool $acceptedTerms = null,
     ): ?int {
         try {
             $tenant = Tenant::find($tenantId);
@@ -573,7 +577,8 @@ class PublicFormController extends Controller
             $patientId          = null;
             $answersPorQuestion = [];
 
-            $tenant->run(function () use ($tenantId, $form, $formResponse, $fieldAnswers, $fields, $questions, &$patientId, &$answersPorQuestion) {
+            $tenant->run(function () use ($tenantId, $form, $formResponse, $fieldAnswers, $fields, $acceptedTerms, &$patientId, &$answersPorQuestion) {
+                $questions = Question::all();
                 $patientData = $this->extrairDadosPaciente($fieldAnswers, $fields, $questions);
                 $patient     = Patient::create([
                     'status_registro' => \App\Enums\StatusRegistroEnum::FormDinamico,
@@ -594,6 +599,26 @@ class PublicFormController extends Controller
                         'patient_id'  => $patient->id,
                         'question_id' => $questionId,
                         'answer'      => (string) $answer,
+                    ]);
+                }
+
+                if ($acceptedTerms) {
+                    $termsQuestion = $questions->first(fn ($q) => str_contains(mb_strtolower($q->title), 'aceito')
+                        || str_contains(mb_strtolower($q->title), 'termo')
+                        || str_contains(mb_strtolower($q->title), 'concordo')
+                    );
+
+                    if (! $termsQuestion) {
+                        $termsQuestion = Question::updateOrCreate(
+                            ['title' => 'Li e aceito os termos'],
+                            ['type' => 'text', 'options' => null]
+                        );
+                    }
+
+                    PatientAnswer::create([
+                        'patient_id'  => $patient->id,
+                        'question_id' => $termsQuestion->id,
+                        'answer'      => 'Sim',
                     ]);
                 }
 
