@@ -48,7 +48,7 @@
     <!-- Conteúdo com dados -->
     <div v-if="localList.length">
       <!-- Busca -->
-      <div class="relative w-full max-w-md">
+      <div class="relative w-full">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           v-model="search"
