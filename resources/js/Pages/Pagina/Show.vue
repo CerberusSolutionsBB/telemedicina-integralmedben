@@ -1471,7 +1471,7 @@ const confirmRemoveLink = () => {
                     </div>
 
                     <!-- Logo -->
-                    <EbaLogo v-if="activeTab === 'logo'" :tenant-id="tenant.id" :upload-url="route('pagina.configuracao.logo.store', tenant.id)" v-model:list="arquivosLocal" />
+                    <EbaLogo v-if="activeTab === 'logo'" :tenant-id="tenant.id" :upload-url="route('pagina.configuracao.logo.store', tenant.id)" :delete-url="route('pagina.configuracao.logo.destroy', tenant.id)" v-model:list="arquivosLocal" />
 
                     <!-- Telemedicina -->
                     <div v-if="activeTab === 'telemedicina'"

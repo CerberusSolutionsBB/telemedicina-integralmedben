@@ -24,6 +24,10 @@ class PaginaLogoController extends Controller
             $file = $request->file('logo');
             $fileName = 'logo_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
 
+            $this->criarDiretorioSeNaoExistir($tenant->id, 'tenants');
+
+            $dimensions = @getimagesize($file->getRealPath());
+
             $file->storeAs($tenant->id, $fileName, 'tenants');
 
             if ($detail->logo) {
@@ -45,8 +49,8 @@ class PaginaLogoController extends Controller
                     'nome' => $fileName,
                     'formato' => strtoupper($file->getClientOriginalExtension()),
                     'tamanho' => $file->getSize(),
-                    'largura' => null,
-                    'altura' => null,
+                    'largura' => $dimensions[0] ?? null,
+                    'altura' => $dimensions[1] ?? null,
                     'ativo' => true,
                     'created_at' => now()->format('d/m/Y H:i'),
                 ],
@@ -57,5 +61,40 @@ class PaginaLogoController extends Controller
             'success' => false,
             'message' => 'Nenhum arquivo enviado.',
         ], 422);
+    }
+
+    public function destroy(Tenant $tenant)
+    {
+        $detail = TenantsDetail::where('tenant_id', $tenant->id)->first();
+
+        if (! $detail || ! $detail->logo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nenhuma logo encontrada para este parceiro.',
+            ], 404);
+        }
+
+        $path = $tenant->id.'/'.$detail->logo;
+        if (Storage::disk('tenants')->exists($path)) {
+            Storage::disk('tenants')->delete($path);
+        }
+
+        $detail->update(['logo' => null]);
+
+        return response()->json([
+            'success' => true,
+        ]);
+    }
+
+    private function criarDiretorioSeNaoExistir(string $caminho, string $disk): void
+    {
+        $storage = Storage::disk($disk);
+        if (! $storage->exists($caminho)) {
+            $storage->makeDirectory($caminho);
+            $caminhoCompleto = $storage->path($caminho);
+            if (is_dir($caminhoCompleto)) {
+                chmod($caminhoCompleto, 0755);
+            }
+        }
     }
 }

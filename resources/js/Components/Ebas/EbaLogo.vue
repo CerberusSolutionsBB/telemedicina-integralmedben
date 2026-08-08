@@ -33,10 +33,22 @@
       </div>
     </div>
 
+    <!-- Card informativo -->
+    <div class="flex items-start gap-3 p-4 rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-800">
+      <Info class="w-5 h-5 shrink-0 mt-0.5" />
+      <div class="text-sm">
+        <p class="font-medium">Formatos aceitos: JPG, JPEG, PNG, GIF, BMP, SVG e WEBP</p>
+        <p class="text-xs text-cyan-700 mt-1">
+          Tamanho máximo de 2MB por arquivo. Recomendamos imagens em PNG com fundo transparente para melhor exibição
+          da logo.
+        </p>
+      </div>
+    </div>
+
     <!-- Conteúdo com dados -->
     <div v-if="localList.length">
       <!-- Busca -->
-      <div class="relative w-full max-w-md">
+      <div class="relative w-full">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           v-model="search"
@@ -282,6 +294,19 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de Confirmação de Exclusão -->
+    <ConfirmDeleteModal
+      :show="confirmDeleteOpen"
+      title="Excluir logo"
+      :message="logoToDelete ? `Deseja excluir a logo de '${logoToDelete.nome}'?` : 'Deseja excluir esta logo?'"
+      warning-message="Esta ação não pode ser desfeita."
+      confirm-text="Sim, excluir"
+      cancel-text="Cancelar"
+      :is-processing="isDeleting"
+      @close="closeDeleteModal"
+      @confirm="confirmDeleteLogo"
+    />
   </div>
 </template>
 
@@ -297,7 +322,10 @@ import {
   Eye,
   Trash2,
   Loader2,
+  Info,
 } from 'lucide-vue-next'
+import { showToast } from '@/Utils/toast'
+import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue'
 
 /* ── Props ─────────────────────────────────────────────── */
 const props = defineProps({
@@ -313,6 +341,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  deleteUrl: {
+    type: String,
+    default: '',
+  },
 })
 
 /* ── Emits ─────────────────────────────────────────────── */
@@ -325,6 +357,9 @@ const perPage = ref(10)
 const previewUrl = ref(null)
 const isUploading = ref(false)
 const selectedFile = ref(null)
+const confirmDeleteOpen = ref(false)
+const logoToDelete = ref(null)
+const isDeleting = ref(false)
 
 const localList = ref([...props.list])
 
@@ -412,7 +447,7 @@ function handleFileChange(event) {
 
 async function uploadLogo(file) {
   if (!props.tenantId) {
-    alert('Tenant não identificado para upload.')
+    showToast('Tenant não identificado para upload.', 'error')
     return
   }
 
@@ -443,8 +478,9 @@ async function uploadLogo(file) {
     localList.value = [data.logo]
     emit('update:list', localList.value)
     emit('upload', data.logo)
+    showToast('Logo enviada com sucesso!', 'success')
   } catch (error) {
-    alert(error.message || 'Erro ao enviar logo. Tente novamente.')
+    showToast(error.message || 'Erro ao enviar logo. Tente novamente.', 'error')
   } finally {
     isUploading.value = false
     selectedFile.value = null
@@ -460,8 +496,55 @@ function previewLogo(logo) {
 }
 
 function deleteLogo(logo) {
-  if (confirm(`Tem certeza que deseja excluir a logo de "${logo.nome}"?`)) {
+  logoToDelete.value = logo
+  confirmDeleteOpen.value = true
+}
+
+function closeDeleteModal() {
+  if (isDeleting.value) return
+  confirmDeleteOpen.value = false
+  logoToDelete.value = null
+}
+
+async function confirmDeleteLogo() {
+  const logo = logoToDelete.value
+  if (!logo) return
+
+  if (!props.deleteUrl) {
+    showToast('URL de exclusão não configurada.', 'error')
+    return
+  }
+
+  isDeleting.value = true
+
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+
+    const response = await fetch(props.deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-TOKEN': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      credentials: 'same-origin',
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Erro ao excluir logo.')
+    }
+
+    localList.value = []
+    emit('update:list', localList.value)
     emit('delete', logo.id)
+    showToast('Logo excluída com sucesso!', 'success')
+    confirmDeleteOpen.value = false
+    logoToDelete.value = null
+  } catch (error) {
+    showToast(error.message || 'Erro ao excluir logo. Tente novamente.', 'error')
+  } finally {
+    isDeleting.value = false
   }
 }
 
