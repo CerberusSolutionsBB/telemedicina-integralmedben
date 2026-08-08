@@ -56,15 +56,14 @@ class PaginaShowController extends Controller
 
         $logo = null;
         if ($detail && $detail->logo) {
-            $logoPath = $this->resolveLogoPath($tenant, $detail->logo);
-            $logoExists = Storage::disk('tenants')->exists($logoPath);
-            $dimensions = $logoExists ? @getimagesize(Storage::disk('tenants')->path($logoPath)) : false;
+            $logoPath = $tenant->resolveLogoPath($detail->logo);
+            $dimensions = $logoPath ? @getimagesize(Storage::disk('tenants')->path($logoPath)) : false;
             $logo = [
                 'id' => $detail->id,
-                'url' => Storage::disk('tenants')->url($logoPath),
+                'url' => route('pagina.configuracao.logo.show', $tenant->id).'?v='.urlencode($detail->logo),
                 'nome' => $detail->logo,
                 'formato' => strtoupper(pathinfo($detail->logo, PATHINFO_EXTENSION)),
-                'tamanho' => $logoExists ? Storage::disk('tenants')->size($logoPath) : null,
+                'tamanho' => $logoPath ? Storage::disk('tenants')->size($logoPath) : null,
                 'largura' => $dimensions[0] ?? null,
                 'altura' => $dimensions[1] ?? null,
                 'ativo' => true,
@@ -116,28 +115,5 @@ class PaginaShowController extends Controller
                     'tenants' => $t->tenants->pluck('id')->toArray(),
                 ]),
         ]);
-    }
-
-    /**
-     * Resolve o caminho real da logo no disco, considerando o esquema atual
-     * (arquivo direto na raiz, nomeado pelo id do TenantsDetail) e os esquemas
-     * antigos usados antes dele (pasta normalizada e pasta com o id cru do
-     * tenant), para manter uploads antigos funcionando sem precisar migrá-los.
-     */
-    private function resolveLogoPath(Tenant $tenant, string $fileName): string
-    {
-        $candidates = [
-            $fileName,
-            $tenant->logoFolder().'/'.$fileName,
-            $tenant->id.'/'.$fileName,
-        ];
-
-        foreach ($candidates as $candidate) {
-            if (Storage::disk('tenants')->exists($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return $fileName;
     }
 }
