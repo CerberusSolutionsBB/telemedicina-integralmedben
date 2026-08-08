@@ -22,22 +22,21 @@ class PaginaLogoController extends Controller
 
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
-            $fileName = 'logo_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-            $folder = $tenant->logoFolder();
+            $fileName = 'logo_'.$detail->id.'_'.time().'.'.$file->getClientOriginalExtension();
 
-            $this->criarDiretorioSeNaoExistir($folder, 'tenants');
+            $this->ensureDiskRootExists('tenants');
 
             $dimensions = @getimagesize($file->getRealPath());
 
-            $file->storeAs($folder, $fileName, 'tenants');
+            $file->storeAs('', $fileName, 'tenants');
 
             if ($detail->logo) {
-                $this->deleteIfExists($tenant, $detail->logo);
+                $this->deleteEverywhere($tenant, $detail->logo);
             }
 
             $detail->update(['logo' => $fileName]);
 
-            $url = Storage::disk('tenants')->url($folder.'/'.$fileName);
+            $url = Storage::disk('tenants')->url($fileName);
 
             return response()->json([
                 'success' => true,
@@ -72,7 +71,7 @@ class PaginaLogoController extends Controller
             ], 404);
         }
 
-        $this->deleteIfExists($tenant, $detail->logo);
+        $this->deleteEverywhere($tenant, $detail->logo);
 
         $detail->update(['logo' => null]);
 
@@ -82,13 +81,15 @@ class PaginaLogoController extends Controller
     }
 
     /**
-     * Remove o arquivo de logo, procurando tanto na pasta normalizada atual
-     * quanto no id "cru" do tenant, usado por uploads antigos antes da
-     * normalização (minúsculas, sem acento, espaço -> "_").
+     * Remove o arquivo de logo procurando em todos os esquemas de armazenamento
+     * já usados pelo projeto: o atual (arquivo direto na raiz do disco, nomeado
+     * pelo id do TenantsDetail) e os antigos, por pasta (normalizada ou com o id
+     * cru do tenant), para não deixar arquivo órfão de uploads anteriores.
      */
-    private function deleteIfExists(Tenant $tenant, string $fileName): void
+    private function deleteEverywhere(Tenant $tenant, string $fileName): void
     {
         $paths = array_unique([
+            $fileName,
             $tenant->logoFolder().'/'.$fileName,
             $tenant->id.'/'.$fileName,
         ]);
@@ -100,15 +101,14 @@ class PaginaLogoController extends Controller
         }
     }
 
-    private function criarDiretorioSeNaoExistir(string $caminho, string $disk): void
+    private function ensureDiskRootExists(string $disk): void
     {
-        $storage = Storage::disk($disk);
-        if (! $storage->exists($caminho)) {
-            $storage->makeDirectory($caminho);
-            $caminhoCompleto = $storage->path($caminho);
-            if (is_dir($caminhoCompleto)) {
-                chmod($caminhoCompleto, 0755);
-            }
+        $root = Storage::disk($disk)->path('');
+
+        if (! is_dir($root)) {
+            @mkdir($root, 0755, true);
         }
+
+        @chmod($root, 0755);
     }
 }
