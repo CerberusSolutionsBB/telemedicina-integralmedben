@@ -57,14 +57,16 @@ class PaginaShowController extends Controller
         $logo = null;
         if ($detail && $detail->logo) {
             $logoPath = $tenant->id.'/'.$detail->logo;
+            $logoExists = Storage::disk('tenants')->exists($logoPath);
+            $dimensions = $logoExists ? @getimagesize(Storage::disk('tenants')->path($logoPath)) : false;
             $logo = [
                 'id' => $detail->id,
                 'url' => Storage::disk('tenants')->url($logoPath),
                 'nome' => $detail->logo,
                 'formato' => strtoupper(pathinfo($detail->logo, PATHINFO_EXTENSION)),
-                'tamanho' => Storage::disk('tenants')->exists($logoPath) ? Storage::disk('tenants')->size($logoPath) : null,
-                'largura' => null,
-                'altura' => null,
+                'tamanho' => $logoExists ? Storage::disk('tenants')->size($logoPath) : null,
+                'largura' => $dimensions[0] ?? null,
+                'altura' => $dimensions[1] ?? null,
                 'ativo' => true,
                 'created_at' => $detail->created_at?->format('d/m/Y H:i'),
             ];
