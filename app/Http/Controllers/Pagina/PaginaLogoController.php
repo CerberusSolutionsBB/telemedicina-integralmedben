@@ -23,23 +23,21 @@ class PaginaLogoController extends Controller
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
             $fileName = 'logo_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
+            $folder = $tenant->logoFolder();
 
-            $this->criarDiretorioSeNaoExistir($tenant->id, 'tenants');
+            $this->criarDiretorioSeNaoExistir($folder, 'tenants');
 
             $dimensions = @getimagesize($file->getRealPath());
 
-            $file->storeAs($tenant->id, $fileName, 'tenants');
+            $file->storeAs($folder, $fileName, 'tenants');
 
             if ($detail->logo) {
-                $oldPath = $tenant->id.'/'.$detail->logo;
-                if (Storage::disk('tenants')->exists($oldPath)) {
-                    Storage::disk('tenants')->delete($oldPath);
-                }
+                $this->deleteIfExists($tenant, $detail->logo);
             }
 
             $detail->update(['logo' => $fileName]);
 
-            $url = Storage::disk('tenants')->url($tenant->id.'/'.$fileName);
+            $url = Storage::disk('tenants')->url($folder.'/'.$fileName);
 
             return response()->json([
                 'success' => true,
@@ -74,16 +72,32 @@ class PaginaLogoController extends Controller
             ], 404);
         }
 
-        $path = $tenant->id.'/'.$detail->logo;
-        if (Storage::disk('tenants')->exists($path)) {
-            Storage::disk('tenants')->delete($path);
-        }
+        $this->deleteIfExists($tenant, $detail->logo);
 
         $detail->update(['logo' => null]);
 
         return response()->json([
             'success' => true,
         ]);
+    }
+
+    /**
+     * Remove o arquivo de logo, procurando tanto na pasta normalizada atual
+     * quanto no id "cru" do tenant, usado por uploads antigos antes da
+     * normalização (minúsculas, sem acento, espaço -> "_").
+     */
+    private function deleteIfExists(Tenant $tenant, string $fileName): void
+    {
+        $paths = array_unique([
+            $tenant->logoFolder().'/'.$fileName,
+            $tenant->id.'/'.$fileName,
+        ]);
+
+        foreach ($paths as $path) {
+            if (Storage::disk('tenants')->exists($path)) {
+                Storage::disk('tenants')->delete($path);
+            }
+        }
     }
 
     private function criarDiretorioSeNaoExistir(string $caminho, string $disk): void

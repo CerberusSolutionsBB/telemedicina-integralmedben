@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
@@ -70,6 +71,11 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public static function generateDatabaseName(string $tenantName): string
     {
         return 'tenant_'.str_replace('-', '_', $tenantName);
+    }
+
+    public function logoFolder(): string
+    {
+        return Str::slug($this->id, '_');
     }
 
     public function getTenantDomainAttribute()
