@@ -206,8 +206,29 @@ class CheckStoragePermissions extends Command
                 continue;
             }
 
-            // Existe um arquivo/diretório real (não um link) nesse caminho — não é seguro
-            // remover automaticamente, pois pode conter dados reais.
+            // Existe um diretório real (não um link) nesse caminho, vazio — sem dados para perder,
+            // então é seguro remover e criar o link no lugar.
+            if (is_dir($link) && $this->isEmptyDirectory($link)) {
+                if ($dryRun) {
+                    $this->warn("  [DIVERGENTE] {$link} é um diretório vazio (deveria ser um link para {$target})");
+                    $this->unresolved++;
+
+                    continue;
+                }
+
+                if (rmdir($link) && symlink($target, $link)) {
+                    $this->info("  [CORRIGIDO] Diretório vazio substituído por link: {$link} -> {$target}");
+                    $this->fixed++;
+                } else {
+                    $this->error("  [ERRO] Não foi possível substituir o diretório {$link} pelo link.");
+                    $this->unresolved++;
+                }
+
+                continue;
+            }
+
+            // Existe um arquivo/diretório real (não um link) com conteúdo nesse caminho — não é
+            // seguro remover automaticamente, pois pode conter dados reais.
             $this->error("  [ERRO] {$link} já existe como arquivo/diretório real (não é um link) e não aponta para {$target}.");
             $this->comment('    Verifique manualmente antes de remover — pode conter dados reais.');
             $this->unresolved++;
@@ -216,5 +237,16 @@ class CheckStoragePermissions extends Command
         if ($this->fixed + $this->unresolved === $before) {
             $this->info('  [OK] Todos os links simbólicos estão corretos.');
         }
+    }
+
+    private function isEmptyDirectory(string $path): bool
+    {
+        $entries = @scandir($path);
+
+        if ($entries === false) {
+            return false;
+        }
+
+        return count(array_diff($entries, ['.', '..'])) === 0;
     }
 }
