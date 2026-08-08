@@ -37,4 +37,5 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::get('/siprov/search', [ConfiguracaoController::class, 'searchSiprov'])->name('telemedicina.searchSiprov');
     Route::post('/{tenant}/logo', [PaginaLogoController::class, 'store'])->middleware('auth')->name('logo.store');
     Route::delete('/{tenant}/logo', [PaginaLogoController::class, 'destroy'])->middleware('auth')->name('logo.destroy');
+    Route::get('/{tenant}/logo', [PaginaLogoController::class, 'show'])->name('logo.show');
 });

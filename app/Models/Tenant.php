@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
@@ -76,6 +77,31 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function logoFolder(): string
     {
         return Str::slug($this->id, '_');
+    }
+
+    /**
+     * Caminhos possíveis do arquivo de logo no disco 'tenants', do mais novo
+     * para o mais antigo: arquivo direto na raiz (esquema atual), pasta
+     * normalizada e pasta com o id cru do tenant (esquemas antigos).
+     */
+    public function logoPathCandidates(string $fileName): array
+    {
+        return array_unique([
+            $fileName,
+            $this->logoFolder().'/'.$fileName,
+            $this->id.'/'.$fileName,
+        ]);
+    }
+
+    public function resolveLogoPath(string $fileName): ?string
+    {
+        foreach ($this->logoPathCandidates($fileName) as $candidate) {
+            if (Storage::disk('tenants')->exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     public function getTenantDomainAttribute()

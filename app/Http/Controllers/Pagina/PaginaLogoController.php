@@ -36,7 +36,7 @@ class PaginaLogoController extends Controller
 
             $detail->update(['logo' => $fileName]);
 
-            $url = Storage::disk('tenants')->url($fileName);
+            $url = route('pagina.configuracao.logo.show', $tenant->id).'?v='.urlencode($fileName);
 
             return response()->json([
                 'success' => true,
@@ -81,6 +81,27 @@ class PaginaLogoController extends Controller
     }
 
     /**
+     * Serve a imagem da logo diretamente, em vez de expor ao frontend o path
+     * de armazenamento (e depender do symlink público estar correto).
+     */
+    public function show(Tenant $tenant)
+    {
+        $detail = TenantsDetail::where('tenant_id', $tenant->id)->first();
+
+        if (! $detail || ! $detail->logo) {
+            abort(404);
+        }
+
+        $path = $tenant->resolveLogoPath($detail->logo);
+
+        if (! $path) {
+            abort(404);
+        }
+
+        return Storage::disk('tenants')->response($path);
+    }
+
+    /**
      * Remove o arquivo de logo procurando em todos os esquemas de armazenamento
      * já usados pelo projeto: o atual (arquivo direto na raiz do disco, nomeado
      * pelo id do TenantsDetail) e os antigos, por pasta (normalizada ou com o id
@@ -88,13 +109,7 @@ class PaginaLogoController extends Controller
      */
     private function deleteEverywhere(Tenant $tenant, string $fileName): void
     {
-        $paths = array_unique([
-            $fileName,
-            $tenant->logoFolder().'/'.$fileName,
-            $tenant->id.'/'.$fileName,
-        ]);
-
-        foreach ($paths as $path) {
+        foreach ($tenant->logoPathCandidates($fileName) as $path) {
             if (Storage::disk('tenants')->exists($path)) {
                 Storage::disk('tenants')->delete($path);
             }

@@ -36,23 +36,6 @@ class ConfiguracaoController extends Controller
         return (string) tenant()->id;
     }
 
-    private function logoPath(string $fileName): string
-    {
-        return $this->tenantId().'/'.$fileName;
-    }
-
-    /**
-     * Gera URL usando o host atual do request (funciona com subdomínios)
-     */
-    private function tenantUrl(string $path): string
-    {
-        // Pega apenas o path relativo (ex: /storage/tenants/med_bem/logo.png)
-        $relativePath = parse_url(Storage::disk('tenants')->url($path), PHP_URL_PATH);
-
-        // Monta com o host atual do request (inclui subdomínio e porta)
-        return request()->getSchemeAndHttpHost().$relativePath;
-    }
-
     public function index(): Response
     {
         $tenantDetail = TenantsDetail::firstOrCreate([
@@ -61,10 +44,7 @@ class ConfiguracaoController extends Controller
 
         $logoUrl = null;
         if ($tenantDetail->logo) {
-            $fileName = basename($tenantDetail->logo);
-            $logoUrl = $this->tenantUrl(
-                $this->logoPath($fileName)
-            );
+            $logoUrl = route('pagina.configuracao.logo.show', $this->tenantId()).'?v='.urlencode($tenantDetail->logo);
         }
 
         return Inertia::render('Tenant/Configuracao/Index', [
@@ -95,16 +75,17 @@ class ConfiguracaoController extends Controller
 
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
-            $fileName = 'logo_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
+            $fileName = 'logo_'.$tenantDetail->id.'_'.time().'.'.$file->getClientOriginalExtension();
 
-            $file->storeAs($this->tenantId(), $fileName, 'tenants');
+            $this->ensureDiskRootExists('tenants');
+
+            $file->storeAs('', $fileName, 'tenants');
 
             if ($tenantDetail->logo) {
-                $oldFileName = basename($tenantDetail->logo);
-                $oldPath = $this->logoPath($oldFileName);
-
-                if (Storage::disk('tenants')->exists($oldPath)) {
-                    Storage::disk('tenants')->delete($oldPath);
+                foreach (tenant()->logoPathCandidates($tenantDetail->logo) as $oldPath) {
+                    if (Storage::disk('tenants')->exists($oldPath)) {
+                        Storage::disk('tenants')->delete($oldPath);
+                    }
                 }
             }
 
@@ -114,6 +95,17 @@ class ConfiguracaoController extends Controller
         }
 
         return redirect()->back()->with('success', 'Logo atualizado com sucesso!');
+    }
+
+    private function ensureDiskRootExists(string $disk): void
+    {
+        $root = Storage::disk($disk)->path('');
+
+        if (! is_dir($root)) {
+            @mkdir($root, 0755, true);
+        }
+
+        @chmod($root, 0755);
     }
 
     public function detail(Request $request, Tenant $tenant)
