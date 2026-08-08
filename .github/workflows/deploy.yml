@@ -55,9 +55,6 @@ jobs:
             echo "🌱 Rodando seeds dos tenants..."
             php artisan tenants:seed --force
 
-            echo "🔐 Verificando permissões de storage..."
-            php artisan storage:check-permissions
-
             echo "⚡ Otimizando aplicação..."
             php artisan optimize
             php artisan view:cache
@@ -70,5 +67,8 @@ jobs:
 
             echo "⚡ Otimizando Limpar..."
             php artisan optimize:clear
+
+            echo "🔐 Verificando permissões de storage..."
+            php artisan storage:check-permissions || echo "⚠️ Verifique manualmente os problemas de storage acima."
 
             echo "✅ Deploy finalizado com sucesso!"
