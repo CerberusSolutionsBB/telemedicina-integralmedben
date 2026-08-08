@@ -20,60 +20,84 @@ class CheckStoragePermissions extends Command
 
     private const DISKS = ['public', 'tenants'];
 
+    private int $fixed = 0;
+
+    private int $unresolved = 0;
+
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
+
+        $this->fixed = 0;
+        $this->unresolved = 0;
 
         $this->newLine();
         $this->info('Verificando permissões de storage...');
         $this->newLine();
 
-        $totalIssues = 0;
-
         foreach (self::DISKS as $disk) {
-            $totalIssues += $this->checkDisk($disk, $dryRun);
+            $this->checkDisk($disk, $dryRun);
         }
 
-        $totalIssues += $this->checkSymlinks($dryRun);
+        $this->checkSymlinks($dryRun);
 
         $this->newLine();
 
-        if ($totalIssues === 0) {
+        $total = $this->fixed + $this->unresolved;
+
+        if ($total === 0) {
             $this->info('Tudo certo! Todas as permissões estão corretas.');
 
             return self::SUCCESS;
         }
 
         if ($dryRun) {
-            $this->warn("{$totalIssues} problema(s) encontrado(s). Execute sem --dry-run para corrigir.");
+            $this->warn("{$total} problema(s) encontrado(s). Execute sem --dry-run para corrigir.");
 
             return self::FAILURE;
         }
 
-        $this->info("{$totalIssues} problema(s) corrigido(s).");
+        if ($this->fixed > 0) {
+            $this->info("{$this->fixed} problema(s) corrigido(s).");
+        }
+
+        if ($this->unresolved > 0) {
+            $this->error("{$this->unresolved} problema(s) NÃO puderam ser corrigidos automaticamente. Veja os erros acima.");
+
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }
 
-    private function checkDisk(string $disk, bool $dryRun): int
+    private function checkDisk(string $disk, bool $dryRun): void
     {
         $root = Storage::disk($disk)->path('');
-        $issues = 0;
+        $before = $this->fixed + $this->unresolved;
 
         $this->comment("Disco '{$disk}' ({$root})");
 
         if (! is_dir($root)) {
             $this->error("  [ERRO] Diretório raiz não existe: {$root}");
 
-            if (! $dryRun) {
-                mkdir($root, self::DIR_PERMISSION, true);
-                $this->info('  [CORRIGIDO] Diretório raiz criado.');
+            if ($dryRun) {
+                $this->unresolved++;
+
+                return;
             }
 
-            return 1;
+            if (@mkdir($root, self::DIR_PERMISSION, true)) {
+                $this->info('  [CORRIGIDO] Diretório raiz criado.');
+                $this->fixed++;
+            } else {
+                $this->error('  [ERRO] Não foi possível criar o diretório raiz.');
+                $this->unresolved++;
+            }
+
+            return;
         }
 
-        $issues += $this->checkPath($root, true, $dryRun);
+        $this->checkPath($root, true, $dryRun);
 
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
@@ -81,23 +105,28 @@ class CheckStoragePermissions extends Command
         );
 
         foreach ($iterator as $item) {
-            $issues += $this->checkPath($item->getPathname(), $item->isDir(), $dryRun);
+            $this->checkPath($item->getPathname(), $item->isDir(), $dryRun);
         }
 
-        if ($issues === 0) {
+        if ($this->fixed + $this->unresolved === $before) {
             $this->info('  [OK] Nenhum problema encontrado.');
         }
-
-        return $issues;
     }
 
-    private function checkPath(string $path, bool $isDir, bool $dryRun): int
+    private function checkPath(string $path, bool $isDir, bool $dryRun): void
     {
+        if (is_link($path) && ! file_exists($path)) {
+            $this->error("  [ERRO] Link quebrado encontrado: {$path} -> ".readlink($path)." (destino não existe)");
+            $this->unresolved++;
+
+            return;
+        }
+
         $expected = $isDir ? self::DIR_PERMISSION : self::FILE_PERMISSION;
         $current = fileperms($path) & 0777;
 
         if ($current === $expected) {
-            return 0;
+            return;
         }
 
         $type = $isDir ? 'diretório' : 'arquivo';
@@ -106,19 +135,23 @@ class CheckStoragePermissions extends Command
 
         if ($dryRun) {
             $this->warn("  [DIVERGENTE] {$type} {$path} está com {$currentOctal}, esperado {$expectedOctal}");
+            $this->unresolved++;
 
-            return 1;
+            return;
         }
 
-        chmod($path, $expected);
-        $this->info("  [CORRIGIDO] {$type} {$path}: {$currentOctal} -> {$expectedOctal}");
-
-        return 1;
+        if (@chmod($path, $expected)) {
+            $this->info("  [CORRIGIDO] {$type} {$path}: {$currentOctal} -> {$expectedOctal}");
+            $this->fixed++;
+        } else {
+            $this->error("  [ERRO] Não foi possível alterar permissão de {$type} {$path}");
+            $this->unresolved++;
+        }
     }
 
-    private function checkSymlinks(bool $dryRun): int
+    private function checkSymlinks(bool $dryRun): void
     {
-        $issues = 0;
+        $before = $this->fixed + $this->unresolved;
         $this->comment('Links simbólicos');
 
         foreach (config('filesystems.links', []) as $link => $target) {
@@ -130,27 +163,58 @@ class CheckStoragePermissions extends Command
                 continue;
             }
 
-            $issues++;
+            // Link já existe, mas aponta para o lugar errado (ou está quebrado).
+            // Um symlink nunca guarda dados de verdade, então é seguro recriá-lo.
+            if (is_link($link)) {
+                $currentTarget = readlink($link);
 
-            if (! is_link($link) && ! file_exists($link)) {
-                $this->warn("  [FALTANDO] {$link} -> {$target}");
+                if ($dryRun) {
+                    $this->warn("  [DIVERGENTE] {$link} aponta para {$currentTarget}, esperado {$target}");
+                    $this->unresolved++;
 
-                if (! $dryRun) {
-                    symlink($target, $link);
-                    $this->info("  [CORRIGIDO] Link criado: {$link} -> {$target}");
+                    continue;
+                }
+
+                if (unlink($link) && symlink($target, $link)) {
+                    $this->info("  [CORRIGIDO] Link recriado: {$link} -> {$target}");
+                    $this->fixed++;
+                } else {
+                    $this->error("  [ERRO] Não foi possível recriar o link {$link}");
+                    $this->unresolved++;
                 }
 
                 continue;
             }
 
-            $this->error("  [ERRO] {$link} não aponta corretamente para {$target}.");
-            $this->comment('    Execute: php artisan storage:link');
+            // Não existe nada nesse caminho ainda.
+            if (! file_exists($link)) {
+                if ($dryRun) {
+                    $this->warn("  [FALTANDO] {$link} -> {$target}");
+                    $this->unresolved++;
+
+                    continue;
+                }
+
+                if (symlink($target, $link)) {
+                    $this->info("  [CORRIGIDO] Link criado: {$link} -> {$target}");
+                    $this->fixed++;
+                } else {
+                    $this->error("  [ERRO] Não foi possível criar o link {$link}");
+                    $this->unresolved++;
+                }
+
+                continue;
+            }
+
+            // Existe um arquivo/diretório real (não um link) nesse caminho — não é seguro
+            // remover automaticamente, pois pode conter dados reais.
+            $this->error("  [ERRO] {$link} já existe como arquivo/diretório real (não é um link) e não aponta para {$target}.");
+            $this->comment('    Verifique manualmente antes de remover — pode conter dados reais.');
+            $this->unresolved++;
         }
 
-        if ($issues === 0) {
+        if ($this->fixed + $this->unresolved === $before) {
             $this->info('  [OK] Todos os links simbólicos estão corretos.');
         }
-
-        return $issues;
     }
 }
