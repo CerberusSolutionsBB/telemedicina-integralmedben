@@ -2,9 +2,10 @@
 namespace App\Http\Controllers\Siprov;
 
 use App\Http\Controllers\Controller;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Symfony\Component\HttpFoundation\Response;
 
 class SiprovCartaoController extends Controller
@@ -29,73 +30,43 @@ class SiprovCartaoController extends Controller
 
         $cpfFormatado = $this->formatCpf($associado['cpfCnpj']);
         $planoNome    = collect($associado['planos'])->pluck('nome')->implode(', ');
+        $filename     = 'cartao-' . $associado['codPessoa'];
 
-        $template = File::get(resource_path('views/pdf/siprov-cartao.tex'));
-
-        $replacements = [
-            '\\nomeVar'      => $this->escapeLatex($associado['nomePessoa']),
-            '\\cpfVar'       => $this->escapeLatex($cpfFormatado),
-            '\\planoVar'     => $this->escapeLatex($planoNome),
-            '\\codPessoaVar' => (string) $associado['codPessoa'],
-        ];
-
-        $texContent = str_replace(array_keys($replacements), array_values($replacements), $template);
-
-        $tempDir = config('latex.temp_dir');
-        File::makeDirectory($tempDir, 0755, true, true);
-
-        $filename = 'cartao-' . $associado['codPessoa'];
-        $texFile  = $tempDir . '/' . $filename . '.tex';
-        $pdfFile  = $tempDir . '/' . $filename . '.pdf';
-
-        File::put($texFile, $texContent);
-
-        $command = sprintf(
-            '%s %s -output-directory=%s %s 2>&1',
-            config('latex.bin'),
-            config('latex.options'),
-            escapeshellarg($tempDir),
-            escapeshellarg($texFile)
+        $qr = 'data:image/svg+xml;base64,' . base64_encode(
+            QrCode::size(240)->margin(0)->generate((string) $associado['codPessoa'])
         );
 
-        Log::info('SIPROV Cartao | Executando pdflatex', [
-            'command'   => $command,
-            'codPessoa' => $associado['codPessoa'],
-        ]);
+        $dados = [
+            'nome'          => $associado['nomePessoa'],
+            'cpf'           => $cpfFormatado,
+            'codigo'        => $associado['codPessoa'],
+            'plano'         => $planoNome,
+            'emissao'       => now()->format('d/m/Y'),
+            'telefone'      => '(91) 4040-0700',
+            'qr'            => $qr,
+            'logo'          => $this->imageBase64('images/logo_cartao.png'),
+            'logo_vertical' => $this->imageBase64('images/Code_Generated_Image.png'),
+            'fundo_frente'  => $this->imageBase64('images/cartao-frente.png'),
+            'fundo_verso'   => $this->imageBase64('images/cartao-fundo.png'),
+        ];
 
-        exec($command, $output, $returnCode);
-
-        if ($returnCode !== 0 || ! File::exists($pdfFile)) {
-            Log::error('SIPROV Cartao | Erro ao gerar PDF', [
-                'codPessoa'  => $associado['codPessoa'],
-                'returnCode' => $returnCode,
-                'output'     => implode("\n", array_slice($output, -20)),
-            ]);
-
-            File::delete([$texFile, $pdfFile]);
-
-            return back()->withErrors([
-                'pdf' => 'Erro ao gerar cartao PDF. Detalhes: ' . implode("\n", array_slice($output, -10)),
-            ]);
-        }
-
-        $pdfContent = File::get($pdfFile);
-
-        File::delete([
-            $texFile,
-            $pdfFile,
-            $tempDir . '/' . $filename . '.aux',
-            $tempDir . '/' . $filename . '.log',
-        ]);
+        $pdf = Pdf::loadView('pdf.siprov-cartao', $dados);
 
         Log::info('SIPROV Cartao | PDF gerado com sucesso', [
             'codPessoa' => $associado['codPessoa'],
         ]);
 
-        return response($pdfContent, 200, [
+        return response($pdf->output(), 200, [
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '.pdf"',
         ]);
+    }
+
+    private function imageBase64(string $relativePath): string
+    {
+        $path = public_path($relativePath);
+
+        return 'data:' . mime_content_type($path) . ';base64,' . base64_encode(file_get_contents($path));
     }
 
     private function formatCpf(string $cpf): string
@@ -111,53 +82,5 @@ class SiprovCartaoController extends Controller
         }
 
         return $cpf;
-    }
-
-    private function escapeLatex(string $text): string
-    {
-        $specialChars = [
-            '\\' => '\\textbackslash{}',
-            '&'  => '\\&',
-            '%'  => '\\%',
-            '$'  => '\\$',
-            '#'  => '\\#',
-            '_'  => '\\_',
-            '{'  => '\\{',
-            '}'  => '\\}',
-            '~'  => '\\textasciitilde{}',
-            '^'  => '\\textasciicircum{}',
-        ];
-
-        $text = str_replace(array_keys($specialChars), array_values($specialChars), $text);
-
-        $text = str_replace([
-            'á', 'à', 'ã', 'â', 'ä',
-            'é', 'è', 'ê', 'ë',
-            'í', 'ì', 'î', 'ï',
-            'ó', 'ò', 'õ', 'ô', 'ö',
-            'ú', 'ù', 'û', 'ü',
-            'ç', 'ñ',
-            'Á', 'À', 'Ã', 'Â', 'Ä',
-            'É', 'È', 'Ê', 'Ë',
-            'Í', 'Ì', 'Î', 'Ï',
-            'Ó', 'Ò', 'Õ', 'Ô', 'Ö',
-            'Ú', 'Ù', 'Û', 'Ü',
-            'Ç', 'Ñ',
-        ], [
-            '{\\' . "a}", '{\\' . "a}", '{\\~' . "a}", '{\\^' . "a}", '{\\"' . "a}",
-            '{\\' . "e}", '{\\' . "e}", '{\\^' . "e}", '{\\"' . "e}",
-            '{\\' . "i}", '{\\' . "i}", '{\\^' . "i}", '{\\"' . "i}",
-            '{\\' . "o}", '{\\' . "o}", '{\\~' . "o}", '{\\^' . "o}", '{\\"' . "o}",
-            '{\\' . "u}", '{\\' . "u}", '{\\^' . "u}", '{\\"' . "u}",
-            '{\\c' . "c}", '{\\~' . "n}",
-            '{\\' . "A}", '{\\' . "A}", '{\\~' . "A}", '{\\^' . "A}", '{\\"' . "A}",
-            '{\\' . "E}", '{\\' . "E}", '{\\^' . "E}", '{\\"' . "E}",
-            '{\\' . "I}", '{\\' . "I}", '{\\^' . "I}", '{\\"' . "I}",
-            '{\\' . "O}", '{\\' . "O}", '{\\~' . "O}", '{\\^' . "O}", '{\\"' . "O}",
-            '{\\' . "U}", '{\\' . "U}", '{\\^' . "U}", '{\\"' . "U}",
-            '{\\c' . "C}", '{\\~' . "N}",
-        ], $text);
-
-        return $text;
     }
 }
