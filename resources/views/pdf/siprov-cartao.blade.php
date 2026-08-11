@@ -73,8 +73,8 @@
 
         .frente .campo-row {
             position: relative;
-            height: 13pt;
-            margin-bottom: 4pt;
+            height: 22pt;
+            margin-bottom: 5pt;
         }
 
         .frente .campo-row:last-child {
@@ -85,16 +85,16 @@
             position: absolute;
             left: 0;
             top: 0;
-            font-size: 9pt;
+            font-size: 8pt;
             font-weight: bold;
             letter-spacing: 0.4pt;
         }
 
         .frente .campo-valor {
             position: absolute;
-            left: 58pt;
+            left: 0;
             right: 0;
-            top: 0;
+            top: 9pt;
             font-size: 10pt;
             font-weight: bold;
             padding-bottom: 2pt;
