@@ -61,7 +61,7 @@
         .frente .logo-topo {
             position: absolute;
             top: 12pt;
-            right: 14pt;
+            right: 14%;
         }
 
         .frente .campos {
@@ -184,6 +184,7 @@
             transform: rotate(-90deg);
             transform-origin: left top;
             white-space: nowrap;
+            text-align: center;
             font-size: 5.5pt;
             font-weight: bold;
             letter-spacing: 0.7pt;
@@ -200,7 +201,7 @@
     <div class="card frente">
         <div class="logo-topo">
             <div class="icon-heart">
-                <img src="{{ $logo }}" alt="Logo">
+                <img src="{{ $logo }}" alt="Logo" style="height: 50px; width: 70px; ">
             </div>
         </div>
         <div class="campos">
@@ -231,7 +232,7 @@
 
         <div class="info-vertical">
             <div class="txt1">Solicite atendimento 24h</div>
-            <div class="fone">{{ $telefone }}</div>
+            {{-- <div class="fone">{{ $telefone }}</div> --}}
             <div class="cpf">CPF: {{ $cpf }}</div>
         </div>
 
