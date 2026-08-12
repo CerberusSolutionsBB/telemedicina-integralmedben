@@ -3,7 +3,6 @@
 namespace App\Services\Tenant;
 
 use App\Models\Tenant;
-use Illuminate\Support\Facades\Storage;
 
 class TenantPublicService
 {
@@ -20,8 +19,7 @@ class TenantPublicService
         $detail = $tenant->details->firstOrFail();
         $logoUrl = null;
         if ($detail->logo) {
-            $logoPath = $tenant->id.'/'.basename($detail->logo);
-            $logoUrl = $this->tenantAssetUrl($logoPath);
+            $logoUrl = route('pagina.configuracao.logo.show', $tenant->id);
         }
 
         return [
@@ -33,12 +31,5 @@ class TenantPublicService
             'url' => $tenant->url,
             'logo' => $logoUrl,
         ];
-    }
-
-    private function tenantAssetUrl(string $path): string
-    {
-        $relativePath = parse_url(Storage::disk('tenants')->url($path), PHP_URL_PATH);
-
-        return request()->getSchemeAndHttpHost().$relativePath;
     }
 }

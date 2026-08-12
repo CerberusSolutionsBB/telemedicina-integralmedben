@@ -3,6 +3,7 @@ import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import SearchInput from "@/Components/SearchInput.vue";
 import { computed, ref, reactive, watch, nextTick, onUnmounted } from "vue";
 import { useForm } from "@inertiajs/vue3";
+import { Settings, Info } from "lucide-vue-next";
 
 const props = defineProps({
     configurations: {
@@ -242,20 +243,29 @@ onUnmounted(() => {
 
         <div class="space-y-8">
             <!-- TOPO -->
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div>
-                    <h2 class="text-3xl font-bold text-gray-900 tracking-tight">
-                        Opções de configuração
-                    </h2>
-                    <p class="text-sm text-gray-500 mt-1">
-                        Busque e edite as configurações disponíveis para este tenant.
-                    </p>
-                </div>
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div class="flex items-start gap-4 w-full">
+                        <div class="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center shrink-0">
+                            <Settings class="w-8 h-8 text-cyan-600" />
+                        </div>
 
-                <div class="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm">
-                    <span class="font-medium">
-                        {{ props.configurations.length }} configurações
-                    </span>
+                        <div class="flex-1 min-w-0">
+                            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 truncate">
+                                Opções de configuração
+                            </h1>
+
+                            <p class="text-sm text-gray-500 mt-1">
+                                Busque e edite as configurações disponíveis para este tenant.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 px-4 py-2 bg-cyan-50 text-cyan-700 rounded-lg text-sm shrink-0">
+                        <span class="font-medium">
+                            {{ props.configurations.length }} configurações
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -283,7 +293,7 @@ onUnmounted(() => {
                     <button v-for="category in allCategories" :key="category" type="button"
                         @click="activeCategory = category"
                         class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap" :class="activeCategory === category
-                            ? 'bg-gray-900 text-white shadow-lg'
+                            ? 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm cursor-pointer'
                             : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                             ">
                         {{ categoryLabels[category] || category }}
@@ -347,14 +357,22 @@ onUnmounted(() => {
                             <Transition name="expand">
                                 <div v-if="isExpanded(config.key)" class="border-t border-gray-100">
                                     <div class="p-5 space-y-4">
-                                        <div class="flex items-center gap-2 text-xs text-gray-400">
-                                            <code class="bg-gray-100 px-2 py-1 rounded font-mono">
-                                        {{ config.key }}
-                                    </code>
-                                        </div>
-
-                                        <!-- IMAGE -->
                                         <div v-if="config.type === 'image'" class="space-y-3">
+                                            <div
+                                                class="flex items-start gap-3 p-4 rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-800">
+                                                <Info class="w-5 h-5 shrink-0 mt-0.5" />
+                                                <div class="text-sm">
+                                                    <p class="font-medium">
+                                                        Formatos aceitos: JPG, PNG, GIF, WEBP e SVG
+                                                    </p>
+                                                    <p class="text-xs text-cyan-700 mt-1">
+                                                        Tamanho máximo de 2MB por arquivo. Recomendamos imagens em PNG
+                                                        com
+                                                        fundo transparente para melhor exibição da logo.
+                                                    </p>
+                                                </div>
+                                            </div>
+
                                             <div
                                                 class="relative group/image rounded-xl overflow-hidden bg-gray-50 border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
                                                 <img v-if="previews[config.key]?.url || config.value"
@@ -376,7 +394,10 @@ onUnmounted(() => {
                                                     </button>
                                                 </div>
                                             </div>
-
+                                            <span class="text-xs text-gray-400">
+                                                Última atualização:
+                                                {{ config.updated_at || "Nunca" }}
+                                            </span>
                                             <div class="flex items-center gap-3">
                                                 <label class="flex-1 cursor-pointer">
                                                     <input :ref="el => setFileRef(el, config.key)" type="file"
@@ -405,14 +426,12 @@ onUnmounted(() => {
 
                                         <!-- FOOTER -->
                                         <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                                            <span class="text-xs text-gray-400">
-                                                Última atualização:
-                                                {{ config.updated_at || "Nunca" }}
-                                            </span>
+
 
                                             <button v-if="config.type === 'image'" type="button"
                                                 @click="saveConfig(config)" :disabled="savingKeys.has(config.key)"
-                                                class="px-4 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-all disabled:opacity-50 flex items-center gap-2">
+                                                class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm cursor-pointer"
+                                                style="width: 100%;">
                                                 <svg v-if="savingKeys.has(config.key)" class="w-3 h-3 animate-spin"
                                                     fill="none" viewBox="0 0 24 24">
                                                     <circle class="opacity-25" cx="12" cy="12" r="10"
@@ -421,7 +440,7 @@ onUnmounted(() => {
                                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                                 </svg>
 
-                                                <span>
+                                                <span class="text-center">
                                                     {{ savingKeys.has(config.key) ? "Salvando..." : "Salvar" }}
                                                 </span>
                                             </button>
