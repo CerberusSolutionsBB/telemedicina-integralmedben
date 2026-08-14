@@ -177,19 +177,26 @@
 
         .verso .selo-vertical {
             position: absolute;
-            left: 228pt;
+            left: 200pt;
             top: 132pt;
             width: 112pt;
-            height: 7pt;
+            height: 78pt;
             transform: rotate(-90deg);
             transform-origin: left top;
-            white-space: nowrap;
             text-align: center;
-            font-size: 5.5pt;
+            font-size: 3.5pt;
             font-weight: bold;
             letter-spacing: 0.7pt;
             opacity: 0.7;
-            text-transform: uppercase;
+            /* text-transform: uppercase; */
+        }
+
+        .verso .selo-vertical div {
+            margin-bottom: 2pt;
+        }
+
+        .verso .selo-vertical div:last-child {
+            margin-bottom: 0;
         }
     </style>
     <base target="_blank">
@@ -235,8 +242,12 @@
             {{-- <div class="fone">{{ $telefone }}</div> --}}
             <div class="cpf">CPF: {{ $cpf }}</div>
         </div>
-
-        <div class="selo-vertical">Cartão pessoal e intransferível</div>
+        <div class="selo-vertical">
+            <div>Apresente este cartão nos locais conveniados</div>
+            <div>o obtenha benefícios especiais</div>
+            <div>Consute o regulamento em nosso site:</div>
+            <div>www.integralmedben.com.br</div>
+        </div>
     </div>
 
 </body>

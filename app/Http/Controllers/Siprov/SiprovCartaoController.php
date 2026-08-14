@@ -30,10 +30,11 @@ class SiprovCartaoController extends Controller
 
         $cpfFormatado = $this->formatCpf($associado['cpfCnpj']);
         $planoNome    = collect($associado['planos'])->pluck('nome')->implode(', ');
+        $planoNome    = preg_replace('/MEDBEM/i', 'MEDBEN', $planoNome);
         $filename     = 'cartao-' . $associado['codPessoa'];
 
         $qr = 'data:image/svg+xml;base64,' . base64_encode(
-            QrCode::size(240)->margin(0)->generate((string) $associado['codPessoa'])
+            QrCode::size(240)->margin(0)->generate(config('services.qrcode.link'))
         );
 
         $dados = [
