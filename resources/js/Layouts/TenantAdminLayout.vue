@@ -4,7 +4,6 @@ import {
     Users,
     UserCircle,
     LogOut,
-    ChevronRight,
     ChevronDown,
     ClipboardList,
     Bell,
@@ -12,7 +11,7 @@ import {
     LayoutDashboard,
     Settings,
 } from "lucide-vue-next";
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
 
 const props = defineProps({
     tenantName: {
@@ -32,7 +31,6 @@ const tenantPublic = computed(() => page.props.tenant_public);
 
 const logoutForm = useForm({});
 
-const open = ref(false);
 const showUserMenu = ref(false);
 
 const logout = () => {
@@ -70,105 +68,57 @@ const tenantInitial = computed(() => {
 
 <template>
     <div class="min-h-screen bg-gray-50">
-        <!-- Backdrop -->
-        <transition name="fade">
-            <div v-if="open" class="fixed inset-0 z-30 bg-black/30" @click="open = false" />
-        </transition>
-
-        <!-- SIDEBAR -->
-        <aside :class="[
-            'fixed inset-y-0 left-0 z-40 flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out',
-            open ? 'w-64 shadow-xl' : 'w-16',
-        ]">
-            <!-- Toggle -->
-            <button @click="open = !open"
-                class="absolute -right-3 top-6 z-10 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors">
-                <ChevronRight :class="[
-                    'w-3.5 h-3.5 text-gray-500 transition-transform duration-300',
-                    open ? 'rotate-180' : '',
-                ]" />
-            </button>
-
+        <!-- SIDEBAR — sempre aberta e fixa -->
+        <aside class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-white border-r border-gray-200 shadow-sm">
             <!-- Header Sidebar -->
-            <div class="p-4 border-b border-gray-200 overflow-hidden">
+            <div class="p-5 border-b border-gray-200">
+                <img v-if="tenantPublic?.logo" :src="tenantPublic?.logo" :alt="tenantName"
+                    class="h-14 object-contain" />
 
-                <template v-if="open">
-                    <img v-if="tenantPublic?.logo" :src="tenantPublic?.logo" :alt="tenantName"
-                        class="h-14 object-contain" />
-
-                    <div v-else class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-cyan-600 flex items-center justify-center shrink-0">
-                            <span class="text-white text-base font-bold">
-                                {{ tenantInitial }}
-                            </span>
-                        </div>
-
-                        <div class="min-w-0">
-                            <span class="block font-semibold text-gray-800 truncate">
-                                {{ tenantName || tenantPublic?.name || "Tenant" }}
-                            </span>
-                            <p class="text-xs text-gray-400 truncate">
-                                Painel do Tenant
-                            </p>
-                        </div>
-                    </div>
-                </template>
-
-                <template v-else>
-                    <img v-if="tenantPublic?.logo" :src="tenantPublic?.logo" :alt="tenantName"
-                        class="h-14 object-contain  rounded-lg " />
-                    <div v-else class="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center mx-auto">
-                        <span class="text-white text-sm font-bold">
+                <div v-else class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-cyan-600 flex items-center justify-center shrink-0">
+                        <span class="text-white text-base font-bold">
                             {{ tenantInitial }}
                         </span>
                     </div>
-                </template>
+
+                    <div class="min-w-0">
+                        <span class="block font-semibold text-gray-800 truncate">
+                            {{ tenantName || tenantPublic?.name || "Tenant" }}
+                        </span>
+                        <p class="text-sm text-gray-400 truncate">
+                            Painel do Tenant
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <!-- Navegação -->
-            <nav class="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden">
-                <Link v-for="link in navLinks" :key="link.routeName" :href="route(link.routeName)"
-                    :title="!open ? link.label : undefined" @click="open = false" :class="[
-                        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                        !open ? 'justify-center' : '',
-                        route().current(link.routeName)
-                            ? 'bg-cyan-50 text-cyan-700'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                    ]">
-                    <component :is="link.icon" class="w-5 h-5 shrink-0" />
-                    <span v-if="open" class="whitespace-nowrap">
-                        {{ link.label }}
-                    </span>
+            <nav class="flex-1 p-3 space-y-2 overflow-y-auto">
+                <Link v-for="link in navLinks" :key="link.routeName" :href="route(link.routeName)" :class="[
+                    'flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-medium border-l-4 transition-colors',
+                    route().current(link.routeName)
+                        ? 'bg-cyan-50 text-cyan-700 border-cyan-600 font-semibold'
+                        : 'border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                ]">
+                    <component :is="link.icon" class="w-6 h-6 shrink-0" />
+                    <span>{{ link.label }}</span>
                 </Link>
-
-                <!-- <a :href="route('public_form.show')" target="_blank" :title="!open ? 'Formulário Público' : undefined"
-                    @click="open = false" :class="[
-                        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors',
-                        !open ? 'justify-center' : '',
-                    ]">
-                    <FileText class="w-5 h-5 shrink-0" />
-
-                    <template v-if="open">
-                        Formulário Público
-                        <ExternalLink class="w-3.5 h-3.5 ml-auto opacity-50" />
-                    </template>
-                </a> -->
             </nav>
 
-            <!-- Footer sidebar fechado -->
-            <div v-if="!open" class="p-2 border-t border-gray-200">
-                <button @click="logout" :disabled="logoutForm.processing" title="Sair"
-                    class="flex items-center justify-center w-full px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
-                    <LogOut class="w-5 h-5 shrink-0" />
+            <!-- Footer do Sidebar: Sair sempre visível -->
+            <div class="p-3 border-t border-gray-200">
+                <button type="button" @click="logout" :disabled="logoutForm.processing"
+                    class="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-base font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
+                    <LogOut class="w-6 h-6 shrink-0" />
+                    <span v-if="logoutForm.processing">Saindo...</span>
+                    <span v-else>Sair</span>
                 </button>
             </div>
         </aside>
 
         <!-- MAIN -->
-        <main :class="[
-            'min-h-screen transition-all duration-300',
-            open ? 'ml-64' : 'ml-16',
-        ]">
+        <main class="min-h-screen ml-72">
             <!-- STATUS BAR SUPERIOR -->
             <header class="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
                 <div class="flex items-center justify-between">
@@ -280,15 +230,3 @@ const tenantInitial = computed(() => {
         </main>
     </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.25s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-</style>

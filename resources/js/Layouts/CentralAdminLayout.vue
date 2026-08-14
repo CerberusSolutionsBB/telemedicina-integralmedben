@@ -3,7 +3,7 @@ import { Link, useForm, usePage } from "@inertiajs/vue3";
 import {
     LayoutDashboard, Settings, BookMarked, Building2,
     ClipboardList, Users, MessageSquare, ScrollText, LandmarkIcon,
-    BarChart3, LogOut, ChevronRight, ChevronDown, AppWindowIcon,
+    BarChart3, LogOut, ChevronDown, AppWindowIcon,
     UserCircle, Bell, Shield, Key, Activity
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
@@ -12,7 +12,6 @@ const page = usePage();
 const authUser = computed(() => page.props.auth?.user);
 
 const logoutForm = useForm({});
-const open = ref(false);
 const expandedMenus = ref([]);
 const showUserMenu = ref(false);
 
@@ -54,88 +53,64 @@ const navLinks = [
 
 <template>
     <div class="min-h-screen bg-gray-50">
-        <!-- Backdrop -->
-        <transition name="fade">
-            <div v-if="open" class="fixed inset-0 z-30 bg-black/30" @click="open = false" />
-        </transition>
-
         <!-- ════════════════════════════════════════ -->
-        <!-- SIDEBAR (esquerda) -->
+        <!-- SIDEBAR (esquerda) — sempre aberta e fixa -->
         <!-- ════════════════════════════════════════ -->
-        <aside :class="[
-            'fixed inset-y-0 left-0 z-40 flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out',
-            open ? 'w-64 shadow-xl' : 'w-16',
-        ]">
-            <!-- Toggle -->
-            <button @click="open = !open"
-                class="absolute -right-3 top-6 z-10 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors">
-                <ChevronRight
-                    :class="['w-3.5 h-3.5 text-gray-500 transition-transform duration-300', open ? 'rotate-180' : '']" />
-            </button>
-
+        <aside
+            class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-white border-r border-gray-200 shadow-sm">
             <!-- Header -->
-            <div class="p-4 border-b border-gray-200 overflow-hidden">
-                <template v-if="open">
-                    <span class="text-lg font-bold text-gray-900 tracking-tight whitespace-nowrap">
-                        IntegralMedBen
-                    </span>
-                    <p class="text-xs text-gray-400 mt-0.5">Painel Administrativo</p>
-                </template>
-                <template v-else>
-                    <div class="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center mx-auto">
-                        <span class="text-white text-sm font-bold">I</span>
-                    </div>
-                </template>
+            <div class="p-5 border-b border-gray-200">
+                <span class="text-xl font-bold text-gray-900 tracking-tight">
+                    IntegralMedBen
+                </span>
+                <p class="text-sm text-gray-400 mt-0.5">Painel Administrativo</p>
             </div>
 
             <!-- Nav -->
-            <nav class="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden">
+            <nav class="flex-1 p-3 space-y-2 overflow-y-auto">
                 <template v-for="link in navLinks" :key="link.routeName || link.key">
 
                     <!-- Link Simples -->
-                    <Link v-if="!link.children" :href="route(link.routeName)" :title="!open ? link.label : undefined"
-                        @click="open = false" :class="[
-                            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                            !open ? 'justify-center' : '',
-                            route().current(link.routeName)
-                                ? 'bg-cyan-50 text-cyan-700'
-                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                        ]">
-                        <component :is="link.icon" class="w-5 h-5 shrink-0" />
-                        <span v-if="open" class="whitespace-nowrap">{{ link.label }}</span>
+                    <Link v-if="!link.children" :href="route(link.routeName)" :class="[
+                        'flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-medium border-l-4 transition-colors',
+                        route().current(link.routeName)
+                            ? 'bg-cyan-50 text-cyan-700 border-cyan-600 font-semibold'
+                            : 'border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                    ]">
+                        <component :is="link.icon" class="w-6 h-6 shrink-0" />
+                        <span>{{ link.label }}</span>
                     </Link>
 
                     <!-- Menu com Submenu -->
                     <div v-else class="space-y-1">
-                        <button @click="toggleMenu(link.key)" :title="!open ? link.label : undefined" :class="[
-                            'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                            !open ? 'justify-center' : 'justify-between',
+                        <button type="button" @click="toggleMenu(link.key)" :class="[
+                            'flex items-center justify-between gap-3 w-full px-4 py-3.5 rounded-xl text-base font-medium border-l-4 transition-colors',
                             isMenuExpanded(link.key) || link.children.some(c => route().current(c.routeName))
-                                ? 'bg-cyan-50 text-cyan-700'
-                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                                ? 'bg-cyan-50 text-cyan-700 border-cyan-600 font-semibold'
+                                : 'border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                         ]">
-                            <div class="flex items-center gap-3" :class="!open ? 'justify-center' : ''">
-                                <component :is="link.icon" class="w-5 h-5 shrink-0" />
-                                <span v-if="open" class="whitespace-nowrap">{{ link.label }}</span>
-                            </div>
-                            <ChevronDown v-if="open"
-                                :class="['w-4 h-4 transition-transform duration-200', isMenuExpanded(link.key) ? 'rotate-180' : '']" />
+                            <span class="flex items-center gap-3">
+                                <component :is="link.icon" class="w-6 h-6 shrink-0" />
+                                <span>{{ link.label }}</span>
+                            </span>
+                            <ChevronDown
+                                :class="['w-5 h-5 shrink-0 transition-transform duration-200', isMenuExpanded(link.key) ? 'rotate-180' : '']" />
                         </button>
 
                         <transition enter-active-class="transition-all duration-200 ease-out"
                             enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0"
                             leave-active-class="transition-all duration-150 ease-in"
                             leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-2">
-                            <div v-if="open && isMenuExpanded(link.key)" class="pl-4 space-y-1">
+                            <div v-if="isMenuExpanded(link.key)" class="pl-6 space-y-1">
                                 <Link v-for="child in link.children" :key="child.routeName"
                                     :href="route(child.routeName)" :class="[
-                                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                                        'flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors',
                                         route().current(child.routeName)
                                             ? 'bg-cyan-100 text-cyan-800 font-medium'
                                             : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700',
                                     ]">
-                                    <component :is="child.icon" class="w-4 h-4 shrink-0" />
-                                    <span class="whitespace-nowrap">{{ child.label }}</span>
+                                    <component :is="child.icon" class="w-5 h-5 shrink-0" />
+                                    <span>{{ child.label }}</span>
                                 </Link>
                             </div>
                         </transition>
@@ -144,12 +119,13 @@ const navLinks = [
                 </template>
             </nav>
 
-            <!-- Footer do Sidebar (apenas Sair quando fechado) -->
-            <div v-if="!open" class="p-2 border-t border-gray-200">
-                <button @click="logout" :disabled="logoutForm.processing" title="Sair" :class="[
-                    'flex items-center justify-center w-full px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors',
-                ]">
-                    <LogOut class="w-5 h-5 shrink-0" />
+            <!-- Footer do Sidebar: Sair sempre visível -->
+            <div class="p-3 border-t border-gray-200">
+                <button type="button" @click="logout" :disabled="logoutForm.processing"
+                    class="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-base font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
+                    <LogOut class="w-6 h-6 shrink-0" />
+                    <span v-if="logoutForm.processing">Saindo...</span>
+                    <span v-else>Sair</span>
                 </button>
             </div>
         </aside>
@@ -157,7 +133,7 @@ const navLinks = [
         <!-- ════════════════════════════════════════ -->
         <!-- MAIN CONTENT -->
         <!-- ════════════════════════════════════════ -->
-        <main :class="['min-h-screen transition-all duration-300', open ? 'ml-64' : 'ml-16']">
+        <main class="min-h-screen ml-72">
 
             <!-- ════════════════════════════════════════ -->
             <!-- ✅ BARRA DE STATUS SUPERIOR -->
@@ -272,15 +248,3 @@ const navLinks = [
         </main>
     </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.25s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-</style>

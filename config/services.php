@@ -40,4 +40,8 @@ return [
         'password' => env('ZOUG_PASSWORD'),
     ],
 
+    'qrcode' => [
+        'link' => env('LINK_QRCODE'),
+    ],
+
 ];
