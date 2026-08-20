@@ -17,13 +17,19 @@ class DestroyFormController extends Controller
     {
         Gate::authorize('forms.delete');
 
-        // Validação prévia
-        if ($form->responses()->count() > 0) {
+        $user = $request->user();
+        $isAdmin = $user && $user->hasAnyRole(['Admin', 'Manager']);
+        $responsesCount = $form->responses()->count();
+
+        // Usuários comuns não podem excluir formulários com respostas.
+        // Admin/Manager podem, e nesse caso as respostas são excluídas junto (soft delete).
+        if (! $isAdmin && $responsesCount > 0) {
             return back()->with('error', 'Este formulário possui respostas e não pode ser excluído.');
         }
 
         try {
             DB::transaction(function () use ($form) {
+                $form->responses()->delete();
                 $form->fields()->delete();
                 $form->delete();
             });
@@ -31,6 +37,7 @@ class DestroyFormController extends Controller
             Log::info('Formulário excluído', [
                 'form_id' => $form->id,
                 'user_id' => auth()->id(),
+                'responses_deleted' => $responsesCount,
                 'deleted_at' => now(),
             ]);
 
