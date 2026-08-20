@@ -6,18 +6,22 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Services\User\UserService;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class CentralUserController extends Controller
 {
     public function __construct(private UserService $userService) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $users = $this->userService->getUsers();
+        $search = $request->string('search')->toString() ?: null;
+
+        $users = $this->userService->getUsers($search);
 
         return Inertia::render('CentralUser/Index', [
             'users' => $users,
+            'filters' => ['search' => $search],
         ]);
     }
 

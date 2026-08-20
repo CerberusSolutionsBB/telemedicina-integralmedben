@@ -1,5 +1,5 @@
 <script setup>
-import { Pencil, Trash2, Shield } from "lucide-vue-next";
+import { Pencil, Trash2, Shield, Users } from "lucide-vue-next";
 import {
   Table,
   TableBody,
@@ -80,6 +80,15 @@ const roleName = (user) => {
                 class="w-5 h-5 cursor-pointer hover:text-red-600"
                 @click="emit('delete-user', user)"
               />
+            </div>
+          </TableCell>
+        </TableRow>
+
+        <TableRow v-if="!users.data || users.data.length === 0">
+          <TableCell colspan="6" class="text-center py-8 text-gray-500">
+            <div class="flex flex-col items-center gap-2">
+              <Users class="w-8 h-8 text-gray-300" />
+              <span>Nenhum usuário encontrado.</span>
             </div>
           </TableCell>
         </TableRow>
