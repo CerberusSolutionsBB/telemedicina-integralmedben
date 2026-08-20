@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from "vue";
-import { Head, router, Link } from "@inertiajs/vue3";
+import { Head, router, Link, usePage } from "@inertiajs/vue3";
 import { Button } from "@/Components/ui/button";
 import CentralAdminLayout from "@/Layouts/CentralAdminLayout.vue";
 import { showToast } from '@/Utils/toast';
@@ -262,7 +262,14 @@ const deleteForm = async () => {
         await router.delete(route('forms.destroy', props.form.id), {
             preserveScroll: true,
             onSuccess: () => {
-                showToast('Formulário excluído com sucesso!', 'success');
+                // back()->with('error', ...) do backend é uma navegação bem-sucedida
+                // para o Inertia, então a flash precisa ser checada aqui.
+                const flash = usePage().props.flash;
+                if (flash?.error) {
+                    showToast(flash.error, 'error');
+                    return;
+                }
+                showToast(flash?.success || 'Formulário excluído com sucesso!', 'success');
             },
             onError: (errors) => {
                 const message = errors?.message || 'Erro ao excluir formulário. Tente novamente.';

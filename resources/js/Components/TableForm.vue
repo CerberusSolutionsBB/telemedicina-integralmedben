@@ -4,7 +4,7 @@ import {
     Pencil, Trash2, Eye, Globe, Lock, FileText, Calendar, User, Play,
     ExternalLink, Pause, Square, EyeOff
 } from "lucide-vue-next";
-import { router } from "@inertiajs/vue3";
+import { router, usePage } from "@inertiajs/vue3";
 import Table from "./ui/table/Table.vue";
 import TableHeader from "./ui/table/TableHeader.vue";
 import TableRow from "./ui/table/TableRow.vue";
@@ -263,7 +263,16 @@ const confirmDelete = () => {
     router.delete(route('forms.destroy', form.id), {
         preserveScroll: true,
         onSuccess: () => {
-            showToast('Formulário excluído com sucesso!', 'success');
+            // O backend pode bloquear a exclusão (ex.: formulário com respostas)
+            // retornando back()->with('error', ...), que o Inertia trata como
+            // navegação bem-sucedida. Por isso a flash precisa ser checada aqui.
+            const flash = usePage().props.flash;
+            if (flash?.error) {
+                showToast(flash.error, 'error');
+                deleteModal.value.isProcessing = false;
+                return;
+            }
+            showToast(flash?.success || 'Formulário excluído com sucesso!', 'success');
             closeDeleteModal();
         },
         onError: (errors) => {
