@@ -30,6 +30,7 @@ class PaginaShowController extends Controller
         $detail = TenantsDetail::where('tenant_id', $tenant->id)->first();
         $statusFormularioDinamico = $detail->configuracao['status_formulario_dinamico'] ?? false;
         $telemedicinaEnabled = $detail->configuracao['telemedicina_enabled'] ?? false;
+        $cartaoPacienteEnabled = $detail->configuracao['cartao_paciente_enabled'] ?? false;
 
         $telemedicinaQuestions = Question::where('role', QuestionRoleEnum::Plan->value)->get();
 
@@ -79,6 +80,7 @@ class PaginaShowController extends Controller
             'arquivos' => $logo ? [$logo] : [],
             'statusFormularioDinamico' => $statusFormularioDinamico,
             'telemedicinaEnabled' => $telemedicinaEnabled,
+            'cartaoPacienteEnabled' => $cartaoPacienteEnabled,
             'telemedicinaQuestions' => $telemedicinaQuestions,
             'telemedicinaVinculados' => $telemedicinaVinculados,
             'allTenants' => Tenant::whereNull('deleted_at')

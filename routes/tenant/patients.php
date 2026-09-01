@@ -23,6 +23,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/patients/{patient}/pdf', [PatientController::class, 'downloadPdf'])
             ->name('patients.pdf');
 
+        Route::get('/patients/{patient}/cartao', [PatientController::class, 'cartao'])
+            ->name('patients.cartao');
+
         Route::post('/patients/{patient}/resend-sms', [PatientController::class, 'resendSms'])
             ->name('patients.resend-sms');
     });

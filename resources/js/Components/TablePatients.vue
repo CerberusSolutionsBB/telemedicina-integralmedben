@@ -1,7 +1,9 @@
 <script setup>
 import { ref, computed } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
-import { FileText, Download, Pencil, Trash2, Eye, Search } from "lucide-vue-next";
+import { FileText, Download, Pencil, Trash2, Eye, Search, CreditCard } from "lucide-vue-next";
+import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal.vue";
+import { showToast } from "@/Utils/toast";
 import {
     Table,
     TableBody,
@@ -16,6 +18,10 @@ const props = defineProps({
     patients: {
         type: Object,
         required: true,
+    },
+    cartaoPacienteEnabled: {
+        type: Boolean,
+        default: false,
     },
 });
 
@@ -143,6 +149,50 @@ const onSearch = (value) => {
 
 const onFilterChange = () => {
     navigate();
+};
+
+const cartaoModal = ref({
+    show: false,
+    patient: null,
+    isProcessing: false,
+});
+
+const openCartaoModal = (patient) => {
+    cartaoModal.value = { show: true, patient, isProcessing: false };
+};
+
+const closeCartaoModal = () => {
+    if (cartaoModal.value.isProcessing) return;
+    cartaoModal.value.show = false;
+    setTimeout(() => {
+        cartaoModal.value.patient = null;
+        cartaoModal.value.isProcessing = false;
+    }, 200);
+};
+
+const confirmGerarCartao = async () => {
+    const patient = cartaoModal.value.patient;
+    if (!patient) return;
+
+    cartaoModal.value.isProcessing = true;
+
+    try {
+        const response = await fetch(route('patients.cartao', patient.id));
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cartao-' + (patient.id || 'paciente') + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch {
+        showToast('Erro ao gerar cartão. Tente novamente.', 'error');
+    } finally {
+        cartaoModal.value.isProcessing = false;
+        closeCartaoModal();
+    }
 };
 </script>
 
@@ -330,6 +380,11 @@ const onFilterChange = () => {
                                         title="Ver detalhes">
                                         <Eye class="w-4 h-4" />
                                     </button>
+                                    <button v-if="cartaoPacienteEnabled" @click="openCartaoModal(patient)"
+                                        class="p-1.5 rounded-lg text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 transition-all"
+                                        title="Gerar Cartão">
+                                        <CreditCard class="w-4 h-4" />
+                                    </button>
                                     <a :href="route('patients.pdf', patient.id)" target="_blank"
                                         class="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all"
                                         title="PDF">
@@ -370,4 +425,10 @@ const onFilterChange = () => {
             </div>
         </div>
     </div>
+
+    <ConfirmDeleteModal :show="cartaoModal.show" title="Gerar Cartão de Benefício"
+        :message="'Deseja gerar o cartão de benefício para ' + (cartaoModal.patient?.nome || 'este paciente') + '?'"
+        warning-message="O cartão será baixado automaticamente como arquivo PDF." confirm-text="Sim, Gerar"
+        cancel-text="Cancelar" :is-processing="cartaoModal.isProcessing" variant="info" @close="closeCartaoModal"
+        @confirm="confirmGerarCartao" />
 </template>

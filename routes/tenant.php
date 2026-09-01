@@ -55,6 +55,7 @@ Route::middleware([
         Route::delete('/patients/{patient}', [PatientController::class, 'destroy'])->name('patients.destroy');
         Route::get('/patients/{patient}', [PatientController::class, 'show'])->name('patients.show');
         Route::get('/patients/{patient}/pdf', [PatientController::class, 'downloadPdf'])->name('patients.pdf');
+        Route::get('/patients/{patient}/cartao', [PatientController::class, 'cartao'])->name('patients.cartao');
         Route::post('/patients/{patient}/resend-sms', [PatientController::class, 'resendSms'])->name('patients.resend-sms');
         Route::post('/patients/{patient}/sms-logs/{smsLog}/resend', [PatientController::class, 'resendSmsLog'])->name('patients.sms-logs.resend');
         Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->name('patients.toggle-status');

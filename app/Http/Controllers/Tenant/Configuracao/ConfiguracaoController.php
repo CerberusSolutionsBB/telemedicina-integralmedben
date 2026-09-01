@@ -227,6 +227,35 @@ class ConfiguracaoController extends Controller
         }
     }
 
+    public function toggleCartaoPaciente(Tenant $tenant)
+    {
+        try {
+            $detail = TenantsDetail::firstOrCreate([
+                'tenant_id' => $tenant->id,
+            ]);
+
+            $config = $detail->configuracao ?? [];
+            $current = $config['cartao_paciente_enabled'] ?? false;
+            $config['cartao_paciente_enabled'] = ! $current;
+            $detail->update(['configuracao' => $config]);
+
+            return redirect()
+                ->route('pagina.show', $tenant->id)
+                ->with('message', 'Cartão de Paciente atualizado com sucesso.')
+                ->with('type', 'success');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao atualizar cartao_paciente_enabled', [
+                'tenant_id' => $tenant->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('message', 'Não foi possível atualizar o status.')
+                ->with('type', 'error');
+        }
+    }
+
     public function syncTelemedicina(Request $request, Tenant $tenant)
     {
         try {

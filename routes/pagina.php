@@ -32,6 +32,7 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::put('{tenantForm}/expires-at', [ConfiguracaoController::class, 'createExpiresAt'])->name('expires-at');
     Route::delete('{tenantForm}/unlink', [ConfiguracaoController::class, 'removeVinculo'])->name('unlink');
     Route::put('/{tenant}/status-formulario-dinamico', [ConfiguracaoController::class, 'toggleStatusFormularioDinamico'])->name('status-formulario-dinamico');
+    Route::put('/{tenant}/cartao-paciente', [ConfiguracaoController::class, 'toggleCartaoPaciente'])->name('cartao-paciente');
     Route::put('/{tenant}/telemedicina', [ConfiguracaoController::class, 'syncTelemedicina'])->name('telemedicina');
     Route::delete('/{tenant}/telemedicina/{telemedicinaTenant}', [ConfiguracaoController::class, 'unlinkTelemedicina'])->name('telemedicina.unlink');
     Route::get('/siprov/search', [ConfiguracaoController::class, 'searchSiprov'])->name('telemedicina.searchSiprov');
