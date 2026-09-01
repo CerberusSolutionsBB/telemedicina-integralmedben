@@ -39,7 +39,8 @@ import {
     Info,
     ChevronLeft,
     ChevronRight,
-    ImagesIcon
+    ImagesIcon,
+    CreditCard
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -64,6 +65,10 @@ const props = defineProps({
         default: false,
     },
     telemedicinaEnabled: {
+        type: Boolean,
+        default: false,
+    },
+    cartaoPacienteEnabled: {
         type: Boolean,
         default: false,
     },
@@ -116,6 +121,7 @@ const smsDeleteModal = ref(false)
 const smsDeleteItem = ref(null)
 const isDeletingSms = ref(false)
 const isTogglingStatus = ref(false)
+const isTogglingCartaoPaciente = ref(false)
 
 const isSavingTelemedicina = ref(false)
 const telemedicinaSearch = ref('')
@@ -584,6 +590,39 @@ const toggleStatusFormularioDinamico = () => {
 
             onFinish: () => {
                 isTogglingStatus.value = false
+            },
+        },
+    )
+}
+
+const toggleCartaoPaciente = () => {
+    if (!props.tenant?.id) {
+        showToast('Tenant não encontrado.', 'error')
+        return
+    }
+
+    isTogglingCartaoPaciente.value = true
+
+    router.put(
+        route('pagina.configuracao.cartao-paciente', props.tenant.id),
+        {},
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                showToast('Status atualizado com sucesso!', 'success')
+                router.reload({
+                    only: ['cartaoPacienteEnabled'],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: () => {
+                showToast('Erro ao atualizar status.', 'error')
+            },
+
+            onFinish: () => {
+                isTogglingCartaoPaciente.value = false
             },
         },
     )
@@ -1252,6 +1291,50 @@ const confirmRemoveLink = () => {
                                         <span
                                             :class="['w-1.5 h-1.5 rounded-full', statusFormularioDinamico ? 'bg-purple-500' : 'bg-gray-400']" />
                                         {{ statusFormularioDinamico ? 'Ativado' : 'Desativado' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Cartão de Paciente -->
+                            <div
+                                class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-3 bg-cyan-50 rounded-lg">
+                                            <CreditCard class="w-6 h-6 text-cyan-600" />
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-semibold text-gray-900">Cartão de Paciente
+                                            </h4>
+                                            <p class="text-xs text-gray-500 mt-0.5">Geração do cartão de benefício
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button @click="toggleCartaoPaciente" :disabled="isTogglingCartaoPaciente" :class="[
+                                        'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2',
+                                        cartaoPacienteEnabled ? 'bg-cyan-600' : 'bg-gray-200',
+                                        isTogglingCartaoPaciente ? 'opacity-50 cursor-not-allowed' : ''
+                                    ]">
+                                        <span :class="[
+                                            'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
+                                            cartaoPacienteEnabled ? 'translate-x-5' : 'translate-x-0'
+                                        ]" />
+                                    </button>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-4">
+                                    Quando ativado, o botão "Gerar Cartão" fica disponível na listagem de pacientes
+                                    deste tenant, para pacientes atuais e novos cadastros.
+                                </p>
+                                <div class="mt-3">
+                                    <span :class="[
+                                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                                        cartaoPacienteEnabled
+                                            ? 'bg-cyan-100 text-cyan-700 border border-cyan-200'
+                                            : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                    ]">
+                                        <span
+                                            :class="['w-1.5 h-1.5 rounded-full', cartaoPacienteEnabled ? 'bg-cyan-500' : 'bg-gray-400']" />
+                                        {{ cartaoPacienteEnabled ? 'Ativado' : 'Desativado' }}
                                     </span>
                                 </div>
                             </div>

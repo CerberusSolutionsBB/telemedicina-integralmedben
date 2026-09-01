@@ -30,6 +30,10 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    cartaoPacienteEnabled: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const page = usePage();
@@ -161,11 +165,13 @@ const confirmDeletePatient = () => {
                 </div>
 
                 <div v-show="activeTab === 'current'" class="p-4">
-                    <PatientsTable :patients="patients" @delete-patient="confirmDelete" />
+                    <PatientsTable :patients="patients" :cartao-paciente-enabled="cartaoPacienteEnabled"
+                        @delete-patient="confirmDelete" />
                 </div>
 
                 <div v-show="activeTab === 'new'" class="p-4">
-                    <PatientsTable :patients="newPatients" @delete-patient="confirmDelete" />
+                    <PatientsTable :patients="newPatients" :cartao-paciente-enabled="cartaoPacienteEnabled"
+                        @delete-patient="confirmDelete" />
                 </div>
             </div>
         </div>

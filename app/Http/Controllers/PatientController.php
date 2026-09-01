@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportPatientRequest;
 use App\Http\Requests\StorePatientRequest;
+use App\Http\Services\Patient\PatientCardPdfService;
 use App\Http\Services\Patient\PatientService;
 use App\Http\Services\Patient\PatientsReportPdfService;
 use App\Http\Services\Sms\ResendSmsService;
 use App\Models\Patient;
 use App\Models\SmsLogs;
 use App\Models\Tenant;
+use App\Models\TenantsDetail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -21,6 +23,7 @@ class PatientController extends Controller
         private PatientService $patientService,
         private ResendSmsService $resendSmsService,
         private PatientsReportPdfService $patientsReportPdfService,
+        private PatientCardPdfService $patientCardPdfService,
     ) {}
 
     public function index(Request $request)
@@ -32,10 +35,14 @@ class PatientController extends Controller
         );
         $tenant = Tenant::find(tenant('id'));
 
+        $detail = TenantsDetail::where('tenant_id', tenant('id'))->first();
+        $cartaoPacienteEnabled = $detail?->configuracao['cartao_paciente_enabled'] ?? false;
+
         return Inertia::render('Patient/Index', [
             'patients' => $patients,
             'tenantName' => $tenant->name,
             'tenantPhoto' => $tenant->photo_url,
+            'cartaoPacienteEnabled' => $cartaoPacienteEnabled,
         ]);
     }
 
@@ -187,5 +194,15 @@ class PatientController extends Controller
         ]);
 
         return $pdf->download('paciente-'.$patient->id.'.pdf');
+    }
+
+    public function cartao(Patient $patient)
+    {
+        $pdf = $this->patientCardPdfService->execute($patient);
+
+        return new Response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="cartao-'.$patient->id.'.pdf"',
+        ]);
     }
 }
