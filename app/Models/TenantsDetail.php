@@ -27,6 +27,13 @@ class TenantsDetail extends Model
         'cor_primaria',
         'cor_secundaria',
         'configuracao',
+        'cartao_cor_primaria',
+        'cartao_cor_secundaria',
+        'cartao_cor_texto',
+        'cartao_fonte',
+        'cartao_logo',
+        'cartao_imagem_frente',
+        'cartao_imagem_verso',
     ];
 
     protected $casts = [

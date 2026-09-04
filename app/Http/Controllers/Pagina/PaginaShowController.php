@@ -31,6 +31,7 @@ class PaginaShowController extends Controller
         $statusFormularioDinamico = $detail->configuracao['status_formulario_dinamico'] ?? false;
         $telemedicinaEnabled = $detail->configuracao['telemedicina_enabled'] ?? false;
         $cartaoPacienteEnabled = $detail->configuracao['cartao_paciente_enabled'] ?? false;
+        $cartaoDinamicoEnabled = $detail->configuracao['cartao_dinamico_enabled'] ?? false;
 
         $telemedicinaQuestions = Question::where('role', QuestionRoleEnum::Plan->value)->get();
 
@@ -54,6 +55,16 @@ class PaginaShowController extends Controller
                     'created_at' => $p->created_at?->format('d/m/Y H:i'),
                 ]);
         });
+
+        $cartaoDinamico = [
+            'cor_primaria' => $detail?->cartao_cor_primaria,
+            'cor_secundaria' => $detail?->cartao_cor_secundaria,
+            'cor_texto' => $detail?->cartao_cor_texto,
+            'fonte' => $detail?->cartao_fonte,
+            'logo' => $this->resolveCartaoAsset($tenant, $detail, 'cartao_logo', 'logo'),
+            'frente' => $this->resolveCartaoAsset($tenant, $detail, 'cartao_imagem_frente', 'frente'),
+            'verso' => $this->resolveCartaoAsset($tenant, $detail, 'cartao_imagem_verso', 'verso'),
+        ];
 
         $logo = null;
         if ($detail && $detail->logo) {
@@ -81,6 +92,8 @@ class PaginaShowController extends Controller
             'statusFormularioDinamico' => $statusFormularioDinamico,
             'telemedicinaEnabled' => $telemedicinaEnabled,
             'cartaoPacienteEnabled' => $cartaoPacienteEnabled,
+            'cartaoDinamicoEnabled' => $cartaoDinamicoEnabled,
+            'cartaoDinamico' => $cartaoDinamico,
             'telemedicinaQuestions' => $telemedicinaQuestions,
             'telemedicinaVinculados' => $telemedicinaVinculados,
             'allTenants' => Tenant::whereNull('deleted_at')
@@ -117,5 +130,21 @@ class PaginaShowController extends Controller
                     'tenants' => $t->tenants->pluck('id')->toArray(),
                 ]),
         ]);
+    }
+
+    private function resolveCartaoAsset(Tenant $tenant, ?TenantsDetail $detail, string $coluna, string $tipo): ?array
+    {
+        if (! $detail || ! $detail->{$coluna}) {
+            return null;
+        }
+
+        $path = $tenant->resolveCartaoAssetPath($detail->{$coluna});
+
+        return [
+            'nome' => $detail->{$coluna},
+            'url' => $path
+                ? route('pagina.configuracao.cartao-dinamico.imagem.show', [$tenant->id, $tipo]).'?v='.urlencode($detail->{$coluna})
+                : null,
+        ];
     }
 }

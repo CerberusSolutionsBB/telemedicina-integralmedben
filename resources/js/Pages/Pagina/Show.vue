@@ -14,6 +14,7 @@ import { showToast } from '@/Utils/toast'
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue'
 import SmsTemplateModal from '@/Components/SmsTemplateModal.vue'
 import EbaLogo from '@/Components/Ebas/EbaLogo.vue'
+import ImageUpload from '@/Components/ImageUpload.vue'
 import {
     Home,
     Building2,
@@ -40,7 +41,9 @@ import {
     ChevronLeft,
     ChevronRight,
     ImagesIcon,
-    CreditCard
+    CreditCard,
+    Sparkles,
+    Palette
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -71,6 +74,14 @@ const props = defineProps({
     cartaoPacienteEnabled: {
         type: Boolean,
         default: false,
+    },
+    cartaoDinamicoEnabled: {
+        type: Boolean,
+        default: false,
+    },
+    cartaoDinamico: {
+        type: Object,
+        default: () => ({}),
     },
     telemedicinaQuestions: {
         type: Array,
@@ -122,6 +133,22 @@ const smsDeleteItem = ref(null)
 const isDeletingSms = ref(false)
 const isTogglingStatus = ref(false)
 const isTogglingCartaoPaciente = ref(false)
+const isTogglingCartaoDinamico = ref(false)
+const isSavingCoresCartaoDinamico = ref(false)
+const corPrimariaCartaoDinamico = ref(props.cartaoDinamico?.cor_primaria || '#22d3ee')
+const corSecundariaCartaoDinamico = ref(props.cartaoDinamico?.cor_secundaria || '#0e7490')
+const corTextoCartaoDinamico = ref(props.cartaoDinamico?.cor_texto || '#ffffff')
+const fonteCartaoDinamico = ref(props.cartaoDinamico?.fonte || 'sans-serif')
+const fontesCartaoDinamico = [
+    { value: 'sans-serif', label: 'Sem serifa (padrão)' },
+    { value: 'serif', label: 'Com serifa' },
+    { value: 'monospace', label: 'Monoespaçada' },
+]
+const cartaoDinamicoAssets = ref({
+    logo: props.cartaoDinamico?.logo?.url ?? null,
+    frente: props.cartaoDinamico?.frente?.url ?? null,
+    verso: props.cartaoDinamico?.verso?.url ?? null,
+})
 
 const isSavingTelemedicina = ref(false)
 const telemedicinaSearch = ref('')
@@ -350,6 +377,11 @@ const tabs = computed(() => [
         key: 'config',
         label: 'Configuração',
         icon: Settings,
+    },
+    {
+        key: 'cartao-dinamico',
+        label: 'Cartão Dinâmico',
+        icon: Sparkles,
     },
 ])
 
@@ -626,6 +658,154 @@ const toggleCartaoPaciente = () => {
             },
         },
     )
+}
+
+const toggleCartaoDinamico = () => {
+    if (!props.tenant?.id) {
+        showToast('Tenant não encontrado.', 'error')
+        return
+    }
+
+    isTogglingCartaoDinamico.value = true
+
+    router.put(
+        route('pagina.configuracao.cartao-dinamico.toggle', props.tenant.id),
+        {},
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                showToast('Status atualizado com sucesso!', 'success')
+                router.reload({
+                    only: ['cartaoDinamicoEnabled'],
+                    preserveScroll: true,
+                })
+            },
+
+            onError: () => {
+                showToast('Erro ao atualizar status.', 'error')
+            },
+
+            onFinish: () => {
+                isTogglingCartaoDinamico.value = false
+            },
+        },
+    )
+}
+
+const salvarCoresCartaoDinamico = () => {
+    if (!props.tenant?.id) {
+        showToast('Tenant não encontrado.', 'error')
+        return
+    }
+
+    isSavingCoresCartaoDinamico.value = true
+
+    router.put(
+        route('pagina.configuracao.cartao-dinamico.cores', props.tenant.id),
+        {
+            cartao_cor_primaria: corPrimariaCartaoDinamico.value,
+            cartao_cor_secundaria: corSecundariaCartaoDinamico.value,
+            cartao_cor_texto: corTextoCartaoDinamico.value,
+            cartao_fonte: fonteCartaoDinamico.value,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                showToast('Estilo do Cartão Dinâmico salvo com sucesso!', 'success')
+            },
+            onError: () => {
+                showToast('Erro ao salvar o estilo.', 'error')
+            },
+            onFinish: () => {
+                isSavingCoresCartaoDinamico.value = false
+            },
+        },
+    )
+}
+
+const isUploadingCartaoImagem = ref({ logo: false, frente: false, verso: false })
+
+const handleCartaoImagemChange = (tipo, value) => {
+    if (value instanceof File) {
+        uploadCartaoImagem(tipo, value)
+    } else if (value === null) {
+        deleteCartaoImagem(tipo)
+    }
+}
+
+async function uploadCartaoImagem(tipo, file) {
+    if (!props.tenant?.id) {
+        showToast('Tenant não encontrado.', 'error')
+        return
+    }
+
+    isUploadingCartaoImagem.value[tipo] = true
+
+    try {
+        const formData = new FormData()
+        formData.append('imagem', file)
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+
+        const response = await fetch(route('pagina.configuracao.cartao-dinamico.imagem.store', [props.tenant.id, tipo]), {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: formData,
+        })
+
+        const data = await response.json()
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Erro ao enviar imagem.')
+        }
+
+        cartaoDinamicoAssets.value[tipo] = data.imagem.url
+        showToast('Imagem enviada com sucesso!', 'success')
+    } catch (error) {
+        showToast(error.message || 'Erro ao enviar imagem. Tente novamente.', 'error')
+    } finally {
+        isUploadingCartaoImagem.value[tipo] = false
+    }
+}
+
+async function deleteCartaoImagem(tipo) {
+    if (!props.tenant?.id) {
+        showToast('Tenant não encontrado.', 'error')
+        return
+    }
+
+    isUploadingCartaoImagem.value[tipo] = true
+
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+
+        const response = await fetch(route('pagina.configuracao.cartao-dinamico.imagem.destroy', [props.tenant.id, tipo]), {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+
+        const data = await response.json()
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Erro ao remover imagem.')
+        }
+
+        cartaoDinamicoAssets.value[tipo] = null
+        showToast('Imagem removida com sucesso!', 'success')
+    } catch (error) {
+        showToast(error.message || 'Erro ao remover imagem. Tente novamente.', 'error')
+    } finally {
+        isUploadingCartaoImagem.value[tipo] = false
+    }
 }
 
 const syncTelemedicina = () => {
@@ -1339,6 +1519,52 @@ const confirmRemoveLink = () => {
                                 </div>
                             </div>
 
+                            <!-- Cartão Dinâmico -->
+                            <div
+                                class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-3 bg-purple-50 rounded-lg">
+                                            <Sparkles class="w-6 h-6 text-purple-600" />
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-semibold text-gray-900">Cartão Dinâmico
+                                            </h4>
+                                            <p class="text-xs text-gray-500 mt-0.5">Geração do cartão com identidade
+                                                visual própria
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button @click="toggleCartaoDinamico" :disabled="isTogglingCartaoDinamico" :class="[
+                                        'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2',
+                                        cartaoDinamicoEnabled ? 'bg-purple-600' : 'bg-gray-200',
+                                        isTogglingCartaoDinamico ? 'opacity-50 cursor-not-allowed' : ''
+                                    ]">
+                                        <span :class="[
+                                            'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
+                                            cartaoDinamicoEnabled ? 'translate-x-5' : 'translate-x-0'
+                                        ]" />
+                                    </button>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-4">
+                                    Quando ativado, o botão "Cartão Dinâmico" fica disponível na listagem de
+                                    pacientes deste tenant, ao lado do "Gerar Cartão" tradicional. Configure cores,
+                                    logo e imagens na aba "Cartão Dinâmico".
+                                </p>
+                                <div class="mt-3">
+                                    <span :class="[
+                                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                                        cartaoDinamicoEnabled
+                                            ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                                            : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                    ]">
+                                        <span
+                                            :class="['w-1.5 h-1.5 rounded-full', cartaoDinamicoEnabled ? 'bg-purple-500' : 'bg-gray-400']" />
+                                        {{ cartaoDinamicoEnabled ? 'Ativado' : 'Desativado' }}
+                                    </span>
+                                </div>
+                            </div>
+
                             <!-- Template SMS Vinculado -->
                             <div
                                 class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
@@ -1555,6 +1781,100 @@ const confirmRemoveLink = () => {
 
                     <!-- Logo -->
                     <EbaLogo v-if="activeTab === 'logo'" :tenant-id="tenant.id" :upload-url="route('pagina.configuracao.logo.store', tenant.id)" :delete-url="route('pagina.configuracao.logo.destroy', tenant.id)" v-model:list="arquivosLocal" />
+
+                    <!-- Cartão Dinâmico -->
+                    <div v-if="activeTab === 'cartao-dinamico'" class="space-y-5">
+                        <div>
+                            <h2 class="text-lg font-semibold flex items-center gap-2">
+                                <Sparkles class="w-5 h-5 text-purple-500" />
+                                Cartão Dinâmico
+                            </h2>
+                            <p class="text-sm text-gray-500 mt-1">
+                                Configure a identidade visual do cartão de paciente deste parceiro: cores, logo e
+                                imagens de frente/verso. Este cartão é gerado à parte do "Gerar Cartão" tradicional.
+                                Para ativar/desativar a geração, use o card "Cartão Dinâmico" na aba
+                                "Configuração".
+                            </p>
+                        </div>
+
+                        <!-- Estilo (cores, texto e fonte) -->
+                        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="p-3 bg-purple-50 rounded-lg">
+                                    <Palette class="w-6 h-6 text-purple-600" />
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-900">Estilo do Cartão</h4>
+                                    <p class="text-xs text-gray-500 mt-0.5">Cores de fundo (gradiente usado quando não houver imagem de frente/verso), cor do texto e fonte</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="grid gap-2">
+                                    <Label for="cartao_cor_primaria">Cor Primária</Label>
+                                    <div class="flex items-center gap-3">
+                                        <input id="cartao_cor_primaria" type="color" v-model="corPrimariaCartaoDinamico"
+                                            class="w-12 h-10 rounded border border-input cursor-pointer" />
+                                        <input type="text" v-model="corPrimariaCartaoDinamico" placeholder="#22d3ee"
+                                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
+                                    </div>
+                                </div>
+                                <div class="grid gap-2">
+                                    <Label for="cartao_cor_secundaria">Cor Secundária</Label>
+                                    <div class="flex items-center gap-3">
+                                        <input id="cartao_cor_secundaria" type="color" v-model="corSecundariaCartaoDinamico"
+                                            class="w-12 h-10 rounded border border-input cursor-pointer" />
+                                        <input type="text" v-model="corSecundariaCartaoDinamico" placeholder="#0e7490"
+                                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
+                                    </div>
+                                </div>
+                                <div class="grid gap-2">
+                                    <Label for="cartao_cor_texto">Cor do Texto</Label>
+                                    <div class="flex items-center gap-3">
+                                        <input id="cartao_cor_texto" type="color" v-model="corTextoCartaoDinamico"
+                                            class="w-12 h-10 rounded border border-input cursor-pointer" />
+                                        <input type="text" v-model="corTextoCartaoDinamico" placeholder="#ffffff"
+                                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
+                                    </div>
+                                </div>
+                                <div class="grid gap-2">
+                                    <Label for="cartao_fonte">Fonte</Label>
+                                    <select id="cartao_fonte" v-model="fonteCartaoDinamico"
+                                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        <option v-for="fonte in fontesCartaoDinamico" :key="fonte.value" :value="fonte.value">
+                                            {{ fonte.label }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex justify-end">
+                                <Button type="button" :disabled="isSavingCoresCartaoDinamico" @click="salvarCoresCartaoDinamico">
+                                    {{ isSavingCoresCartaoDinamico ? 'Salvando...' : 'Salvar Estilo' }}
+                                </Button>
+                            </div>
+                        </div>
+
+                        <!-- Imagens -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                                <ImageUpload label="Logo" description="Logo exibida na frente e no verso do cartão"
+                                    :model-value="cartaoDinamicoAssets.logo" :preview-url="cartaoDinamicoAssets.logo"
+                                    :show-posicao-selector="false"
+                                    @update:model-value="(val) => handleCartaoImagemChange('logo', val)" />
+                            </div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                                <ImageUpload label="Imagem de Frente" description="Fundo da frente do cartão"
+                                    :model-value="cartaoDinamicoAssets.frente" :preview-url="cartaoDinamicoAssets.frente"
+                                    :show-posicao-selector="false"
+                                    @update:model-value="(val) => handleCartaoImagemChange('frente', val)" />
+                            </div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                                <ImageUpload label="Imagem de Verso" description="Fundo do verso do cartão"
+                                    :model-value="cartaoDinamicoAssets.verso" :preview-url="cartaoDinamicoAssets.verso"
+                                    :show-posicao-selector="false"
+                                    @update:model-value="(val) => handleCartaoImagemChange('verso', val)" />
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Telemedicina -->
                     <div v-if="activeTab === 'telemedicina'"

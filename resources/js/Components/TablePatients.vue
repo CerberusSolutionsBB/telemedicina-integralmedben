@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
-import { FileText, Download, Pencil, Trash2, Eye, Search, CreditCard } from "lucide-vue-next";
+import { FileText, Download, Pencil, Trash2, Eye, Search, CreditCard, Sparkles } from "lucide-vue-next";
 import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal.vue";
 import { showToast } from "@/Utils/toast";
 import {
@@ -20,6 +20,10 @@ const props = defineProps({
         required: true,
     },
     cartaoPacienteEnabled: {
+        type: Boolean,
+        default: false,
+    },
+    cartaoDinamicoEnabled: {
         type: Boolean,
         default: false,
     },
@@ -192,6 +196,50 @@ const confirmGerarCartao = async () => {
     } finally {
         cartaoModal.value.isProcessing = false;
         closeCartaoModal();
+    }
+};
+
+const cartaoDinamicoModal = ref({
+    show: false,
+    patient: null,
+    isProcessing: false,
+});
+
+const openCartaoDinamicoModal = (patient) => {
+    cartaoDinamicoModal.value = { show: true, patient, isProcessing: false };
+};
+
+const closeCartaoDinamicoModal = () => {
+    if (cartaoDinamicoModal.value.isProcessing) return;
+    cartaoDinamicoModal.value.show = false;
+    setTimeout(() => {
+        cartaoDinamicoModal.value.patient = null;
+        cartaoDinamicoModal.value.isProcessing = false;
+    }, 200);
+};
+
+const confirmGerarCartaoDinamico = async () => {
+    const patient = cartaoDinamicoModal.value.patient;
+    if (!patient) return;
+
+    cartaoDinamicoModal.value.isProcessing = true;
+
+    try {
+        const response = await fetch(route('patients.cartao-dinamico', patient.id));
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cartao-dinamico-' + (patient.id || 'paciente') + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch {
+        showToast('Erro ao gerar cartão dinâmico. Tente novamente.', 'error');
+    } finally {
+        cartaoDinamicoModal.value.isProcessing = false;
+        closeCartaoDinamicoModal();
     }
 };
 </script>
@@ -385,6 +433,11 @@ const confirmGerarCartao = async () => {
                                         title="Gerar Cartão">
                                         <CreditCard class="w-4 h-4" />
                                     </button>
+                                    <button v-if="cartaoDinamicoEnabled" @click="openCartaoDinamicoModal(patient)"
+                                        class="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all"
+                                        title="Gerar Cartão Dinâmico">
+                                        <Sparkles class="w-4 h-4" />
+                                    </button>
                                     <a :href="route('patients.pdf', patient.id)" target="_blank"
                                         class="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all"
                                         title="PDF">
@@ -431,4 +484,10 @@ const confirmGerarCartao = async () => {
         warning-message="O cartão será baixado automaticamente como arquivo PDF." confirm-text="Sim, Gerar"
         cancel-text="Cancelar" :is-processing="cartaoModal.isProcessing" variant="info" @close="closeCartaoModal"
         @confirm="confirmGerarCartao" />
+
+    <ConfirmDeleteModal :show="cartaoDinamicoModal.show" title="Gerar Cartão Dinâmico"
+        :message="'Deseja gerar o cartão dinâmico para ' + (cartaoDinamicoModal.patient?.nome || 'este paciente') + '?'"
+        warning-message="O cartão será baixado automaticamente como arquivo PDF." confirm-text="Sim, Gerar"
+        cancel-text="Cancelar" :is-processing="cartaoDinamicoModal.isProcessing" variant="info"
+        @close="closeCartaoDinamicoModal" @confirm="confirmGerarCartaoDinamico" />
 </template>

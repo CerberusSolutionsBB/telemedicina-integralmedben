@@ -104,6 +104,27 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         return null;
     }
 
+    /**
+     * Mesma ideia de logoPathCandidates(), reaproveitada para as imagens do
+     * módulo de Cartão Dinâmico (logo/frente/verso), que usam o mesmo disco
+     * 'tenants' e o mesmo esquema de nomes únicos.
+     */
+    public function cartaoAssetPathCandidates(string $fileName): array
+    {
+        return $this->logoPathCandidates($fileName);
+    }
+
+    public function resolveCartaoAssetPath(string $fileName): ?string
+    {
+        foreach ($this->cartaoAssetPathCandidates($fileName) as $candidate) {
+            if (Storage::disk('tenants')->exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
     public function getTenantDomainAttribute()
     {
         return $this->domains->first()?->domain;

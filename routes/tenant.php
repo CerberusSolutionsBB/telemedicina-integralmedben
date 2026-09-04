@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\PatientCartaoDinamicoController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\Tenant\Configuracao\ConfiguracaoController;
@@ -56,6 +57,7 @@ Route::middleware([
         Route::get('/patients/{patient}', [PatientController::class, 'show'])->name('patients.show');
         Route::get('/patients/{patient}/pdf', [PatientController::class, 'downloadPdf'])->name('patients.pdf');
         Route::get('/patients/{patient}/cartao', [PatientController::class, 'cartao'])->name('patients.cartao');
+        Route::get('/patients/{patient}/cartao-dinamico', [PatientCartaoDinamicoController::class, 'gerar'])->name('patients.cartao-dinamico');
         Route::post('/patients/{patient}/resend-sms', [PatientController::class, 'resendSms'])->name('patients.resend-sms');
         Route::post('/patients/{patient}/sms-logs/{smsLog}/resend', [PatientController::class, 'resendSmsLog'])->name('patients.sms-logs.resend');
         Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->name('patients.toggle-status');
