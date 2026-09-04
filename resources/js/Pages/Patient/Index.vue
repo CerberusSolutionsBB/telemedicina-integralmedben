@@ -34,6 +34,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    cartaoDinamicoEnabled: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const page = usePage();
@@ -166,12 +170,12 @@ const confirmDeletePatient = () => {
 
                 <div v-show="activeTab === 'current'" class="p-4">
                     <PatientsTable :patients="patients" :cartao-paciente-enabled="cartaoPacienteEnabled"
-                        @delete-patient="confirmDelete" />
+                        :cartao-dinamico-enabled="cartaoDinamicoEnabled" @delete-patient="confirmDelete" />
                 </div>
 
                 <div v-show="activeTab === 'new'" class="p-4">
                     <PatientsTable :patients="newPatients" :cartao-paciente-enabled="cartaoPacienteEnabled"
-                        @delete-patient="confirmDelete" />
+                        :cartao-dinamico-enabled="cartaoDinamicoEnabled" @delete-patient="confirmDelete" />
                 </div>
             </div>
         </div>

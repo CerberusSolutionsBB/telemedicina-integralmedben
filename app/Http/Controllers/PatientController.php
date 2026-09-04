@@ -37,12 +37,14 @@ class PatientController extends Controller
 
         $detail = TenantsDetail::where('tenant_id', tenant('id'))->first();
         $cartaoPacienteEnabled = $detail?->configuracao['cartao_paciente_enabled'] ?? false;
+        $cartaoDinamicoEnabled = $detail?->configuracao['cartao_dinamico_enabled'] ?? false;
 
         return Inertia::render('Patient/Index', [
             'patients' => $patients,
             'tenantName' => $tenant->name,
             'tenantPhoto' => $tenant->photo_url,
             'cartaoPacienteEnabled' => $cartaoPacienteEnabled,
+            'cartaoDinamicoEnabled' => $cartaoDinamicoEnabled,
         ]);
     }
 

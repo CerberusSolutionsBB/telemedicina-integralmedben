@@ -3,6 +3,7 @@
 use App\Http\Controllers\Pagina\PaginaCreateController;
 use App\Http\Controllers\Pagina\PaginaDestroyController;
 use App\Http\Controllers\Pagina\PaginaIndexController;
+use App\Http\Controllers\Pagina\PaginaCartaoDinamicoController;
 use App\Http\Controllers\Pagina\PaginaLogoController;
 use App\Http\Controllers\Pagina\PaginaShowController;
 use App\Http\Controllers\Pagina\PaginaStoreController;
@@ -39,4 +40,9 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::post('/{tenant}/logo', [PaginaLogoController::class, 'store'])->middleware('auth')->name('logo.store');
     Route::delete('/{tenant}/logo', [PaginaLogoController::class, 'destroy'])->middleware('auth')->name('logo.destroy');
     Route::get('/{tenant}/logo', [PaginaLogoController::class, 'show'])->name('logo.show');
+    Route::put('/{tenant}/cartao-dinamico/cores', [PaginaCartaoDinamicoController::class, 'updateCores'])->middleware('auth')->name('cartao-dinamico.cores');
+    Route::put('/{tenant}/cartao-dinamico/habilitar', [PaginaCartaoDinamicoController::class, 'toggleEnabled'])->middleware('auth')->name('cartao-dinamico.toggle');
+    Route::post('/{tenant}/cartao-dinamico/{tipo}', [PaginaCartaoDinamicoController::class, 'storeImagem'])->whereIn('tipo', ['logo', 'frente', 'verso'])->middleware('auth')->name('cartao-dinamico.imagem.store');
+    Route::delete('/{tenant}/cartao-dinamico/{tipo}', [PaginaCartaoDinamicoController::class, 'destroyImagem'])->whereIn('tipo', ['logo', 'frente', 'verso'])->middleware('auth')->name('cartao-dinamico.imagem.destroy');
+    Route::get('/{tenant}/cartao-dinamico/{tipo}', [PaginaCartaoDinamicoController::class, 'showImagem'])->whereIn('tipo', ['logo', 'frente', 'verso'])->name('cartao-dinamico.imagem.show');
 });
