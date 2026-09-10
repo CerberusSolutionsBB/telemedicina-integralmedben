@@ -28,6 +28,10 @@ class PatientDynamicCardPdfService
         'monospace' => "'Courier New', Courier, monospace",
     ];
 
+    private const VERSO_TEXTO_INFO_PADRAO = 'Solicite atendimento 24h';
+
+    private const VERSO_RODAPE_PADRAO = "Apresente este cartão nos locais conveniados\no obtenha benefícios especiais\nConsute o regulamento em nosso site:\nwww.integralmedben.com.br";
+
     public function execute(Patient $patient): string
     {
         $detail = TenantsDetail::where('tenant_id', tenant('id'))->first();
@@ -35,9 +39,15 @@ class PatientDynamicCardPdfService
         $cpfFormatado = $this->formatCpf($patient->cpf);
         $planoNome = $this->resolvePlano($patient);
 
-        $qr = 'data:image/svg+xml;base64,'.base64_encode(
-            QrCode::size(240)->margin(0)->generate(config('services.qrcode.link'))
-        );
+        $qr = null;
+        if ($detail?->cartao_qrcode_habilitado) {
+            $dadosQr = $detail->cartao_qrcode_dados ?: config('services.qrcode.link');
+            $qr = 'data:image/svg+xml;base64,'.base64_encode(
+                QrCode::size(240)->margin(0)->generate($dadosQr)
+            );
+        }
+
+        $versoRodape = $detail?->cartao_verso_rodape ?: self::VERSO_RODAPE_PADRAO;
 
         $dados = [
             'nome' => $patient->nome,
@@ -51,6 +61,8 @@ class PatientDynamicCardPdfService
             'logo' => $this->resolveImagemBase64($detail?->cartao_logo),
             'fundo_frente' => $this->resolveImagemBase64($detail?->cartao_imagem_frente),
             'fundo_verso' => $this->resolveImagemBase64($detail?->cartao_imagem_verso),
+            'verso_texto_info' => $detail?->cartao_verso_texto_info ?: self::VERSO_TEXTO_INFO_PADRAO,
+            'verso_rodape_linhas' => preg_split('/\r\n|\r|\n/', trim($versoRodape)),
         ];
 
         $pdf = Pdf::loadView('pdf.cartao-dinamico', $dados);

@@ -15,6 +15,7 @@ import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue'
 import SmsTemplateModal from '@/Components/SmsTemplateModal.vue'
 import EbaLogo from '@/Components/Ebas/EbaLogo.vue'
 import ImageUpload from '@/Components/ImageUpload.vue'
+import SearchInput from '@/Components/SearchInput.vue'
 import {
     Home,
     Building2,
@@ -36,6 +37,7 @@ import {
     HeartPulse,
     Search,
     CheckCircle,
+    AlertCircle,
     Users,
     Info,
     ChevronLeft,
@@ -43,7 +45,8 @@ import {
     ImagesIcon,
     CreditCard,
     Sparkles,
-    Palette
+    Palette,
+    QrCode
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -149,6 +152,12 @@ const cartaoDinamicoAssets = ref({
     frente: props.cartaoDinamico?.frente?.url ?? null,
     verso: props.cartaoDinamico?.verso?.url ?? null,
 })
+
+const isSavingQrcodeCartaoDinamico = ref(false)
+const qrcodeHabilitadoCartaoDinamico = ref(!!props.cartaoDinamico?.qrcode_habilitado)
+const qrcodeDadosCartaoDinamico = ref(props.cartaoDinamico?.qrcode_dados || '')
+const versoTextoInfoCartaoDinamico = ref(props.cartaoDinamico?.verso_texto_info || '')
+const versoRodapeCartaoDinamico = ref(props.cartaoDinamico?.verso_rodape || '')
 
 const isSavingTelemedicina = ref(false)
 const telemedicinaSearch = ref('')
@@ -713,12 +722,55 @@ const salvarCoresCartaoDinamico = () => {
             preserveScroll: true,
             onSuccess: () => {
                 showToast('Estilo do Cartão Dinâmico salvo com sucesso!', 'success')
+                cartaoDinamicoEstiloSalvo.value = {
+                    cor_primaria: corPrimariaCartaoDinamico.value,
+                    cor_secundaria: corSecundariaCartaoDinamico.value,
+                    cor_texto: corTextoCartaoDinamico.value,
+                    fonte: fonteCartaoDinamico.value,
+                }
             },
             onError: () => {
                 showToast('Erro ao salvar o estilo.', 'error')
             },
             onFinish: () => {
                 isSavingCoresCartaoDinamico.value = false
+            },
+        },
+    )
+}
+
+const salvarQrcodeCartaoDinamico = () => {
+    if (!props.tenant?.id) {
+        showToast('Tenant não encontrado.', 'error')
+        return
+    }
+
+    isSavingQrcodeCartaoDinamico.value = true
+
+    router.put(
+        route('pagina.configuracao.cartao-dinamico.qrcode', props.tenant.id),
+        {
+            cartao_qrcode_habilitado: qrcodeHabilitadoCartaoDinamico.value,
+            cartao_qrcode_dados: qrcodeDadosCartaoDinamico.value,
+            cartao_verso_texto_info: versoTextoInfoCartaoDinamico.value,
+            cartao_verso_rodape: versoRodapeCartaoDinamico.value,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                showToast('QR Code e textos do verso salvos com sucesso!', 'success')
+                cartaoDinamicoQrcodeSalvo.value = {
+                    habilitado: qrcodeHabilitadoCartaoDinamico.value,
+                    dados: qrcodeDadosCartaoDinamico.value,
+                    texto_info: versoTextoInfoCartaoDinamico.value,
+                    rodape: versoRodapeCartaoDinamico.value,
+                }
+            },
+            onError: () => {
+                showToast('Erro ao salvar o QR Code e textos do verso.', 'error')
+            },
+            onFinish: () => {
+                isSavingQrcodeCartaoDinamico.value = false
             },
         },
     )
@@ -806,6 +858,215 @@ async function deleteCartaoImagem(tipo) {
     } finally {
         isUploadingCartaoImagem.value[tipo] = false
     }
+}
+
+// Opções de configuração do Cartão Dinâmico (busca + edição)
+const cartaoDinamicoSearch = ref('')
+const cartaoDinamicoActiveCategory = ref('all')
+// Apenas um card aberto por vez (accordion) e nada expandido por padrão:
+// reduz a quantidade de informação simultânea na tela.
+const cartaoDinamicoExpandedKey = ref(null)
+
+// Baseline usada para detectar alterações de estilo ainda não salvas.
+const cartaoDinamicoEstiloSalvo = ref({
+    cor_primaria: corPrimariaCartaoDinamico.value,
+    cor_secundaria: corSecundariaCartaoDinamico.value,
+    cor_texto: corTextoCartaoDinamico.value,
+    fonte: fonteCartaoDinamico.value,
+})
+
+// Baseline usada para detectar alterações do QR Code/textos do verso ainda não salvas.
+const cartaoDinamicoQrcodeSalvo = ref({
+    habilitado: qrcodeHabilitadoCartaoDinamico.value,
+    dados: qrcodeDadosCartaoDinamico.value,
+    texto_info: versoTextoInfoCartaoDinamico.value,
+    rodape: versoRodapeCartaoDinamico.value,
+})
+
+const cartaoDinamicoConfigurations = computed(() => [
+    {
+        key: 'estilo',
+        label: 'Estilo do Cartão',
+        description: 'Cores de fundo (gradiente usado quando não houver imagem de frente/verso), cor do texto e fonte.',
+        category: 'Aparência',
+        type: 'style',
+    },
+    {
+        key: 'logo',
+        label: 'Logo',
+        description: 'Logo exibida na frente e no verso do cartão.',
+        category: 'Imagens',
+        type: 'image',
+    },
+    {
+        key: 'frente',
+        label: 'Imagem de Frente',
+        description: 'Fundo da frente do cartão.',
+        category: 'Imagens',
+        type: 'image',
+    },
+    {
+        key: 'verso',
+        label: 'Imagem de Verso',
+        description: 'Fundo do verso do cartão.',
+        category: 'Imagens',
+        type: 'image',
+    },
+    {
+        key: 'status',
+        label: 'Cartão Dinâmico Ativo',
+        description: 'Quando ativado, o botão "Cartão Dinâmico" fica disponível na listagem de pacientes deste tenant.',
+        category: 'Status',
+        type: 'toggle',
+    },
+    {
+        key: 'qrcode',
+        label: 'QR Code e Textos do Verso',
+        description: 'Habilite o QR Code exibido no verso do cartão, informe os dados que serão codificados e edite os textos fixos do verso.',
+        category: 'QR Code',
+        type: 'qrcode',
+    },
+])
+
+const cartaoDinamicoAllCategories = computed(() => {
+    const categories = new Set(cartaoDinamicoConfigurations.value.map((config) => config.category))
+    return ['all', ...Array.from(categories)]
+})
+
+const cartaoDinamicoFilteredConfigurations = computed(() => {
+    let configs = cartaoDinamicoConfigurations.value
+
+    if (cartaoDinamicoActiveCategory.value !== 'all') {
+        configs = configs.filter((config) => config.category === cartaoDinamicoActiveCategory.value)
+    }
+
+    const term = cartaoDinamicoSearch.value.toLowerCase().trim()
+
+    if (!term) {
+        return configs
+    }
+
+    return configs.filter(
+        (config) =>
+            config.label.toLowerCase().includes(term) ||
+            config.description.toLowerCase().includes(term) ||
+            config.key.toLowerCase().includes(term),
+    )
+})
+
+const cartaoDinamicoConfigsByCategory = computed(() => {
+    const grouped = {}
+
+    cartaoDinamicoFilteredConfigurations.value.forEach((config) => {
+        if (!grouped[config.category]) {
+            grouped[config.category] = []
+        }
+
+        grouped[config.category].push(config)
+    })
+
+    return grouped
+})
+
+const isCartaoDinamicoExpanded = (key) =>
+    cartaoDinamicoExpandedKey.value === key || cartaoDinamicoSearch.value.trim().length > 0
+
+const toggleCartaoDinamicoExpand = (key) => {
+    cartaoDinamicoExpandedKey.value = cartaoDinamicoExpandedKey.value === key ? null : key
+}
+
+const clearCartaoDinamicoFiltros = () => {
+    cartaoDinamicoSearch.value = ''
+    cartaoDinamicoActiveCategory.value = 'all'
+}
+
+// Ícone + cor por tipo de configuração: permite reconhecer o tipo de cada
+// card sem precisar ler o texto (leitura visual rápida).
+const cartaoDinamicoTypeIcon = (config) => {
+    if (config.type === 'image') return ImagesIcon
+    if (config.type === 'toggle') return Sparkles
+    if (config.type === 'qrcode') return QrCode
+    return Palette
+}
+
+const cartaoDinamicoTypeIconClasses = (config) => {
+    if (config.type === 'toggle') {
+        return props.cartaoDinamicoEnabled
+            ? 'bg-emerald-50 text-emerald-600'
+            : 'bg-gray-100 text-gray-400'
+    }
+
+    if (config.type === 'image') {
+        return 'bg-cyan-50 text-cyan-600'
+    }
+
+    if (config.type === 'qrcode') {
+        return qrcodeHabilitadoCartaoDinamico.value
+            ? 'bg-indigo-50 text-indigo-600'
+            : 'bg-gray-100 text-gray-400'
+    }
+
+    return 'bg-purple-50 text-purple-600'
+}
+
+const cartaoDinamicoCategoryIconMap = {
+    all: Settings,
+    'Aparência': Palette,
+    'Imagens': ImagesIcon,
+    'Status': Sparkles,
+    'QR Code': QrCode,
+}
+
+const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[category] || Settings
+
+// Destaca o termo pesquisado no rótulo/descrição para reduzir o esforço de
+// leitura ao escanear os resultados. Os textos vêm de metadados fixos
+// definidos no próprio componente, então usar v-html é seguro.
+const cartaoDinamicoEscapeHtml = (value) =>
+    String(value).replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    }[char]))
+
+const cartaoDinamicoHighlight = (text) => {
+    const safe = cartaoDinamicoEscapeHtml(text || '')
+    const term = cartaoDinamicoSearch.value.trim()
+
+    if (!term) return safe
+
+    const escapedTerm = cartaoDinamicoEscapeHtml(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+    return safe.replace(
+        new RegExp(`(${escapedTerm})`, 'ig'),
+        '<mark class="bg-amber-200 text-gray-900 rounded px-0.5">$1</mark>',
+    )
+}
+
+// Indicador de "alterações não salvas" (apenas o card de estilo tem edição
+// em duas etapas: ajustar e depois salvar).
+const cartaoDinamicoHasUnsavedChanges = (config) => {
+    if (config.type === 'style') {
+        return (
+            corPrimariaCartaoDinamico.value !== cartaoDinamicoEstiloSalvo.value.cor_primaria ||
+            corSecundariaCartaoDinamico.value !== cartaoDinamicoEstiloSalvo.value.cor_secundaria ||
+            corTextoCartaoDinamico.value !== cartaoDinamicoEstiloSalvo.value.cor_texto ||
+            fonteCartaoDinamico.value !== cartaoDinamicoEstiloSalvo.value.fonte
+        )
+    }
+
+    if (config.type === 'qrcode') {
+        return (
+            qrcodeHabilitadoCartaoDinamico.value !== cartaoDinamicoQrcodeSalvo.value.habilitado ||
+            qrcodeDadosCartaoDinamico.value !== cartaoDinamicoQrcodeSalvo.value.dados ||
+            versoTextoInfoCartaoDinamico.value !== cartaoDinamicoQrcodeSalvo.value.texto_info ||
+            versoRodapeCartaoDinamico.value !== cartaoDinamicoQrcodeSalvo.value.rodape
+        )
+    }
+
+    return false
 }
 
 const syncTelemedicina = () => {
@@ -1792,87 +2053,307 @@ const confirmRemoveLink = () => {
                             <p class="text-sm text-gray-500 mt-1">
                                 Configure a identidade visual do cartão de paciente deste parceiro: cores, logo e
                                 imagens de frente/verso. Este cartão é gerado à parte do "Gerar Cartão" tradicional.
-                                Para ativar/desativar a geração, use o card "Cartão Dinâmico" na aba
-                                "Configuração".
                             </p>
                         </div>
 
-                        <!-- Estilo (cores, texto e fonte) -->
-                        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                            <div class="flex items-center gap-3 mb-4">
-                                <div class="p-3 bg-purple-50 rounded-lg">
-                                    <Palette class="w-6 h-6 text-purple-600" />
-                                </div>
+                        <!-- Opções de configuração -->
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
-                                    <h4 class="text-sm font-semibold text-gray-900">Estilo do Cartão</h4>
-                                    <p class="text-xs text-gray-500 mt-0.5">Cores de fundo (gradiente usado quando não houver imagem de frente/verso), cor do texto e fonte</p>
+                                    <h3 class="text-base font-semibold text-gray-900">Opções de configuração</h3>
+                                    <p class="text-sm text-gray-500 mt-1">
+                                        Busque e edite as configurações disponíveis para este tenant.
+                                    </p>
                                 </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="grid gap-2">
-                                    <Label for="cartao_cor_primaria">Cor Primária</Label>
-                                    <div class="flex items-center gap-3">
-                                        <input id="cartao_cor_primaria" type="color" v-model="corPrimariaCartaoDinamico"
-                                            class="w-12 h-10 rounded border border-input cursor-pointer" />
-                                        <input type="text" v-model="corPrimariaCartaoDinamico" placeholder="#22d3ee"
-                                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
-                                    </div>
+                                <div class="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm shrink-0">
+                                    <span class="font-medium">
+                                        {{ cartaoDinamicoConfigurations.length }} configurações
+                                    </span>
                                 </div>
-                                <div class="grid gap-2">
-                                    <Label for="cartao_cor_secundaria">Cor Secundária</Label>
-                                    <div class="flex items-center gap-3">
-                                        <input id="cartao_cor_secundaria" type="color" v-model="corSecundariaCartaoDinamico"
-                                            class="w-12 h-10 rounded border border-input cursor-pointer" />
-                                        <input type="text" v-model="corSecundariaCartaoDinamico" placeholder="#0e7490"
-                                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
-                                    </div>
-                                </div>
-                                <div class="grid gap-2">
-                                    <Label for="cartao_cor_texto">Cor do Texto</Label>
-                                    <div class="flex items-center gap-3">
-                                        <input id="cartao_cor_texto" type="color" v-model="corTextoCartaoDinamico"
-                                            class="w-12 h-10 rounded border border-input cursor-pointer" />
-                                        <input type="text" v-model="corTextoCartaoDinamico" placeholder="#ffffff"
-                                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
-                                    </div>
-                                </div>
-                                <div class="grid gap-2">
-                                    <Label for="cartao_fonte">Fonte</Label>
-                                    <select id="cartao_fonte" v-model="fonteCartaoDinamico"
-                                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                        <option v-for="fonte in fontesCartaoDinamico" :key="fonte.value" :value="fonte.value">
-                                            {{ fonte.label }}
-                                        </option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="mt-4 flex justify-end">
-                                <Button type="button" :disabled="isSavingCoresCartaoDinamico" @click="salvarCoresCartaoDinamico">
-                                    {{ isSavingCoresCartaoDinamico ? 'Salvando...' : 'Salvar Estilo' }}
-                                </Button>
                             </div>
                         </div>
 
-                        <!-- Imagens -->
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                <ImageUpload label="Logo" description="Logo exibida na frente e no verso do cartão"
-                                    :model-value="cartaoDinamicoAssets.logo" :preview-url="cartaoDinamicoAssets.logo"
-                                    :show-posicao-selector="false"
-                                    @update:model-value="(val) => handleCartaoImagemChange('logo', val)" />
+                        <!-- Filtros -->
+                        <div class="space-y-4">
+                            <!-- Busca em primeiro lugar: é o caminho mais rápido até a configuração desejada -->
+                            <div class="max-w-lg">
+                                <SearchInput v-model="cartaoDinamicoSearch" placeholder="Buscar configurações..."
+                                    focus-color="purple" size="lg" />
                             </div>
-                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                <ImageUpload label="Imagem de Frente" description="Fundo da frente do cartão"
-                                    :model-value="cartaoDinamicoAssets.frente" :preview-url="cartaoDinamicoAssets.frente"
-                                    :show-posicao-selector="false"
-                                    @update:model-value="(val) => handleCartaoImagemChange('frente', val)" />
+
+                            <div class="flex items-center gap-2 overflow-x-auto pb-1 cartao-dinamico-scrollbar-hide">
+                                <button v-for="category in cartaoDinamicoAllCategories" :key="category" type="button"
+                                    @click="cartaoDinamicoActiveCategory = category"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors"
+                                    :class="cartaoDinamicoActiveCategory === category
+                                        ? 'bg-purple-600 text-white shadow-sm'
+                                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'">
+                                    <component :is="cartaoDinamicoCategoryIcon(category)" class="w-3.5 h-3.5 shrink-0" />
+                                    {{ category === 'all' ? 'Todas' : category }}
+                                </button>
                             </div>
-                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                <ImageUpload label="Imagem de Verso" description="Fundo do verso do cartão"
-                                    :model-value="cartaoDinamicoAssets.verso" :preview-url="cartaoDinamicoAssets.verso"
-                                    :show-posicao-selector="false"
-                                    @update:model-value="(val) => handleCartaoImagemChange('verso', val)" />
-                            </div>
+                        </div>
+
+                        <!-- Conteúdo -->
+                        <div v-if="Object.keys(cartaoDinamicoConfigsByCategory).length" class="space-y-8">
+                            <section v-for="(configs, category) in cartaoDinamicoConfigsByCategory" :key="category"
+                                class="space-y-4">
+                                <div class="flex items-center gap-2">
+                                    <component :is="cartaoDinamicoCategoryIcon(category)"
+                                        class="w-4 h-4 text-gray-400 shrink-0" />
+                                    <h4 class="text-sm font-semibold text-gray-700">{{ category }}</h4>
+                                    <div class="flex-1 h-px bg-gray-200"></div>
+                                    <span class="text-xs text-gray-400 font-medium">{{ configs.length }} itens</span>
+                                </div>
+
+                                <!-- No máximo 2 colunas: menos alvos visuais competindo por atenção ao mesmo tempo -->
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div v-for="config in configs" :key="config.key"
+                                        class="bg-white rounded-xl border border-gray-200 overflow-hidden transition-shadow"
+                                        :class="{ 'shadow-md': isCartaoDinamicoExpanded(config.key) }">
+                                        <!-- Header -->
+                                        <div class="p-5 cursor-pointer select-none"
+                                            @click="toggleCartaoDinamicoExpand(config.key)" role="button"
+                                            :aria-expanded="isCartaoDinamicoExpanded(config.key)">
+                                            <div class="flex items-start gap-3">
+                                                <!-- Ícone fixo por tipo: reconhecimento visual sem precisar ler o texto -->
+                                                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                                    :class="cartaoDinamicoTypeIconClasses(config)">
+                                                    <component :is="cartaoDinamicoTypeIcon(config)" class="w-5 h-5" />
+                                                </div>
+
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <h5 class="font-semibold text-gray-900 text-sm"
+                                                            v-html="cartaoDinamicoHighlight(config.label)"></h5>
+                                                        <span v-if="cartaoDinamicoHasUnsavedChanges(config)"
+                                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 shrink-0">
+                                                            <AlertCircle class="w-3 h-3" />
+                                                            não salvo
+                                                        </span>
+                                                    </div>
+                                                    <p class="text-xs text-gray-500 mt-1"
+                                                        v-html="cartaoDinamicoHighlight(config.description)"></p>
+                                                </div>
+                                                <div class="flex items-center gap-2 shrink-0">
+                                                    <img v-if="config.type === 'image' && cartaoDinamicoAssets[config.key]"
+                                                        :src="cartaoDinamicoAssets[config.key]"
+                                                        class="w-8 h-8 rounded-lg object-cover border border-gray-200"
+                                                        alt="Preview" />
+                                                    <span v-if="config.type === 'toggle'" :class="[
+                                                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                                                        props.cartaoDinamicoEnabled
+                                                            ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                                                            : 'bg-gray-100 text-gray-500 border border-gray-200',
+                                                    ]">
+                                                        {{ props.cartaoDinamicoEnabled ? 'Ativado' : 'Desativado' }}
+                                                    </span>
+                                                    <span v-if="config.type === 'qrcode'" :class="[
+                                                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                                                        qrcodeHabilitadoCartaoDinamico
+                                                            ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                                            : 'bg-gray-100 text-gray-500 border border-gray-200',
+                                                    ]">
+                                                        {{ qrcodeHabilitadoCartaoDinamico ? 'Ativado' : 'Desativado' }}
+                                                    </span>
+                                                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                                                        :class="{ 'rotate-180': isCartaoDinamicoExpanded(config.key) }"
+                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Body -->
+                                        <Transition name="cartao-dinamico-expand">
+                                            <div v-if="isCartaoDinamicoExpanded(config.key)"
+                                                class="border-t border-gray-100 p-5 space-y-4">
+                                                <!-- Estilo -->
+                                                <template v-if="config.type === 'style'">
+                                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <div class="grid gap-2">
+                                                            <Label for="cartao_cor_primaria">Cor Primária</Label>
+                                                            <div class="flex items-center gap-3">
+                                                                <input id="cartao_cor_primaria" type="color"
+                                                                    v-model="corPrimariaCartaoDinamico"
+                                                                    class="w-12 h-10 rounded border border-input cursor-pointer" />
+                                                                <input type="text" v-model="corPrimariaCartaoDinamico"
+                                                                    placeholder="#22d3ee"
+                                                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
+                                                            </div>
+                                                        </div>
+                                                        <div class="grid gap-2">
+                                                            <Label for="cartao_cor_secundaria">Cor Secundária</Label>
+                                                            <div class="flex items-center gap-3">
+                                                                <input id="cartao_cor_secundaria" type="color"
+                                                                    v-model="corSecundariaCartaoDinamico"
+                                                                    class="w-12 h-10 rounded border border-input cursor-pointer" />
+                                                                <input type="text" v-model="corSecundariaCartaoDinamico"
+                                                                    placeholder="#0e7490"
+                                                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
+                                                            </div>
+                                                        </div>
+                                                        <div class="grid gap-2">
+                                                            <Label for="cartao_cor_texto">Cor do Texto</Label>
+                                                            <div class="flex items-center gap-3">
+                                                                <input id="cartao_cor_texto" type="color"
+                                                                    v-model="corTextoCartaoDinamico"
+                                                                    class="w-12 h-10 rounded border border-input cursor-pointer" />
+                                                                <input type="text" v-model="corTextoCartaoDinamico"
+                                                                    placeholder="#ffffff"
+                                                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm flex-1" />
+                                                            </div>
+                                                        </div>
+                                                        <div class="grid gap-2">
+                                                            <Label for="cartao_fonte">Fonte</Label>
+                                                            <select id="cartao_fonte" v-model="fonteCartaoDinamico"
+                                                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                                                <option v-for="fonte in fontesCartaoDinamico"
+                                                                    :key="fonte.value" :value="fonte.value">
+                                                                    {{ fonte.label }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex justify-end pt-2 border-t border-gray-100">
+                                                        <Button type="button" :disabled="isSavingCoresCartaoDinamico"
+                                                            @click="salvarCoresCartaoDinamico">
+                                                            {{ isSavingCoresCartaoDinamico ? 'Salvando...' : 'Salvar Estilo' }}
+                                                        </Button>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Imagens -->
+                                                <template v-else-if="config.type === 'image'">
+                                                    <ImageUpload :label="config.label" :description="config.description"
+                                                        :model-value="cartaoDinamicoAssets[config.key]"
+                                                        :preview-url="cartaoDinamicoAssets[config.key]"
+                                                        :show-posicao-selector="false"
+                                                        @update:model-value="(val) => handleCartaoImagemChange(config.key, val)" />
+                                                </template>
+
+                                                <!-- Status -->
+                                                <template v-else-if="config.type === 'toggle'">
+                                                    <div
+                                                        class="flex items-start gap-3 p-4 rounded-xl border border-purple-200 bg-purple-50 text-purple-800">
+                                                        <Info class="w-5 h-5 shrink-0 mt-0.5" />
+                                                        <div class="text-sm">
+                                                            <p class="font-medium">
+                                                                {{ config.label }}
+                                                            </p>
+                                                            <p class="text-xs text-purple-700 mt-1">
+                                                                {{ config.description }}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex items-center justify-between gap-4 mt-4">
+                                                        <p class="text-sm text-gray-600 flex-1">
+                                                            Status atual do cartão dinâmico.
+                                                        </p>
+                                                        <button @click="toggleCartaoDinamico"
+                                                            :disabled="isTogglingCartaoDinamico" :class="[
+                                                                'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2',
+                                                                props.cartaoDinamicoEnabled ? 'bg-purple-600' : 'bg-gray-200',
+                                                                isTogglingCartaoDinamico ? 'opacity-50 cursor-not-allowed' : '',
+                                                            ]">
+                                                            <span :class="[
+                                                                'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
+                                                                props.cartaoDinamicoEnabled ? 'translate-x-5' : 'translate-x-0',
+                                                            ]" />
+                                                        </button>
+                                                    </div>
+                                                </template>
+
+                                                <!-- QR Code e Textos do Verso -->
+                                                <template v-else-if="config.type === 'qrcode'">
+                                                    <div
+                                                        class="flex items-start gap-3 p-4 rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-800">
+                                                        <Info class="w-5 h-5 shrink-0 mt-0.5" />
+                                                        <div class="text-sm">
+                                                            <p class="font-medium">
+                                                                QR Code e textos do verso do cartão
+                                                            </p>
+                                                            <p class="text-xs text-cyan-700 mt-1">
+                                                                O QR Code é exibido no centro do verso do cartão
+                                                                dinâmico. Os textos abaixo substituem os textos fixos
+                                                                ao lado do QR Code e no rodapé do verso.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex items-center justify-between gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+                                                        <div class="text-sm">
+                                                            <p class="font-medium text-gray-800">QR Code habilitado</p>
+                                                            <p class="text-xs text-gray-500 mt-0.5">
+                                                                Quando desativado, o verso do cartão exibe "QR Code desativado" no lugar da imagem.
+                                                            </p>
+                                                        </div>
+                                                        <button type="button"
+                                                            @click="qrcodeHabilitadoCartaoDinamico = !qrcodeHabilitadoCartaoDinamico"
+                                                            :class="[
+                                                                'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
+                                                                qrcodeHabilitadoCartaoDinamico ? 'bg-indigo-600' : 'bg-gray-200',
+                                                            ]">
+                                                            <span :class="[
+                                                                'pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
+                                                                qrcodeHabilitadoCartaoDinamico ? 'translate-x-5' : 'translate-x-0',
+                                                            ]" />
+                                                        </button>
+                                                    </div>
+
+                                                    <div class="grid gap-2">
+                                                        <Label for="cartao_qrcode_dados">O que colocar no QR Code</Label>
+                                                        <textarea id="cartao_qrcode_dados" v-model="qrcodeDadosCartaoDinamico"
+                                                            rows="2" placeholder="URL, texto ou dado que será codificado no QR Code"
+                                                            class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
+                                                        <p class="text-xs text-gray-400">
+                                                            Se deixado em branco, é usado o link padrão configurado no sistema.
+                                                        </p>
+                                                    </div>
+
+                                                    <div class="grid gap-2">
+                                                        <Label for="cartao_verso_texto_info">Texto ao lado do QR Code</Label>
+                                                        <input id="cartao_verso_texto_info" type="text"
+                                                            v-model="versoTextoInfoCartaoDinamico" placeholder="Solicite atendimento 24h"
+                                                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                                                    </div>
+
+                                                    <div class="grid gap-2">
+                                                        <Label for="cartao_verso_rodape">Texto de rodapé do verso</Label>
+                                                        <textarea id="cartao_verso_rodape" v-model="versoRodapeCartaoDinamico"
+                                                            rows="4" placeholder="Uma linha por frase"
+                                                            class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
+                                                        <p class="text-xs text-gray-400">
+                                                            Cada linha vira uma linha separada no cartão.
+                                                        </p>
+                                                    </div>
+
+                                                    <div class="flex justify-end pt-2 border-t border-gray-100">
+                                                        <Button type="button" :disabled="isSavingQrcodeCartaoDinamico"
+                                                            @click="salvarQrcodeCartaoDinamico">
+                                                            {{ isSavingQrcodeCartaoDinamico ? 'Salvando...' : 'Salvar' }}
+                                                        </Button>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </Transition>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Empty -->
+                        <div v-else class="text-center py-16 bg-white rounded-xl border border-gray-200">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-1">Nenhuma configuração encontrada</h3>
+                            <p class="text-sm text-gray-500">Tente ajustar os filtros ou termos de busca.</p>
+                            <button v-if="cartaoDinamicoSearch || cartaoDinamicoActiveCategory !== 'all'" type="button"
+                                @click="clearCartaoDinamicoFiltros"
+                                class="mt-4 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
+                                Limpar filtros
+                            </button>
                         </div>
                     </div>
 
@@ -2226,3 +2707,26 @@ const confirmRemoveLink = () => {
         </div>
     </CentralAdminLayout>
 </template>
+
+<style scoped>
+.cartao-dinamico-expand-enter-active,
+.cartao-dinamico-expand-leave-active {
+    transition: all 0.25s ease;
+    overflow: hidden;
+}
+
+.cartao-dinamico-expand-enter-from,
+.cartao-dinamico-expand-leave-to {
+    opacity: 0;
+    max-height: 0;
+}
+
+.cartao-dinamico-scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.cartao-dinamico-scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+</style>

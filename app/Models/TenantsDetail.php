@@ -34,6 +34,10 @@ class TenantsDetail extends Model
         'cartao_logo',
         'cartao_imagem_frente',
         'cartao_imagem_verso',
+        'cartao_qrcode_habilitado',
+        'cartao_qrcode_dados',
+        'cartao_verso_texto_info',
+        'cartao_verso_rodape',
     ];
 
     protected $casts = [

@@ -64,6 +64,10 @@ class PaginaShowController extends Controller
             'logo' => $this->resolveCartaoAsset($tenant, $detail, 'cartao_logo', 'logo'),
             'frente' => $this->resolveCartaoAsset($tenant, $detail, 'cartao_imagem_frente', 'frente'),
             'verso' => $this->resolveCartaoAsset($tenant, $detail, 'cartao_imagem_verso', 'verso'),
+            'qrcode_habilitado' => (bool) ($detail?->cartao_qrcode_habilitado ?? false),
+            'qrcode_dados' => $detail?->cartao_qrcode_dados ?? '',
+            'verso_texto_info' => $detail?->cartao_verso_texto_info ?: 'Solicite atendimento 24h',
+            'verso_rodape' => $detail?->cartao_verso_rodape ?: "Apresente este cartão nos locais conveniados\no obtenha benefícios especiais\nConsute o regulamento em nosso site:\nwww.integralmedben.com.br",
         ];
 
         $logo = null;

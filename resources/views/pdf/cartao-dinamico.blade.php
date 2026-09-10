@@ -233,18 +233,23 @@
         @endif
 
         <div class="qr-central">
-            <img src="{{ $qr }}" alt="QR Code">
+            @if ($qr)
+                <img src="{{ $qr }}" alt="QR Code">
+            @else
+                <div class="w-full h-full flex items-center justify-center text-[6pt] text-gray-400">
+                    QR Code desativado
+                </div>
+            @endif
         </div>
 
         <div class="info-vertical">
-            <div class="txt1">Solicite atendimento 24h</div>
+            <div class="txt1">{{ $verso_texto_info }}</div>
             <div class="cpf">CPF: {{ $cpf }}</div>
         </div>
         <div class="selo-vertical">
-            <div>Apresente este cartão nos locais conveniados</div>
-            <div>o obtenha benefícios especiais</div>
-            <div>Consute o regulamento em nosso site:</div>
-            <div>www.integralmedben.com.br</div>
+            @foreach ($verso_rodape_linhas as $linha)
+                <div>{{ $linha }}</div>
+            @endforeach
         </div>
     </div>
 
