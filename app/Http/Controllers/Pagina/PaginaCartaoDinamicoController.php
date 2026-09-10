@@ -43,6 +43,30 @@ class PaginaCartaoDinamicoController extends Controller
             ->with('type', 'success');
     }
 
+    public function updateQrCode(Request $request, Tenant $tenant)
+    {
+        $request->validate([
+            'cartao_qrcode_habilitado' => ['required', 'boolean'],
+            'cartao_qrcode_dados' => ['nullable', 'string', 'max:500'],
+            'cartao_verso_texto_info' => ['nullable', 'string', 'max:255'],
+            'cartao_verso_rodape' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $detail = TenantsDetail::firstOrCreate(['tenant_id' => $tenant->id]);
+
+        $detail->update([
+            'cartao_qrcode_habilitado' => $request->boolean('cartao_qrcode_habilitado'),
+            'cartao_qrcode_dados' => $request->input('cartao_qrcode_dados'),
+            'cartao_verso_texto_info' => $request->input('cartao_verso_texto_info'),
+            'cartao_verso_rodape' => $request->input('cartao_verso_rodape'),
+        ]);
+
+        return redirect()
+            ->route('pagina.show', $tenant->id)
+            ->with('message', 'Configuração do QR Code e textos do verso atualizada com sucesso.')
+            ->with('type', 'success');
+    }
+
     public function storeImagem(Request $request, Tenant $tenant, string $tipo)
     {
         if (! isset(self::TIPO_COLUNA[$tipo])) {
