@@ -27,8 +27,8 @@ const props = defineProps({
 });
 
 const breadcrumbs = computed(() => [
-    { label: "Pacientes", href: route("patients.index"), icon: Users },
-    { label: `Editar Paciente #${props.patient.id}`, href: null },
+    { label: "Beneficiários", href: route("patients.index"), icon: Users },
+    { label: `Editar Beneficiário #${props.patient.id}`, href: null },
 ]);
 
 const enderecosIniciais = computed(() => {
@@ -139,10 +139,10 @@ const goBack = () => {
         <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
             <div class="space-y-1">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-900">
-                    Editar Paciente #{{ patient.id }}
+                    Editar Beneficiário #{{ patient.id }}
                 </h1>
                 <p class="text-sm text-gray-500">
-                    Altere os dados do paciente
+                    Altere os dados do beneficiário
                 </p>
             </div>
             <div class="flex gap-2">
@@ -170,7 +170,7 @@ const goBack = () => {
 
             <!-- Status toggle -->
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
-                <span class="text-sm font-medium text-gray-700">Status do Paciente</span>
+                <span class="text-sm font-medium text-gray-700">Status do Beneficiário</span>
                 <div class="flex items-center gap-3">
                     <AppSwitch v-model="form.status" />
                     <span class="text-sm font-medium" :class="form.status ? 'text-green-700' : 'text-red-700'">

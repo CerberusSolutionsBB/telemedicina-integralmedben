@@ -1876,7 +1876,7 @@ const confirmRemoveLink = () => {
                                     Pacientes
                                 </h2>
                                 <p class="text-sm text-gray-500 mt-0.5">
-                                    Pacientes cadastrados neste parceiro.
+                                    Beneficiário cadastrados neste parceiro.
                                 </p>
                             </div>
                             <span

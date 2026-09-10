@@ -38,7 +38,7 @@ const logout = () => {
 };
 
 const navLinks = [
-    { label: "Pacientes", routeName: "patients.index", icon: Users },
+    { label: "Beneficiários", routeName: "patients.index", icon: Users },
     { label: "Usuários", routeName: "users.index", icon: UserCircle },
     {
         label: "Meus Formulários",
