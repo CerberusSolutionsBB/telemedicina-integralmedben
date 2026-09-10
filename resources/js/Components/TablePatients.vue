@@ -248,7 +248,7 @@ const confirmGerarCartaoDinamico = async () => {
     <div class="space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-                <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Pacientes Cadastrados</h1>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Beneficiário Cadastrados</h1>
                 <p class="text-sm text-gray-500 mt-0.5">
                     {{ patients.total ?? patients.data?.length ?? 0 }} paciente(s) encontrado(s)
                 </p>

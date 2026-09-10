@@ -97,10 +97,10 @@ const confirmDeletePatient = () => {
         <div class="space-y-4">
             <div class="flex flex-col gap-1">
                 <h1 class="text-xl font-semibold text-gray-900">
-                    Pacientes
+                    Beneficiário
                 </h1>
                 <p class="text-sm text-gray-500">
-                    Gerencie os pacientes atuais e novos cadastros.
+                    Gerencie os beneficiários atuais e novos cadastros.
                 </p>
             </div>
 
@@ -108,7 +108,7 @@ const confirmDeletePatient = () => {
                 <div class="flex items-center gap-2">
                     <Button size="sm" @click="router.visit(route('patients.create'))">
                         <Plus class="w-4 h-4 mr-1" />
-                        Novo Paciente
+                        Novo
                     </Button>
                     <Button size="sm" variant="outline" @click="openImportDialog = true">
                         <Upload class="w-4 h-4 mr-1" />
@@ -148,23 +148,23 @@ const confirmDeletePatient = () => {
                                 ? 'border-cyan-500 text-cyan-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         ]">
-                            Pacientes atuais
+                            Beneficiários atuais
                             <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
                                 {{ currentPatientsCount }}
                             </span>
                         </button>
 
-                        <button type="button" @click="activeTab = 'new'" :class="[
+                        <!-- <button type="button" @click="activeTab = 'new'" :class="[
                             'px-4 py-3 text-sm font-medium border-b-2 transition-colors',
                             activeTab === 'new'
                                 ? 'border-cyan-500 text-cyan-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         ]">
-                            Novos pacientes
+                            Novos beneficiário
                             <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
                                 {{ newPatientsCount }}
                             </span>
-                        </button>
+                        </button> -->
                     </nav>
                 </div>
 

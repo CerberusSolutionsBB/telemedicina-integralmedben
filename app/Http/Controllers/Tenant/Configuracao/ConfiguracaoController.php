@@ -59,20 +59,27 @@ class ConfiguracaoController extends Controller
         $cartaoDinamicoEnabled = (bool) ($tenantDetail->configuracao['cartao_dinamico_enabled'] ?? false);
         $atualizadoEm = $tenantDetail->updated_at?->format('d/m/Y H:i');
 
-        return Inertia::render('Tenant/Configuracao/Index', [
-            'configurations' => [
-                [
-                    'key' => 'logo',
-                    'label' => 'Logo do Sistema',
-                    'description' => 'Imagem exibida no painel e telas públicas.',
-                    'type' => 'image',
-                    'icon' => 'image',
-                    'category' => 'Aparência',
-                    'value' => $logoUrl,
-                    'updated_at' => $atualizadoEm,
-                    'upload_route' => 'configuracao.logo.update',
-                    'upload_mode' => 'inertia',
-                ],
+        $configurations = [
+            [
+                'key' => 'logo',
+                'label' => 'Logo do Sistema',
+                'description' => 'Imagem exibida no painel e telas públicas.',
+                'type' => 'image',
+                'icon' => 'image',
+                'category' => 'Aparência',
+                'value' => $logoUrl,
+                'updated_at' => $atualizadoEm,
+                'upload_route' => 'configuracao.logo.update',
+                'upload_mode' => 'inertia',
+            ],
+        ];
+
+        // As configurações de Cartão Dinâmico só aparecem aqui depois que o
+        // recurso é habilitado no painel central (Pagina/Show, aba de
+        // configuração). Antes disso, não há o que customizar.
+        if ($cartaoDinamicoEnabled) {
+            array_push(
+                $configurations,
                 [
                     'key' => 'cartao_estilo',
                     'label' => 'Estilo do Cartão Dinâmico',
@@ -152,7 +159,11 @@ class ConfiguracaoController extends Controller
                     ],
                     'save_route' => 'configuracao.cartao-dinamico.qrcode',
                 ],
-            ],
+            );
+        }
+
+        return Inertia::render('Tenant/Configuracao/Index', [
+            'configurations' => $configurations,
         ]);
     }
 

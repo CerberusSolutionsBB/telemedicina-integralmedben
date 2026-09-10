@@ -28,8 +28,8 @@ const props = defineProps({
 });
 
 const breadcrumbs = computed(() => [
-    { label: "Pacientes", href: route("patients.index"), icon: Users },
-    { label: "Novo Paciente", href: null },
+    { label: "Beneficiários", href: route("patients.index"), icon: Users },
+    { label: "Novo Beneficiário", href: null },
 ]);
 
 const form = useForm({
@@ -132,10 +132,10 @@ const goBack = () => {
         <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
             <div class="space-y-1">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-900">
-                    Novo Paciente
+                    Novo Beneficiário
                 </h1>
                 <p class="text-sm text-gray-500">
-                    Cadastre um novo paciente no sistema
+                    Cadastre um novo beneficiário no sistema
                 </p>
             </div>
             <div class="flex gap-2">
