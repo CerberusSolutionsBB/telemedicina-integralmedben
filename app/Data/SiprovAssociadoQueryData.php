@@ -7,6 +7,8 @@ use Throwable;
 
 class SiprovAssociadoQueryData
 {
+    public const TODAS_SITUACOES = 'Todos';
+
     public function __construct(
         public readonly ?string $situacaoBeneficio = null,
         public readonly ?string $cpfCnpj = null,
@@ -28,7 +30,11 @@ class SiprovAssociadoQueryData
         try {
             $params = [];
 
-            if (! empty($this->situacaoBeneficio)) {
+            if ($this->situacaoBeneficio === self::TODAS_SITUACOES) {
+                // A SIPROV exige ao menos um filtro; um intervalo amplo de cadastro traz todas as situações.
+                $params['dataCadastroInicial'] = '01/01/2000';
+                $params['dataCadastroFinal'] = now()->format('d/m/Y');
+            } elseif (! empty($this->situacaoBeneficio)) {
                 $params['situacaoBeneficio'] = $this->situacaoBeneficio;
             }
 

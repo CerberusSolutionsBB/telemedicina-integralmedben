@@ -6,8 +6,8 @@ use App\Http\Controllers\Siprov\SiprovCancelBeneficioController;
 use App\Http\Controllers\Siprov\SiprovCreateController;
 use App\Http\Controllers\Siprov\SiprovDependentesController;
 use App\Http\Controllers\Siprov\SiprovDestroyController;
-use App\Http\Controllers\Siprov\SiprovInativarAssociadoController;
-use App\Http\Controllers\Siprov\SiprovInativarDependenteController;
+use App\Http\Controllers\Siprov\SiprovSituacaoAssociadoController;
+use App\Http\Controllers\Siprov\SiprovSituacaoDependenteController;
 use App\Http\Controllers\Siprov\SiprovIndexController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,17 +31,17 @@ Route::put('/{codBeneficio}/cancelar', SiprovCancelBeneficioController::class)
     ->middleware('permission:siprov.delete')
     ->name('cancelar-beneficio');
 
-Route::put('/{codBeneficio}/inativar', SiprovInativarAssociadoController::class)
+Route::put('/{codBeneficio}/situacao', SiprovSituacaoAssociadoController::class)
     ->middleware('permission:siprov.delete')
-    ->name('inativar');
+    ->name('situacao');
 
 Route::get('/{codBeneficio}/dependentes', SiprovDependentesController::class)
     ->middleware('permission:siprov.view')
     ->name('dependentes');
 
-Route::put('/{codBeneficio}/dependentes/{codDependente}/inativar', SiprovInativarDependenteController::class)
+Route::put('/{codBeneficio}/dependentes/{codDependente}/situacao', SiprovSituacaoDependenteController::class)
     ->middleware('permission:siprov.delete')
-    ->name('inativar-dependente');
+    ->name('situacao-dependente');
 
 Route::get('/cartao', SiprovCartaoController::class)
     ->middleware('permission:siprov.view')

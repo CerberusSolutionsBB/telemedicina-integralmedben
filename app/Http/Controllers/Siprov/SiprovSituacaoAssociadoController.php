@@ -8,7 +8,7 @@ use App\Services\Siprov\SiprovBeneficioService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class SiprovInativarAssociadoController extends Controller
+class SiprovSituacaoAssociadoController extends Controller
 {
     public function __construct(
         private readonly SiprovBeneficioService $beneficioService,
@@ -19,17 +19,21 @@ class SiprovInativarAssociadoController extends Controller
         $validated = $request->validate([
             'cpf'      => ['required', 'string'],
             'codPlano' => ['required', 'integer'],
+            'ativo'    => ['required', 'boolean'],
         ]);
 
+        $ativo = (bool) $validated['ativo'];
+        $acao = $ativo ? 'ativar' : 'inativar';
+
         try {
-            $this->beneficioService->inativar($codBeneficio, $validated['codPlano'], $validated['cpf']);
+            $this->beneficioService->alterarSituacao($codBeneficio, $validated['codPlano'], $validated['cpf'], $ativo);
 
             return response()->json([
-                'message' => 'Associado inativado com sucesso.',
+                'message' => $ativo ? 'Associado ativado com sucesso.' : 'Associado inativado com sucesso.',
             ]);
         } catch (SiprovException $e) {
             return response()->json([
-                'message' => 'Erro ao inativar associado: '.$e->getMessage(),
+                'message' => "Erro ao {$acao} associado: ".$e->getMessage(),
             ], 422);
         }
     }
