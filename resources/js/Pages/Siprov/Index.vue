@@ -3,6 +3,7 @@ import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 import { ref, computed, reactive } from 'vue';
 import { showToast } from '@/Utils/toast';
 import {
@@ -19,6 +20,9 @@ import {
     SlidersHorizontal,
     ChevronDown,
     ExternalLink,
+    UserX,
+    Users,
+    Loader2,
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -308,6 +312,106 @@ const confirmGerarCartao = async () => {
         closeCartaoModal();
     }
 };
+
+const isAtivo = (item) => (item?.situacao || '').toLowerCase() === 'ativo';
+
+// ═══ Inativar associado (grava o benefício com ativo: false) ═══
+const inativarModal = ref({
+    show: false,
+    item: null,
+    isProcessing: false,
+});
+
+const openInativarModal = (item) => {
+    inativarModal.value = { show: true, item, isProcessing: false };
+};
+
+const closeInativarModal = () => {
+    if (inativarModal.value.isProcessing) return;
+    inativarModal.value.show = false;
+    setTimeout(() => {
+        inativarModal.value.item = null;
+    }, 200);
+};
+
+const confirmInativar = async () => {
+    const item = inativarModal.value.item;
+    if (!item) return;
+
+    inativarModal.value.isProcessing = true;
+
+    try {
+        const { data } = await axios.put(route('siprov.inativar', item.codBeneficio), {
+            cpf: item.cpfCnpj,
+            codPlano: item.planos?.[0]?.codPlano,
+        });
+        showToast(data.message || 'Associado inativado com sucesso.', 'success');
+        allAssociados.value = allAssociados.value.filter((a) => a.codBeneficio !== item.codBeneficio);
+    } catch (error) {
+        showToast(error.response?.data?.message || 'Erro ao inativar associado.', 'error');
+    } finally {
+        inativarModal.value.isProcessing = false;
+        closeInativarModal();
+    }
+};
+
+// ═══ Dependentes (inativar = regravar com ativo: false) ═══
+const dependentesModal = ref({
+    show: false,
+    item: null,
+    loading: false,
+    error: null,
+    dependentes: [],
+    confirmingCod: null,
+    processingCod: null,
+});
+
+const openDependentesModal = async (item) => {
+    dependentesModal.value = {
+        show: true,
+        item,
+        loading: true,
+        error: null,
+        dependentes: [],
+        confirmingCod: null,
+        processingCod: null,
+    };
+
+    try {
+        const { data } = await axios.get(route('siprov.dependentes', item.codBeneficio));
+        dependentesModal.value.dependentes = data.dependentes || [];
+    } catch (error) {
+        dependentesModal.value.error = error.response?.data?.message || 'Erro ao carregar dependentes.';
+    } finally {
+        dependentesModal.value.loading = false;
+    }
+};
+
+const closeDependentesModal = () => {
+    if (dependentesModal.value.processingCod) return;
+    dependentesModal.value.show = false;
+};
+
+const inativarDependente = async (dependente) => {
+    const item = dependentesModal.value.item;
+    if (!item) return;
+
+    dependentesModal.value.processingCod = dependente.codDependente;
+
+    try {
+        const { data } = await axios.put(route('siprov.inativar-dependente', {
+            codBeneficio: item.codBeneficio,
+            codDependente: dependente.codDependente,
+        }));
+        dependente.ativo = false;
+        showToast(data.message || 'Dependente inativado com sucesso.', 'success');
+    } catch (error) {
+        showToast(error.response?.data?.message || 'Erro ao inativar dependente.', 'error');
+    } finally {
+        dependentesModal.value.processingCod = null;
+        dependentesModal.value.confirmingCod = null;
+    }
+};
 </script>
 
 <template>
@@ -548,6 +652,18 @@ const confirmGerarCartao = async () => {
                                 <CreditCard class="w-4 h-4" />
                                 Gerar Cartão
                             </button>
+
+                            <button @click.stop="openDependentesModal(item)"
+                                class="flex items-center gap-2 w-full justify-center px-4 py-3 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 transition-colors min-h-[44px]">
+                                <Users class="w-4 h-4" />
+                                Dependentes
+                            </button>
+
+                            <button v-if="can.delete && isAtivo(item)" @click.stop="openInativarModal(item)"
+                                class="flex items-center gap-2 w-full justify-center px-4 py-3 rounded-lg text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors min-h-[44px]">
+                                <UserX class="w-4 h-4" />
+                                Inativar
+                            </button>
                         </div>
                     </div>
 
@@ -683,6 +799,16 @@ const confirmGerarCartao = async () => {
                                         title="Gerar Cartão">
                                         <CreditCard class="w-5 h-5" />
                                     </button>
+                                    <button @click="openDependentesModal(item)"
+                                        class="p-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
+                                        title="Dependentes">
+                                        <Users class="w-5 h-5" />
+                                    </button>
+                                    <button v-if="can.delete && isAtivo(item)" @click="openInativarModal(item)"
+                                        class="p-2.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
+                                        title="Inativar">
+                                        <UserX class="w-5 h-5" />
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
@@ -742,4 +868,87 @@ const confirmGerarCartao = async () => {
         warning-message="O cartão será baixado automaticamente como arquivo PDF." confirm-text="Sim, Gerar"
         cancel-text="Cancelar" :is-processing="cartaoModal.isProcessing" variant="info" @close="closeCartaoModal"
         @confirm="confirmGerarCartao" />
+
+    <ConfirmDeleteModal :show="inativarModal.show" title="Inativar Associado"
+        :message="'Deseja inativar ' + (inativarModal.item?.nomePessoa || 'este associado') + '?'"
+        warning-message="O benefício será gravado como INATIVO na SIPROV." confirm-text="Sim, Inativar"
+        cancel-text="Cancelar" :is-processing="inativarModal.isProcessing" variant="danger"
+        @close="closeInativarModal" @confirm="confirmInativar" />
+
+    <Teleport to="body">
+        <div v-if="dependentesModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeDependentesModal" />
+
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                <div class="flex items-start justify-between gap-4 p-6 pb-4 border-b border-gray-100">
+                    <div class="min-w-0">
+                        <h3 class="text-lg font-semibold text-gray-900">Dependentes</h3>
+                        <p class="text-sm text-gray-500 truncate">{{ dependentesModal.item?.nomePessoa }}</p>
+                    </div>
+                    <button @click="closeDependentesModal" class="p-1 text-gray-400 hover:text-gray-600">
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div class="p-6 max-h-[60vh] overflow-y-auto">
+                    <div v-if="dependentesModal.loading" class="flex justify-center py-8">
+                        <Loader2 class="w-6 h-6 text-cyan-500 animate-spin" />
+                    </div>
+
+                    <p v-else-if="dependentesModal.error" class="text-sm text-red-600 text-center py-6">
+                        {{ dependentesModal.error }}
+                    </p>
+
+                    <p v-else-if="!dependentesModal.dependentes.length" class="text-sm text-gray-500 text-center py-6">
+                        Nenhum dependente vinculado a este benefício.
+                    </p>
+
+                    <ul v-else class="divide-y divide-gray-100">
+                        <li v-for="dep in dependentesModal.dependentes" :key="dep.codDependente"
+                            class="flex items-center justify-between gap-3 py-3">
+                            <div class="min-w-0">
+                                <p class="font-medium text-gray-900 truncate">{{ dep.nome }}</p>
+                                <p class="text-xs text-gray-500 tabular-nums">
+                                    {{ dep.parentesco || '—' }} · {{ formatCpf(dep.cpf) }}
+                                </p>
+                            </div>
+
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span :class="[
+                                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border',
+                                    situacaoClass(dep.ativo ? 'ativo' : 'inativo'),
+                                ]">
+                                    <span :class="['w-2 h-2 rounded-full', situacaoDot(dep.ativo ? 'ativo' : 'inativo')]" />
+                                    {{ dep.ativo ? 'Ativo' : 'Inativo' }}
+                                </span>
+
+                                <template v-if="can.delete && dep.ativo">
+                                    <template v-if="dependentesModal.confirmingCod === dep.codDependente">
+                                        <button @click="dependentesModal.confirmingCod = null"
+                                            :disabled="dependentesModal.processingCod === dep.codDependente"
+                                            class="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100">
+                                            Cancelar
+                                        </button>
+                                        <button @click="inativarDependente(dep)"
+                                            :disabled="dependentesModal.processingCod === dep.codDependente"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60">
+                                            <Loader2 v-if="dependentesModal.processingCod === dep.codDependente"
+                                                class="w-3 h-3 animate-spin" />
+                                            Confirmar
+                                        </button>
+                                    </template>
+                                    <button v-else @click="dependentesModal.confirmingCod = dep.codDependente"
+                                        :disabled="!!dependentesModal.processingCod"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200">
+                                        <UserX class="w-3.5 h-3.5" />
+                                        Inativar
+                                    </button>
+                                </template>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </Teleport>
 </template>

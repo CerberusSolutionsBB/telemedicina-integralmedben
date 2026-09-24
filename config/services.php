@@ -40,6 +40,14 @@ return [
         'password' => env('ZOUG_PASSWORD'),
     ],
 
+    'devyx' => [
+        'url' => env('DEVYX_SMS_URL', 'https://endpoint.devyx.com.br'),
+        'token' => env('DEVYX_SMS_TOKEN'),
+        'source_addr' => env('DEVYX_SMS_SOURCE_ADDR'),
+        'callback_url' => env('DEVYX_SMS_CALLBACK_URL'),
+        'callback_level' => env('DEVYX_SMS_CALLBACK_LEVEL'),
+    ],
+
     'qrcode' => [
         'link' => env('LINK_QRCODE'),
     ],
