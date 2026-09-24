@@ -25,4 +25,9 @@ class SiprovException extends Exception
     {
         return new self($message ?? 'Falha ao cancelar benefício na SIPROV.');
     }
+
+    public static function dependenteFailed(?string $message = null): self
+    {
+        return new self($message ?? 'Falha ao processar dependente na SIPROV.');
+    }
 }

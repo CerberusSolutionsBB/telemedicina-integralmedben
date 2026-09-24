@@ -12,7 +12,7 @@ class SendSms extends Command
                             {phone : Número do destinatário (formato livre)}
                             {message? : Mensagem a ser enviada (se omitida, será solicitada interativamente)}';
 
-    protected $description = 'Envia um SMS via Zoug e exibe o retorno do provider';
+    protected $description = 'Envia um SMS via Devyx e exibe o retorno do provider';
 
     public function handle(SimpleSmsService $smsService): int
     {
