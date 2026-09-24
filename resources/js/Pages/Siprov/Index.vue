@@ -4,7 +4,7 @@ import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, watch } from 'vue';
 import { showToast } from '@/Utils/toast';
 import {
     Search,
@@ -21,6 +21,7 @@ import {
     ChevronDown,
     ExternalLink,
     UserX,
+    UserCheck,
     Users,
     Loader2,
 } from 'lucide-vue-next';
@@ -38,10 +39,6 @@ const props = defineProps({
         type: String,
         default: null,
     },
-    pagination: {
-        type: Object,
-        default: () => ({ currentPage: 1, hasNextPage: false, total: 0 }),
-    },
 });
 
 const page = usePage();
@@ -51,19 +48,32 @@ const flashType = computed(() => page.props.flash?.type);
 
 const can = computed(() => page.props?.authUser?.can?.siprov || {});
 
-const currentSituacao = ref(new URLSearchParams(page.url?.split('?')[1] || '').get('situacaoBeneficio') || 'Ativo');
-const currentPage = ref(props.pagination.currentPage || 1);
+const DEFAULT_SITUACAO = 'Todos';
 
-const goToPage = (newPage) => {
-    if (newPage < 1) return;
-    currentPage.value = newPage;
-    const params = { situacaoBeneficio: currentSituacao.value, pagina: newPage };
+const currentSituacao = ref(new URLSearchParams(page.url?.split('?')[1] || '').get('situacaoBeneficio') || DEFAULT_SITUACAO);
+const PER_PAGE = 15;
+const currentPage = ref(1);
+
+const isLoading = ref(false);
+
+// Recarrega só os dados da SIPROV, descartando a lista anterior enquanto carrega.
+const loadAssociados = (params) => {
     router.visit(route('siprov.index', params), {
+        only: ['associados', 'siprovError'],
         preserveState: true,
         preserveScroll: true,
         replace: true,
+        onStart: () => {
+            isLoading.value = true;
+            allAssociados.value = [];
+            expandedCards.clear();
+        },
+        onFinish: () => {
+            isLoading.value = false;
+        },
     });
 };
+
 
 const extractItens = (data) => {
     if (Array.isArray(data) && data.length === 1 && data[0].itens) {
@@ -76,6 +86,11 @@ const extractItens = (data) => {
 };
 
 const allAssociados = ref(extractItens(props.associados));
+
+watch(() => props.associados, (value) => {
+    allAssociados.value = extractItens(value);
+    currentPage.value = 1;
+});
 
 const search = ref('');
 const selectedPlano = ref('');
@@ -160,11 +175,56 @@ const filteredAssociados = computed(() => {
 
 const hasResults = computed(() => filteredAssociados.value.length > 0);
 
+// ═══ Paginação local (a lista completa já vem da SIPROV) ═══
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredAssociados.value.length / PER_PAGE)));
+
+const paginatedAssociados = computed(() => {
+    const start = (currentPage.value - 1) * PER_PAGE;
+    return filteredAssociados.value.slice(start, start + PER_PAGE);
+});
+
+const pageRange = computed(() => {
+    const start = (currentPage.value - 1) * PER_PAGE + 1;
+    const end = Math.min(currentPage.value * PER_PAGE, filteredAssociados.value.length);
+    return { start, end };
+});
+
+// Números de página com reticências: 1 … 4 5 6 … 10
+const pageNumbers = computed(() => {
+    const total = totalPages.value;
+    const current = currentPage.value;
+    if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const pages = [1];
+    const from = Math.max(2, current - 1);
+    const to = Math.min(total - 1, current + 1);
+    if (from > 2) pages.push('…');
+    for (let p = from; p <= to; p++) pages.push(p);
+    if (to < total - 1) pages.push('…');
+    pages.push(total);
+    return pages;
+});
+
+const goToPage = (newPage) => {
+    if (newPage < 1 || newPage > totalPages.value) return;
+    currentPage.value = newPage;
+};
+
+watch([search, selectedPlano, selectedParceiro], () => {
+    currentPage.value = 1;
+});
+
+// Se a lista encolher (ex.: associado removido ao inativar), não deixa a página vazia.
+watch(totalPages, (total) => {
+    if (currentPage.value > total) currentPage.value = total;
+});
+
 const hasActiveFilters = computed(() =>
     search.value.length > 0 ||
     selectedPlano.value !== '' ||
     selectedParceiro.value !== '' ||
-    currentSituacao.value !== 'Ativo'
+    currentSituacao.value !== DEFAULT_SITUACAO
 );
 
 const activeFilterChips = computed(() => {
@@ -176,27 +236,20 @@ const activeFilterChips = computed(() => {
     if (selectedParceiro.value) {
         chips.push({ label: `Parceiro: ${selectedParceiro.value}`, type: 'parceiro' });
     }
-    if (currentSituacao.value !== 'Ativo') {
-        chips.push({ label: `Situação: ${currentSituacao.value}`, type: 'situacao' });
-    }
     return chips;
 });
 
 const removeFilter = (type) => {
     if (type === 'plano') selectedPlano.value = '';
     if (type === 'parceiro') selectedParceiro.value = '';
-    if (type === 'situacao') {
-        currentSituacao.value = 'Ativo';
-        onSituacaoChange();
-    }
 };
 
 const clearAllFilters = () => {
     search.value = '';
     selectedPlano.value = '';
     selectedParceiro.value = '';
-    if (currentSituacao.value !== 'Ativo') {
-        currentSituacao.value = 'Ativo';
+    if (currentSituacao.value !== DEFAULT_SITUACAO) {
+        currentSituacao.value = DEFAULT_SITUACAO;
         onSituacaoChange();
     }
 };
@@ -214,23 +267,29 @@ const clearSearch = () => {
     selectedPlano.value = '';
     selectedParceiro.value = '';
     filtersOpen.value = false;
-    if (currentSituacao.value !== 'Ativo' || currentPage.value !== 1) {
-        currentSituacao.value = 'Ativo';
-        currentPage.value = 1;
-        goToPage(1);
+    currentPage.value = 1;
+    if (currentSituacao.value !== DEFAULT_SITUACAO) {
+        currentSituacao.value = DEFAULT_SITUACAO;
+        onSituacaoChange();
         return;
     }
-    currentSituacao.value = 'Ativo';
     searchInput.value?.focus();
 };
 
+const situacaoOptions = [
+    { value: DEFAULT_SITUACAO, label: 'Todos' },
+    { value: 'Ativo', label: 'Ativo' },
+    { value: 'Inativo', label: 'Inativo' },
+];
+
+const setSituacao = (value) => {
+    if (currentSituacao.value === value) return;
+    currentSituacao.value = value;
+    onSituacaoChange();
+};
+
 const onSituacaoChange = () => {
-    currentPage.value = 1;
-    router.visit(route('siprov.index', { situacaoBeneficio: currentSituacao.value }), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-    });
+    loadAssociados({ situacaoBeneficio: currentSituacao.value });
 };
 
 const formatDate = (date) => {
@@ -314,48 +373,56 @@ const confirmGerarCartao = async () => {
 };
 
 const isAtivo = (item) => (item?.situacao || '').toLowerCase() === 'ativo';
+const isInativo = (item) => (item?.situacao || '').toLowerCase() === 'inativo';
+const podeAlterarSituacao = (item) => can.value.delete && (isAtivo(item) || isInativo(item));
 
-// ═══ Inativar associado (grava o benefício com ativo: false) ═══
-const inativarModal = ref({
+// ═══ Ativar / inativar associado (grava o benefício com ativo: true/false) ═══
+const situacaoModal = ref({
     show: false,
     item: null,
+    ativar: false,
     isProcessing: false,
 });
 
-const openInativarModal = (item) => {
-    inativarModal.value = { show: true, item, isProcessing: false };
+const openSituacaoModal = (item) => {
+    situacaoModal.value = { show: true, item, ativar: !isAtivo(item), isProcessing: false };
 };
 
-const closeInativarModal = () => {
-    if (inativarModal.value.isProcessing) return;
-    inativarModal.value.show = false;
+const closeSituacaoModal = () => {
+    if (situacaoModal.value.isProcessing) return;
+    situacaoModal.value.show = false;
     setTimeout(() => {
-        inativarModal.value.item = null;
+        situacaoModal.value.item = null;
     }, 200);
 };
 
-const confirmInativar = async () => {
-    const item = inativarModal.value.item;
+const confirmAlterarSituacao = async () => {
+    const { item, ativar } = situacaoModal.value;
     if (!item) return;
 
-    inativarModal.value.isProcessing = true;
+    situacaoModal.value.isProcessing = true;
 
     try {
-        const { data } = await axios.put(route('siprov.inativar', item.codBeneficio), {
+        const { data } = await axios.put(route('siprov.situacao', item.codBeneficio), {
             cpf: item.cpfCnpj,
             codPlano: item.planos?.[0]?.codPlano,
+            ativo: ativar,
         });
-        showToast(data.message || 'Associado inativado com sucesso.', 'success');
-        allAssociados.value = allAssociados.value.filter((a) => a.codBeneficio !== item.codBeneficio);
+        showToast(data.message || 'Situação alterada com sucesso.', 'success');
+        if (currentSituacao.value === DEFAULT_SITUACAO) {
+            item.situacao = ativar ? 'ATIVO' : 'INATIVO';
+        } else {
+            allAssociados.value = allAssociados.value.filter((a) => a.codBeneficio !== item.codBeneficio);
+        }
     } catch (error) {
-        showToast(error.response?.data?.message || 'Erro ao inativar associado.', 'error');
+        showToast(error.response?.data?.message || 'Erro ao alterar situação do associado.', 'error');
     } finally {
-        inativarModal.value.isProcessing = false;
-        closeInativarModal();
+        situacaoModal.value.isProcessing = false;
+        closeSituacaoModal();
     }
 };
 
-// ═══ Dependentes (inativar = regravar com ativo: false) ═══
+// ═══ Dependentes (ativar / inativar = regravar com ativo: true/false) ═══
 const dependentesModal = ref({
     show: false,
     item: null,
@@ -392,21 +459,22 @@ const closeDependentesModal = () => {
     dependentesModal.value.show = false;
 };
 
-const inativarDependente = async (dependente) => {
+const alterarSituacaoDependente = async (dependente) => {
     const item = dependentesModal.value.item;
     if (!item) return;
 
+    const ativar = !dependente.ativo;
     dependentesModal.value.processingCod = dependente.codDependente;
 
     try {
-        const { data } = await axios.put(route('siprov.inativar-dependente', {
+        const { data } = await axios.put(route('siprov.situacao-dependente', {
             codBeneficio: item.codBeneficio,
             codDependente: dependente.codDependente,
-        }));
-        dependente.ativo = false;
-        showToast(data.message || 'Dependente inativado com sucesso.', 'success');
+        }), { ativo: ativar });
+        dependente.ativo = ativar;
+        showToast(data.message || 'Situação do dependente alterada com sucesso.', 'success');
     } catch (error) {
-        showToast(error.response?.data?.message || 'Erro ao inativar dependente.', 'error');
+        showToast(error.response?.data?.message || 'Erro ao alterar situação do dependente.', 'error');
     } finally {
         dependentesModal.value.processingCod = null;
         dependentesModal.value.confirmingCod = null;
@@ -425,7 +493,7 @@ const inativarDependente = async (dependente) => {
                     Telemedicina
                 </h2>
                 <p class="text-sm text-gray-500 mt-1">
-                    Associados com benefício ativo na SIPROV.
+                    Associados com benefício na SIPROV.
                 </p>
             </div>
 
@@ -455,6 +523,18 @@ const inativarDependente = async (dependente) => {
 
             <!-- ═══ FILTROS ═══ -->
             <div class="mx-auto space-y-3">
+                <div class="inline-flex w-full sm:w-auto rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+                    <button v-for="opt in situacaoOptions" :key="opt.value" type="button"
+                        :disabled="isLoading" @click="setSituacao(opt.value)" :class="[
+                            'flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[40px] disabled:cursor-wait',
+                            currentSituacao === opt.value
+                                ? 'bg-cyan-500 text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-50',
+                        ]">
+                        {{ opt.label }}
+                    </button>
+                </div>
+
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -506,13 +586,6 @@ const inativarDependente = async (dependente) => {
                         </option>
                     </select>
 
-                    <select v-model="currentSituacao" @change="onSituacaoChange"
-                        class="block w-full sm:w-44 py-2.5 px-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-shadow cursor-pointer min-h-[44px]">
-                        <option value="Ativo">Ativo</option>
-                        <option value="Inativo">Inativo</option>
-                        <option value="Suspenso">Suspenso</option>
-                    </select>
-
                     <select v-model="selectedParceiro"
                         class="block w-full sm:w-64 py-2.5 px-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-shadow cursor-pointer min-h-[44px]">
                         <option v-for="parceiro in parceiroOptions" :key="parceiro.value" :value="parceiro.value">
@@ -541,18 +614,22 @@ const inativarDependente = async (dependente) => {
                 <!-- ═══ BARRA DE STATUS + PAGINAÇÃO SUPERIOR ═══ -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4 mb-3">
                     <span class="text-sm text-gray-500">
+                        <span v-if="isLoading" class="inline-block h-4 w-32 rounded bg-gray-200 animate-pulse align-middle" />
+                        <template v-else>
                         <span class="font-semibold text-gray-700">{{ filteredAssociados.length }}</span>
                         de {{ allAssociados.length }} associado{{ allAssociados.length !== 1 ? 's' : '' }}
+                        </template>
                     </span>
 
-                    <div v-if="hasResults && (currentPage > 1 || props.pagination.hasNextPage)"
-                        class="flex items-center gap-2">
+                    <div v-if="!isLoading && totalPages > 1" class="flex items-center gap-2">
                         <Button variant="outline" size="sm" :disabled="currentPage <= 1"
                             @click="goToPage(currentPage - 1)">
                             <ChevronLeft class="w-4 h-4" />
                         </Button>
-                        <span class="text-sm text-gray-600 font-medium tabular-nums">Pág. {{ currentPage }}</span>
-                        <Button variant="outline" size="sm" :disabled="!props.pagination.hasNextPage"
+                        <span class="text-sm text-gray-600 font-medium tabular-nums">
+                            Pág. {{ currentPage }} de {{ totalPages }}
+                        </span>
+                        <Button variant="outline" size="sm" :disabled="currentPage >= totalPages"
                             @click="goToPage(currentPage + 1)">
                             <ChevronRight class="w-4 h-4" />
                         </Button>
@@ -561,7 +638,24 @@ const inativarDependente = async (dependente) => {
 
                 <!-- ═══ CARDS (MOBILE) ═══ -->
                 <div class="md:hidden space-y-3">
-                    <div v-for="item in filteredAssociados" :key="'card-' + item.codPessoa"
+                    <template v-if="isLoading">
+                        <div v-for="n in 5" :key="'sk-card-' + n"
+                            class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 animate-pulse">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1 space-y-2">
+                                    <div class="h-4 w-2/3 rounded bg-gray-200" />
+                                    <div class="h-3 w-1/3 rounded bg-gray-200" />
+                                </div>
+                                <div class="h-6 w-16 rounded-full bg-gray-200" />
+                            </div>
+                            <div class="flex gap-2 mt-3">
+                                <div class="h-6 w-24 rounded-full bg-gray-200" />
+                                <div class="h-6 w-32 rounded-full bg-gray-200" />
+                            </div>
+                        </div>
+                    </template>
+
+                    <div v-for="item in paginatedAssociados" :key="'card-' + item.codBeneficio"
                         class="bg-white rounded-xl border shadow-sm overflow-hidden transition-all active:bg-gray-50/80 active:scale-[0.98]"
                         :class="item.tenants?.length > 0
                             ? 'border-l-4 border-l-cyan-400'
@@ -659,15 +753,19 @@ const inativarDependente = async (dependente) => {
                                 Dependentes
                             </button>
 
-                            <button v-if="can.delete && isAtivo(item)" @click.stop="openInativarModal(item)"
-                                class="flex items-center gap-2 w-full justify-center px-4 py-3 rounded-lg text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors min-h-[44px]">
-                                <UserX class="w-4 h-4" />
-                                Inativar
+                            <button v-if="podeAlterarSituacao(item)" @click.stop="openSituacaoModal(item)" :class="[
+                                'flex items-center gap-2 w-full justify-center px-4 py-3 rounded-lg text-sm font-medium border transition-colors min-h-[44px]',
+                                isAtivo(item)
+                                    ? 'text-red-700 bg-red-50 hover:bg-red-100 border-red-200'
+                                    : 'text-green-700 bg-green-50 hover:bg-green-100 border-green-200',
+                            ]">
+                                <component :is="isAtivo(item) ? UserX : UserCheck" class="w-4 h-4" />
+                                {{ isAtivo(item) ? 'Inativar' : 'Ativar' }}
                             </button>
                         </div>
                     </div>
 
-                    <div v-if="!hasResults" class="text-center py-16 text-gray-500">
+                    <div v-if="!hasResults && !isLoading" class="text-center py-16 text-gray-500">
                         <div v-if="hasActiveFilters" class="space-y-3">
                             <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
                                 <Search class="w-8 h-8 text-gray-400" />
@@ -687,7 +785,7 @@ const inativarDependente = async (dependente) => {
                             </div>
                             <p class="text-lg font-medium text-gray-900">Nenhum associado</p>
                             <p class="text-sm text-gray-500">
-                                Nenhum associado com benefício ativo foi retornado pela SIPROV.
+                                Nenhum associado foi retornado pela SIPROV.
                             </p>
                         </div>
                     </div>
@@ -728,7 +826,29 @@ const inativarDependente = async (dependente) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 bg-white">
-                            <tr v-for="(item, idx) in filteredAssociados" :key="'row-' + item.codPessoa + '-' + idx"
+                            <template v-if="isLoading">
+                                <tr v-for="n in 8" :key="'sk-row-' + n" class="animate-pulse">
+                                    <td class="px-6 py-4"><div class="h-4 w-14 rounded bg-gray-200" /></td>
+                                    <td class="px-6 py-4">
+                                        <div class="h-4 w-40 rounded bg-gray-200" />
+                                        <div class="h-3 w-28 rounded bg-gray-100 mt-2" />
+                                    </td>
+                                    <td class="px-6 py-4"><div class="h-4 w-28 rounded bg-gray-200" /></td>
+                                    <td class="px-6 py-4"><div class="h-4 w-20 rounded bg-gray-200" /></td>
+                                    <td class="px-6 py-4"><div class="h-6 w-36 rounded-full bg-gray-200" /></td>
+                                    <td class="px-6 py-4"><div class="h-4 w-20 rounded bg-gray-200" /></td>
+                                    <td class="px-6 py-4"><div class="h-6 w-16 rounded-full bg-gray-200" /></td>
+                                    <td class="px-6 py-4"><div class="h-6 w-24 rounded-full bg-gray-200" /></td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex justify-end gap-2">
+                                            <div class="h-8 w-8 rounded-lg bg-gray-200" />
+                                            <div class="h-8 w-8 rounded-lg bg-gray-200" />
+                                            <div class="h-8 w-8 rounded-lg bg-gray-200" />
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr v-for="(item, idx) in paginatedAssociados" :key="'row-' + item.codPessoa + '-' + idx"
                                 class="even:bg-gray-50/50 hover:bg-cyan-50/30 transition-colors group" :class="item.tenants?.length > 0
                                     ? 'border-l-4 border-l-cyan-400'
                                     : 'border-l-4 border-l-transparent'">
@@ -804,17 +924,20 @@ const inativarDependente = async (dependente) => {
                                         title="Dependentes">
                                         <Users class="w-5 h-5" />
                                     </button>
-                                    <button v-if="can.delete && isAtivo(item)" @click="openInativarModal(item)"
-                                        class="p-2.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
-                                        title="Inativar">
-                                        <UserX class="w-5 h-5" />
+                                    <button v-if="podeAlterarSituacao(item)" @click="openSituacaoModal(item)" :class="[
+                                        'p-2.5 rounded-lg transition-all',
+                                        isAtivo(item)
+                                            ? 'text-red-500 hover:text-red-700 hover:bg-red-50'
+                                            : 'text-green-600 hover:text-green-800 hover:bg-green-50',
+                                    ]" :title="isAtivo(item) ? 'Inativar' : 'Ativar'">
+                                        <component :is="isAtivo(item) ? UserX : UserCheck" class="w-5 h-5" />
                                     </button>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div v-if="!hasResults" class="text-center py-16 text-gray-500">
+                    <div v-if="!hasResults && !isLoading" class="text-center py-16 text-gray-500">
                         <div v-if="hasActiveFilters" class="space-y-3">
                             <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
                                 <Search class="w-8 h-8 text-gray-400" />
@@ -834,30 +957,43 @@ const inativarDependente = async (dependente) => {
                             </div>
                             <p class="text-lg font-medium text-gray-900">Nenhum associado</p>
                             <p class="text-sm text-gray-500">
-                                Nenhum associado com benefício ativo foi retornado pela SIPROV.
+                                Nenhum associado foi retornado pela SIPROV.
                             </p>
                         </div>
                     </div>
+                </div>
 
-                    <!-- ═══ PAGINAÇÃO INFERIOR ═══ -->
-                    <div v-if="hasResults && (currentPage > 1 || props.pagination.hasNextPage)"
-                        class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-                        <div class="text-sm text-gray-500 tabular-nums">
-                            {{ props.pagination.total }} resultado(s)
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <Button variant="outline" size="sm" :disabled="currentPage <= 1"
-                                @click="goToPage(currentPage - 1)">
-                                <ChevronLeft class="w-4 h-4" />
-                                <span class="hidden sm:inline ml-1">Anterior</span>
-                            </Button>
-                            <Button variant="outline" size="sm" :disabled="!props.pagination.hasNextPage"
-                                @click="goToPage(currentPage + 1)">
-                                <span class="hidden sm:inline mr-1">Próxima</span>
-                                <ChevronRight class="w-4 h-4" />
-                            </Button>
-                        </div>
+                <!-- ═══ PAGINAÇÃO INFERIOR ═══ -->
+                <div v-if="!isLoading && hasResults"
+                    class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+                    <div class="text-sm text-gray-500 tabular-nums">
+                        Mostrando {{ pageRange.start }}–{{ pageRange.end }} de {{ filteredAssociados.length }}
+                        associado{{ filteredAssociados.length !== 1 ? 's' : '' }}
                     </div>
+                    <nav v-if="totalPages > 1" class="flex items-center gap-1" aria-label="Paginação">
+                        <Button variant="outline" size="sm" :disabled="currentPage <= 1"
+                            @click="goToPage(currentPage - 1)">
+                            <ChevronLeft class="w-4 h-4" />
+                            <span class="hidden sm:inline ml-1">Anterior</span>
+                        </Button>
+                        <template v-for="(p, i) in pageNumbers" :key="'p-' + i">
+                            <span v-if="p === '…'" class="px-2 text-sm text-gray-400">…</span>
+                            <button v-else type="button" @click="goToPage(p)" :aria-current="p === currentPage ? 'page' : undefined"
+                                :class="[
+                                    'min-w-[36px] h-9 px-2 rounded-lg text-sm font-medium tabular-nums transition-colors',
+                                    p === currentPage
+                                        ? 'bg-cyan-500 text-white shadow-sm'
+                                        : 'text-gray-600 hover:bg-gray-100',
+                                ]">
+                                {{ p }}
+                            </button>
+                        </template>
+                        <Button variant="outline" size="sm" :disabled="currentPage >= totalPages"
+                            @click="goToPage(currentPage + 1)">
+                            <span class="hidden sm:inline mr-1">Próxima</span>
+                            <ChevronRight class="w-4 h-4" />
+                        </Button>
+                    </nav>
                 </div>
             </template>
         </div>
@@ -869,11 +1005,14 @@ const inativarDependente = async (dependente) => {
         cancel-text="Cancelar" :is-processing="cartaoModal.isProcessing" variant="info" @close="closeCartaoModal"
         @confirm="confirmGerarCartao" />
 
-    <ConfirmDeleteModal :show="inativarModal.show" title="Inativar Associado"
-        :message="'Deseja inativar ' + (inativarModal.item?.nomePessoa || 'este associado') + '?'"
-        warning-message="O benefício será gravado como INATIVO na SIPROV." confirm-text="Sim, Inativar"
-        cancel-text="Cancelar" :is-processing="inativarModal.isProcessing" variant="danger"
-        @close="closeInativarModal" @confirm="confirmInativar" />
+    <ConfirmDeleteModal :show="situacaoModal.show"
+        :title="situacaoModal.ativar ? 'Ativar Associado' : 'Inativar Associado'"
+        :message="(situacaoModal.ativar ? 'Deseja ativar ' : 'Deseja inativar ') + (situacaoModal.item?.nomePessoa || 'este associado') + '?'"
+        :warning-message="'O benefício será gravado como ' + (situacaoModal.ativar ? 'ATIVO' : 'INATIVO') + ' na SIPROV.'"
+        :confirm-text="situacaoModal.ativar ? 'Sim, Ativar' : 'Sim, Inativar'"
+        cancel-text="Cancelar" :is-processing="situacaoModal.isProcessing"
+        :variant="situacaoModal.ativar ? 'info' : 'danger'"
+        @close="closeSituacaoModal" @confirm="confirmAlterarSituacao" />
 
     <Teleport to="body">
         <div v-if="dependentesModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -922,16 +1061,19 @@ const inativarDependente = async (dependente) => {
                                     {{ dep.ativo ? 'Ativo' : 'Inativo' }}
                                 </span>
 
-                                <template v-if="can.delete && dep.ativo">
+                                <template v-if="can.delete">
                                     <template v-if="dependentesModal.confirmingCod === dep.codDependente">
                                         <button @click="dependentesModal.confirmingCod = null"
                                             :disabled="dependentesModal.processingCod === dep.codDependente"
                                             class="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100">
                                             Cancelar
                                         </button>
-                                        <button @click="inativarDependente(dep)"
+                                        <button @click="alterarSituacaoDependente(dep)"
                                             :disabled="dependentesModal.processingCod === dep.codDependente"
-                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60">
+                                            :class="[
+                                                'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-white disabled:opacity-60',
+                                                dep.ativo ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700',
+                                            ]">
                                             <Loader2 v-if="dependentesModal.processingCod === dep.codDependente"
                                                 class="w-3 h-3 animate-spin" />
                                             Confirmar
@@ -939,9 +1081,14 @@ const inativarDependente = async (dependente) => {
                                     </template>
                                     <button v-else @click="dependentesModal.confirmingCod = dep.codDependente"
                                         :disabled="!!dependentesModal.processingCod"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200">
-                                        <UserX class="w-3.5 h-3.5" />
-                                        Inativar
+                                        :class="[
+                                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border',
+                                            dep.ativo
+                                                ? 'text-red-700 bg-red-50 hover:bg-red-100 border-red-200'
+                                                : 'text-green-700 bg-green-50 hover:bg-green-100 border-green-200',
+                                        ]">
+                                        <component :is="dep.ativo ? UserX : UserCheck" class="w-3.5 h-3.5" />
+                                        {{ dep.ativo ? 'Inativar' : 'Ativar' }}
                                     </button>
                                 </template>
                             </div>

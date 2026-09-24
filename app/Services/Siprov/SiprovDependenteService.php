@@ -70,9 +70,9 @@ class SiprovDependenteService
     }
 
     /**
-     * Inativa o dependente regravando-o com "ativo" = false.
+     * Ativa ou inativa o dependente regravando-o com o campo "ativo".
      */
-    public function inativar(int $codBeneficio, int $codDependente): array
+    public function alterarSituacao(int $codBeneficio, int $codDependente, bool $ativo): array
     {
         $dependente = collect($this->listar($codBeneficio))
             ->firstWhere('codDependente', $codDependente);
@@ -81,16 +81,16 @@ class SiprovDependenteService
             throw SiprovException::dependenteFailed('Dependente não encontrado neste benefício.');
         }
 
-        return $this->gravarInativo($codBeneficio, $dependente);
+        return $this->gravar($codBeneficio, $dependente, $ativo);
     }
 
     /**
      * O POST da SIPROV sobrescreve o cadastro, então reenviamos os dados atuais.
      */
-    private function gravarInativo(int $codBeneficio, array $dependente): array
+    private function gravar(int $codBeneficio, array $dependente, bool $ativo): array
     {
         $payload = array_filter([
-            'ativo'                => false,
+            'ativo'                => $ativo,
             'codBeneficio'         => $codBeneficio,
             'codDependente'        => (int) $dependente['codDependente'],
             'nome'                 => $dependente['nome'] ?? null,
@@ -104,7 +104,7 @@ class SiprovDependenteService
         ], fn ($value) => $value !== null && $value !== '');
 
         try {
-            Log::info('SIPROV | Inativando dependente', [
+            Log::info('SIPROV | Alterando situação do dependente', [
                 'endpoint' => '/ext/beneficio/dependente',
                 'payload'  => $payload,
             ]);
@@ -112,7 +112,7 @@ class SiprovDependenteService
             $response = $this->send('post', '/ext/beneficio/dependente', $payload);
 
             if ($response->failed()) {
-                Log::error('SIPROV | Erro ao inativar dependente', [
+                Log::error('SIPROV | Erro ao alterar situação do dependente', [
                     'status'   => $response->status(),
                     'response' => $response->body(),
                     'payload'  => $payload,
@@ -121,10 +121,11 @@ class SiprovDependenteService
                 throw SiprovException::dependenteFailed($response->body());
             }
 
-            Log::info('SIPROV | Dependente inativado com sucesso', [
+            Log::info('SIPROV | Situação do dependente alterada com sucesso', [
                 'status'         => $response->status(),
                 'cod_beneficio'  => $codBeneficio,
                 'cod_dependente' => $payload['codDependente'],
+                'ativo'          => $ativo,
             ]);
 
             return $response->json() ?? [];
@@ -132,7 +133,7 @@ class SiprovDependenteService
         } catch (SiprovException $e) {
             throw $e;
         } catch (Throwable $e) {
-            Log::critical('SIPROV | Exception ao inativar dependente', [
+            Log::critical('SIPROV | Exception ao alterar situação do dependente', [
                 'message' => $e->getMessage(),
                 'payload' => $payload,
             ]);

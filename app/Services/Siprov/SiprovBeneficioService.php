@@ -40,14 +40,14 @@ class SiprovBeneficioService
     }
 
     /**
-     * Inativa o benefício regravando-o com "ativo" = false.
+     * Ativa ou inativa o benefício regravando-o com o campo "ativo".
      * Com codBeneficio o POST atualiza o benefício existente em vez de criar outro.
      */
-    public function inativar(int $codBeneficio, int $codPlano, string $cpfCnpj): array
+    public function alterarSituacao(int $codBeneficio, int $codPlano, string $cpfCnpj, bool $ativo): array
     {
         $payload = [
-            'ativo'        => false,
-            'situacao'     => 'INATIVO',
+            'ativo'        => $ativo,
+            'situacao'     => $ativo ? 'ATIVO' : 'INATIVO',
             'codBeneficio' => $codBeneficio,
             'codLoja'      => (int) config('siprov.cod_loja'),
             'codPlano'     => $codPlano,
@@ -55,7 +55,7 @@ class SiprovBeneficioService
         ];
 
         try {
-            Log::info('SIPROV | Inativando benefício', [
+            Log::info('SIPROV | Alterando situação do benefício', [
                 'endpoint' => '/ext/beneficio',
                 'payload'  => $payload,
             ]);
@@ -73,7 +73,7 @@ class SiprovBeneficioService
             }
 
             if ($response->failed()) {
-                Log::error('SIPROV | Erro ao inativar benefício', [
+                Log::error('SIPROV | Erro ao alterar situação do benefício', [
                     'status'   => $response->status(),
                     'response' => $response->body(),
                     'payload'  => $payload,
@@ -82,7 +82,7 @@ class SiprovBeneficioService
                 throw SiprovException::beneficioFailed($response->body());
             }
 
-            Log::info('SIPROV | Benefício inativado com sucesso', [
+            Log::info('SIPROV | Situação do benefício alterada com sucesso', [
                 'status'   => $response->status(),
                 'response' => $response->json(),
             ]);
@@ -91,7 +91,7 @@ class SiprovBeneficioService
         } catch (SiprovException $e) {
             throw $e;
         } catch (Throwable $e) {
-            Log::critical('SIPROV | Exception ao inativar benefício', [
+            Log::critical('SIPROV | Exception ao alterar situação do benefício', [
                 'message' => $e->getMessage(),
                 'payload' => $payload,
             ]);
