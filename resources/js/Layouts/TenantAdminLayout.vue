@@ -45,9 +45,23 @@ const logout = () => {
     logoutForm.post(route("tenant.logout"));
 };
 
-const navLinks = [
+// Controle de Acesso aponta para a primeira seção que o usuário pode ver
+const userPermissions = computed(() => authUser.value?.permissions ?? []);
+const aclLink = computed(() => {
+    const section = [
+        ["users", "acl.users.view"],
+        ["roles", "acl.roles.view"],
+        ["permissions", "acl.permissions.view"],
+    ].find(([, permission]) => userPermissions.value.includes(permission));
+
+    return section
+        ? { label: "Controle de Acesso", routeName: `tenant.acl.${section[0]}.index`, match: "tenant.acl.*", icon: Shield }
+        : null;
+});
+
+const navLinks = computed(() => [
     { label: "Beneficiários", routeName: "patients.index", icon: Users },
-    { label: "Usuários", routeName: "users.index", icon: UserCircle },
+    ...(aclLink.value ? [aclLink.value] : []),
     {
         label: "Meus Formulários",
         routeName: "meus-formularios.index",
@@ -58,7 +72,7 @@ const navLinks = [
         routeName: "configuracao.index",
         icon: Settings,
     },
-];
+]);
 
 const displayName = computed(() => props.tenantName || tenantPublic.value?.name || "Tenant");
 
@@ -123,10 +137,10 @@ const tenantInitial = computed(() => {
             <!-- Navegação -->
             <nav class="flex-1 p-3 space-y-1 overflow-y-auto overscroll-contain">
                 <Link v-for="link in navLinks" :key="link.routeName" :href="route(link.routeName)"
-                    :aria-current="route().current(link.routeName) ? 'page' : undefined" :class="[
+                    :aria-current="route().current(link.match || link.routeName) ? 'page' : undefined" :class="[
                         'flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-xl text-[15px] font-medium border-l-4 transition-colors',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500',
-                        route().current(link.routeName)
+                        route().current(link.match || link.routeName)
                             ? 'bg-cyan-50 text-cyan-700 border-cyan-600 font-semibold'
                             : 'border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                     ]">

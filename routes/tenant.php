@@ -62,6 +62,8 @@ Route::middleware([
         Route::post('/patients/{patient}/sms-logs/{smsLog}/resend', [PatientController::class, 'resendSmsLog'])->name('patients.sms-logs.resend');
         Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->name('patients.toggle-status');
 
+        Route::prefix('admin/acl')->name('tenant.acl.')->group(base_path('routes/acl.php'));
+
         Route::prefix('meus-formularios')->name('meus-formularios.')->group(function () {
             Route::get('/', FormIndexController::class)->name('index');
             Route::get('/{form}', FormShowController::class)->name('show');

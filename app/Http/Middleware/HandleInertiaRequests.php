@@ -26,7 +26,8 @@ class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'roles' => $user->getRoleNames(),
-                    'permissions' => $user->getPermissionNames(),
+                    // Permissões efetivas: diretas + herdadas dos perfis
+                    'permissions' => $user->getAllPermissions()->pluck('name'),
                     'is_admin' => $user->hasRole('Admin'),
                 ] : null,
             ],

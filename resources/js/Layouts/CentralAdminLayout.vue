@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Settings, BookMarked,
     ClipboardList, Users, ScrollText, LandmarkIcon,
     LogOut, ChevronDown, AppWindowIcon,
-    UserCircle, Bell, Shield, Activity, Menu, X
+    UserCircle, Bell, Shield, ShieldCheck, KeyRound, Activity, Menu, X
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useAdminLayout } from "@/Composables/useAdminLayout";
@@ -26,15 +26,25 @@ const logout = () => {
     logoutForm.post(route("logout"));
 };
 
-const navLinks = [
+const allNavLinks = [
     { label: "Dashboard", routeName: "dashboard", icon: LayoutDashboard },
     { label: "Formulários", routeName: "forms.index", icon: ClipboardList },
     { label: "Leis", routeName: "leis.index", icon: LandmarkIcon },
-    { label: "Usuários", routeName: "central-users.index", icon: Users },
+
     // { label: "SMS Templates", routeName: "sms-templates.index", icon: MessageSquare },
     { label: "Logs de SMS", routeName: "admin.sms-logs.index", icon: ScrollText },
     { label: "Página de Parceiros", routeName: "pagina.index", icon: AppWindowIcon },
     { label: "Telemedicina", routeName: "siprov.index", icon: Activity },
+    {
+        label: "Controle de Acesso",
+        key: "acl",
+        icon: ShieldCheck,
+        children: [
+            { label: "Usuários", routeName: "acl.users.index", match: "acl.users.*", icon: Users, permission: "acl.users.view" },
+            { label: "Perfis", routeName: "acl.roles.index", match: "acl.roles.*", icon: ShieldCheck, permission: "acl.roles.view" },
+            { label: "Permissões", routeName: "acl.permissions.index", match: "acl.permissions.*", icon: KeyRound, permission: "acl.permissions.view" },
+        ]
+    },
     {
         label: "Configurações",
         key: "configuracoes",
@@ -46,10 +56,20 @@ const navLinks = [
     },
 ];
 
-const isChildActive = (link) => link.children?.some((c) => route().current(c.routeName));
+// Oculta itens que exigem permissão que o usuário não possui
+const userPermissions = computed(() => page.props.auth?.user?.permissions ?? []);
+const allowed = (item) => !item.permission || userPermissions.value.includes(item.permission);
+const navLinks = computed(() =>
+    allNavLinks
+        .map((link) => (link.children ? { ...link, children: link.children.filter(allowed) } : link))
+        .filter((link) => allowed(link) && (!link.children || link.children.length))
+);
+
+const isRouteActive = (item) => route().current(item.match || item.routeName);
+const isChildActive = (link) => link.children?.some(isRouteActive);
 
 // Submenu da página atual já começa aberto.
-const expandedMenus = ref(navLinks.filter(isChildActive).map((l) => l.key));
+const expandedMenus = ref(navLinks.value.filter(isChildActive).map((l) => l.key));
 
 const toggleMenu = (key) => {
     const index = expandedMenus.value.indexOf(key);
@@ -140,10 +160,10 @@ const userInitial = computed(() => authUser.value?.name?.charAt(0)?.toUpperCase(
                                 class="ml-6 pl-3 border-l border-gray-100 space-y-1">
                                 <Link v-for="child in link.children" :key="child.routeName"
                                     :href="route(child.routeName)"
-                                    :aria-current="route().current(child.routeName) ? 'page' : undefined" :class="[
+                                    :aria-current="isRouteActive(child) ? 'page' : undefined" :class="[
                                         'flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-sm transition-colors',
                                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500',
-                                        route().current(child.routeName)
+                                        isRouteActive(child)
                                             ? 'bg-cyan-100 text-cyan-800 font-medium'
                                             : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700',
                                     ]">
@@ -174,7 +194,8 @@ const userInitial = computed(() => authUser.value?.name?.charAt(0)?.toUpperCase(
         <main class="min-h-screen lg:ml-72">
 
             <!-- BARRA SUPERIOR -->
-            <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 px-4 sm:px-6 py-2.5 shadow-sm">
+            <header
+                class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 px-4 sm:px-6 py-2.5 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
 
                     <!-- Lado Esquerdo: menu (mobile) + título da página (slot) -->
@@ -207,8 +228,8 @@ const userInitial = computed(() => authUser.value?.name?.charAt(0)?.toUpperCase(
 
                         <!-- Dropdown do Usuário -->
                         <div ref="userMenuRef" class="relative">
-                            <button type="button" @click="showUserMenu = !showUserMenu"
-                                :aria-expanded="showUserMenu" aria-haspopup="menu" aria-label="Menu do usuário"
+                            <button type="button" @click="showUserMenu = !showUserMenu" :aria-expanded="showUserMenu"
+                                aria-haspopup="menu" aria-label="Menu do usuário"
                                 class="flex items-center gap-2 sm:gap-3 p-1.5 sm:px-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
                                 <!-- Avatar -->
                                 <div
@@ -218,8 +239,11 @@ const userInitial = computed(() => authUser.value?.name?.charAt(0)?.toUpperCase(
 
                                 <!-- Nome e Role -->
                                 <div class="text-left hidden md:block max-w-[160px]">
-                                    <p class="text-sm font-medium text-gray-900 leading-tight truncate">{{ authUser?.name }}</p>
-                                    <p class="text-xs text-gray-500 leading-tight truncate">{{ authUser?.roles?.[0] || 'Usuário' }}</p>
+                                    <p class="text-sm font-medium text-gray-900 leading-tight truncate">{{
+                                        authUser?.name }}</p>
+                                    <p class="text-xs text-gray-500 leading-tight truncate">{{ authUser?.roles?.[0] ||
+                                        'Usuário'
+                                        }}</p>
                                 </div>
 
                                 <ChevronDown
@@ -271,7 +295,8 @@ const userInitial = computed(() => authUser.value?.name?.charAt(0)?.toUpperCase(
                                     <div class="border-t border-gray-100 my-1"></div>
 
                                     <!-- Sair -->
-                                    <button type="button" role="menuitem" @click="logout" :disabled="logoutForm.processing"
+                                    <button type="button" role="menuitem" @click="logout"
+                                        :disabled="logoutForm.processing"
                                         class="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
                                         <LogOut class="w-4 h-4" />
                                         <span v-if="logoutForm.processing">Saindo...</span>
