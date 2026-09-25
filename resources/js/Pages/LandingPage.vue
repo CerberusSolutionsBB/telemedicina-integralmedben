@@ -37,7 +37,7 @@ import { Head, Link } from '@inertiajs/vue3'
                 </nav>
 
                 <Link
-                    href="/login"
+                    :href="route('login')"
                     class="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
                 >
                     Entrar
@@ -64,7 +64,7 @@ import { Head, Link } from '@inertiajs/vue3'
 
                     <div class="mt-8 flex flex-col gap-3 sm:flex-row">
                         <Link
-                            href="/login"
+                            :href="route('login')"
                             class="rounded-xl bg-primary px-6 py-3 text-center text-sm font-semibold text-white shadow-md transition hover:bg-primary-hover"
                         >
                             Acessar sistema
@@ -227,7 +227,7 @@ import { Head, Link } from '@inertiajs/vue3'
                 </div>
 
                 <Link
-                    href="/login"
+                    :href="route('login')"
                     class="rounded-xl bg-white px-6 py-3 text-sm font-bold text-primary shadow-md transition hover:opacity-90"
                 >
                     Entrar agora

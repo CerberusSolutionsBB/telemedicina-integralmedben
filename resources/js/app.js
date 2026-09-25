@@ -20,7 +20,7 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(ZiggyVue, props.initialPage.props.ziggy);
+            .use(ZiggyVue);
 
         // Registra o QuillEditor globalmente
         app.component("QuillEditor", QuillEditor);
