@@ -14,7 +14,9 @@ use App\Models\Siprov;
 use App\Models\SmsTemplate;
 use App\Models\Tenant;
 use App\Models\TenantsDetail;
+use App\Rules\TelefoneBrasileiro;
 use App\Services\ClubleBeneficiarioService;
+use App\Services\Form\PhoneVerificationService;
 use App\Services\Siprov\SiprovIntegrationService;
 use App\Services\SmsSenderService;
 use App\Services\Tenant\FormsResponseTenentService;
@@ -36,6 +38,7 @@ class PublicFormController extends Controller
         private SmsSenderService $smsSenderService,
         private FormsResponseTenentService $formsResponseTenentService,
         private SiprovIntegrationService $siprovIntegrationService,
+        private PhoneVerificationService $phoneVerification,
     ) {}
 
     private function canAcceptResponses(Form $form): bool
@@ -68,21 +71,12 @@ class PublicFormController extends Controller
 
     private function isDateField($field): bool
     {
-        $label = strtolower($field->label);
-
-        return $field->type === 'date' ||
-        str_contains($label, 'nascimento') ||
-        str_contains($label, 'data') ||
-        str_contains($label, 'birth');
+        return $field->isDateField();
     }
 
     private function isCPFField($field): bool
     {
-        $label = strtolower($field->label);
-
-        return $field->type === 'cpf' ||
-        str_contains($label, 'cpf') ||
-        str_contains($label, 'c.p.f');
+        return $field->isCpfField();
     }
 
     public function show(string $slug): Response
@@ -284,7 +278,18 @@ class PublicFormController extends Controller
                         $fieldRules[] = 'email:rfc,dns';
                         break;
                     case 'number':
-                        $fieldRules[] = 'numeric';
+                        if ($this->isCPFField($field)) {
+                            $fieldRules[]                            = 'digits:11';
+                            $messages["answers.{$field->id}.digits"] = "O campo \"{$field->label}\" deve ter exatamente 11 dígitos.";
+                            break;
+                        }
+                        if ($this->isDateField($field)) {
+                            $fieldRules[]                                 = 'date_format:d/m/Y';
+                            $messages["answers.{$field->id}.date_format"] = "O campo \"{$field->label}\" deve estar no formato DD/MM/AAAA.";
+                            break;
+                        }
+                        // Telefone com DDD (enviado só com números): valida tamanho, DDD e formato
+                        $fieldRules[] = new TelefoneBrasileiro($field->label);
                         break;
                     case 'date':
                         $fieldRules[]                                 = 'date_format:d/m/Y';
@@ -299,7 +304,31 @@ class PublicFormController extends Controller
                 }
                 $rules["answers.{$field->id}"] = $fieldRules;
             }
-            $validated        = $request->validate($rules, $messages);
+            // Nome do campo nas mensagens padrão (ex.: "O campo E-mail deve ser um e-mail válido.")
+            $attributes = $form->fields->mapWithKeys(fn ($f) => ["answers.{$f->id}" => trim($f->label, " :")])->all();
+            $validated        = $request->validate($rules, $messages, $attributes);
+
+            // DESATIVADO: confirmação do telefone por código SMS (reativar descomentando este bloco,
+            // o bloco consumeToken() após o DB::commit() e as rotas em routes/form.php)
+            // // Com os demais campos válidos, os telefones precisam ser confirmados por código SMS.
+            // // A chave phone_verification.{id} faz o front abrir a janela de confirmação.
+            // $phoneTokens = (array) $request->input('phone_tokens', []);
+            // $verifiedPhones = [];
+            // $pendingPhones = [];
+            // foreach ($form->fields->filter->isPhoneField() as $field) {
+            //     $phone = $validated['answers'][$field->id] ?? null;
+            //     if (! $phone) {
+            //         continue;
+            //     }
+            //     if ($this->phoneVerification->isVerified((string) $form->id, $phone, $phoneTokens[$field->id] ?? null)) {
+            //         $verifiedPhones[] = $phone;
+            //     } else {
+            //         $pendingPhones["phone_verification.{$field->id}"] = "Confirme o \"{$field->label}\" com o código enviado por SMS.";
+            //     }
+            // }
+            // if ($pendingPhones) {
+            //     throw ValidationException::withMessages($pendingPhones);
+            // }
             $acceptedTerms    = $request->boolean('accepted_terms', false);
             $processedAnswers = [];
             foreach ($form->fields as $field) {
@@ -330,6 +359,10 @@ class PublicFormController extends Controller
             }
 
             DB::commit();
+
+            // foreach ($verifiedPhones as $phone) {
+            //     $this->phoneVerification->consumeToken((string) $form->id, $phone);
+            // }
             // $message = now()->format('d/m/Y H:i:s');
             // $this->simpleSmsService->send("86994311316", $message);
 

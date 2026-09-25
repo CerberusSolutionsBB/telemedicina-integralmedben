@@ -12,7 +12,7 @@ defineProps({
 </script>
 
 <template>
-    <nav class="flex items-center gap-2 text-sm text-gray-500 mb-4 overflow-x-auto">
+    <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-gray-500 mb-4 overflow-x-auto">
         <template v-for="(item, index) in items" :key="index">
             <ChevronRight v-if="index > 0" class="w-4 h-4 flex-shrink-0 text-gray-400" />
 
@@ -22,7 +22,8 @@ defineProps({
                 <span>{{ item.label }}</span>
             </Link>
 
-            <span v-else class="flex items-center gap-1 text-gray-900 font-medium whitespace-nowrap">
+            <span v-else :aria-current="index === items.length - 1 ? 'page' : undefined"
+                class="flex items-center gap-1 text-gray-900 font-medium whitespace-nowrap">
                 <component :is="item.icon" v-if="item.icon" class="w-4 h-4" />
                 {{ item.label }}
             </span>

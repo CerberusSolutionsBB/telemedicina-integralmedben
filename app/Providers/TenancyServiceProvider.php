@@ -8,6 +8,7 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Permission\PermissionRegistrar;
 use Stancl\JobPipeline\JobPipeline;
 use Stancl\Tenancy\Events;
 use Stancl\Tenancy\Jobs;
@@ -84,9 +85,22 @@ class TenancyServiceProvider extends ServiceProvider
             ],
 
             Events\BootstrappingTenancy::class => [],
-            Events\TenancyBootstrapped::class => [],
+            Events\TenancyBootstrapped::class => [
+                function (Events\TenancyBootstrapped $event) {
+                    // Cada tenant tem seu próprio cache de roles/permissões
+                    $registrar = app(PermissionRegistrar::class);
+                    $registrar->cacheKey = config('permission.cache.key').'.tenant.'.$event->tenancy->tenant->getTenantKey();
+                    $registrar->clearPermissionsCollection();
+                },
+            ],
             Events\RevertingToCentralContext::class => [],
-            Events\RevertedToCentralContext::class => [],
+            Events\RevertedToCentralContext::class => [
+                function () {
+                    $registrar = app(PermissionRegistrar::class);
+                    $registrar->cacheKey = config('permission.cache.key');
+                    $registrar->clearPermissionsCollection();
+                },
+            ],
 
             // Resource syncing
             Events\SyncedResourceSaved::class => [

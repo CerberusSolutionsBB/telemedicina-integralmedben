@@ -54,6 +54,12 @@ class RouteModuleServiceProvider extends ServiceProvider
             'name' => 'perfil.',
             'file' => 'perfil.php',
         ],
+        'acl' => [
+            'middleware' => ['web', 'auth', \App\Http\Middleware\PreventAccessFromTenantDomains::class],
+            'prefix' => 'acl',
+            'name' => 'acl.',
+            'file' => 'acl.php',
+        ],
         'siprov' => [
             'middleware' => ['web', 'auth'],
             'prefix' => 'siprov',
