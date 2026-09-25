@@ -47,6 +47,15 @@ return [
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),
         ],
 
+        // Sempre no banco central, independente do contexto de tenancy. Usado pelo
+        // cache de roles/permissões (chave por tenant, ver TenancyServiceProvider)
+        // e pela verificação de telefone dos formulários públicos
+        'central' => [
+            'driver' => 'database',
+            'connection' => env('DB_CONNECTION', 'mysql'),
+            'table' => env('DB_CACHE_TABLE', 'cache'),
+        ],
+
         'file' => [
             'driver' => 'file',
             'path' => storage_path('framework/cache/data'),
