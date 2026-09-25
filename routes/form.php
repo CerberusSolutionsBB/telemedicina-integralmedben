@@ -5,6 +5,7 @@ use App\Http\Controllers\Form\DestroyFormController;
 use App\Http\Controllers\Form\EditFormController;
 use App\Http\Controllers\Form\IndexFormController;
 use App\Http\Controllers\Form\PublicFormController;
+// use App\Http\Controllers\Form\PublicFormPhoneVerificationController;
 use App\Http\Controllers\Form\ShowFormController;
 use App\Http\Controllers\Form\StoreFormController;
 use App\Http\Controllers\Form\ToggleVisibilityFormController;
@@ -19,6 +20,13 @@ Route::post('/f/{slug}', [PublicFormController::class, 'store'])
     ->name('public.store');
 Route::get('/f/{slug}/obrigado', [PublicFormController::class, 'thanks'])
     ->name('public.thanks');
+// DESATIVADO: confirmação do telefone por código SMS
+// Route::post('/f/{slug}/telefone/codigo', [PublicFormPhoneVerificationController::class, 'send'])
+//     ->middleware('throttle:10,1')
+//     ->name('public.phone.send');
+// Route::post('/f/{slug}/telefone/verificar', [PublicFormPhoneVerificationController::class, 'verify'])
+//     ->middleware('throttle:20,1')
+//     ->name('public.phone.verify');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/', IndexFormController::class)

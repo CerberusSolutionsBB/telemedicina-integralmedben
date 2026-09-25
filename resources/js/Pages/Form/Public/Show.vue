@@ -3,6 +3,8 @@ import { ref, computed, watch } from "vue";
 import { Head, router } from "@inertiajs/vue3";
 import { Button } from "@/Components/ui/button";
 import FormField from "@/Components/FormFields/FormField.vue";
+// DESATIVADO: confirmação do telefone por SMS
+// import PhoneVerificationDialog from "@/Components/FormFields/PhoneVerificationDialog.vue";
 import { showToast } from '@/Utils/toast';
 import LeiModal from '@/Components/LeiModal.vue';
 import {
@@ -60,9 +62,71 @@ const formatDate = (value) => {
     return numbers.replace(/(\d{2})(\d{2})(\d{0,4})/, '$1/$2/$3');
 };
 
+// Telefone: (86)9431-3116 (fixo) ou (86)99431-3116 (celular)
+const formatPhone = (value) => {
+    const n = String(value ?? '').replace(/\D/g, '').substring(0, 11);
+    if (!n) return '';
+    if (n.length <= 2) return `(${n}`;
+    const local = n.substring(2);
+    const split = n.length === 11 ? 5 : 4;
+    return local.length > split
+        ? `(${n.substring(0, 2)})${local.substring(0, split)}-${local.substring(split)}`
+        : `(${n.substring(0, 2)})${local}`;
+};
+
+// Mesma regra do backend (App\Rules\TelefoneBrasileiro)
+const DDDS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35, 37, 38,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 51, 53, 54, 55, 61, 62, 63, 64, 65, 66, 67, 68, 69,
+    71, 73, 74, 75, 77, 79, 81, 82, 83, 84, 85, 86, 87, 88, 89, 91, 92, 93, 94, 95, 96, 97, 98, 99];
+
+const phoneError = (field, digits) => {
+    const campo = `O campo "${field.label}"`;
+    if (!digits) return field.required ? `${campo} é obrigatório.` : null;
+    if (digits.length < 10) return `${campo} deve ter DDD + número, ex.: (86)99431-3116.`;
+    if (!DDDS.includes(Number(digits.substring(0, 2)))) return `${campo} tem um DDD inválido (${digits.substring(0, 2)}).`;
+    const assinante = digits.substring(2);
+    if (digits.length === 11 && assinante[0] !== '9') return `${campo} não é um celular válido: após o DDD o número deve começar com 9.`;
+    if (digits.length === 10 && !'2345'.includes(assinante[0])) return `${campo} não é válido: celulares precisam do 9 na frente, ex.: (86)99431-3116.`;
+    if (/^(\d)\1+$/.test(assinante.substring(1))) return `${campo} parece não ser um número real.`;
+    return null;
+};
+
+// complete=false: valida só quando o número já está completo (enquanto digita)
+const validatePhone = (field, complete = true) => {
+    const digits = String(rawAnswers.value[field.id] ?? '');
+    const key = `answers.${field.id}`;
+    const message = complete || digits.length === 11 ? phoneError(field, digits) : null;
+    if (message) {
+        errors.value = { ...errors.value, [key]: message };
+    } else if (errors.value[key]) {
+        const { [key]: _removed, ...rest } = errors.value;
+        errors.value = rest;
+    }
+    return !message;
+};
+
+// DESATIVADO: confirmação por SMS (reativar descomentando aqui, no onError, no envio e no template)
+// // Confirmação por SMS: acontece depois de clicar em enviar, quando os demais campos já são válidos
+// const phoneTokens = ref({});
+// const pendingPhones = ref([]);
+// const verificationOpen = ref(false);
+// const formSlug = computed(() => props.form.slug || props.form.code || String(props.form.id));
+
+// const onPhoneVerified = (fieldId, token) => {
+//     phoneTokens.value = { ...phoneTokens.value, [fieldId]: token };
+// };
+
+// // "Alterar número" na janela: volta o foco para o campo
+// const focusPhoneField = (field) => {
+//     if (!field) return;
+//     setTimeout(() => document.getElementById(`phone-field-${field.id}`)?.focus(), 150);
+// };
+
 // ⭐ DETECÇÃO DE CAMPOS
 const isCPFField = (field) => field.is_cpf || false;
 const isDateField = (field) => field.is_date || false;
+// Campos do tipo "Número" recebem máscara de telefone
+const isPhoneField = (field) => field.type === 'number' && !isCPFField(field) && !isDateField(field);
 
 // Status do formulário
 const isActive = computed(() => props.form.status === 'ativo');
@@ -101,8 +165,8 @@ if (statusConfig.value.canSubmit && props.form.fields) {
         answers.value[field.id] = field.type === 'checkbox' ? [] : '';
         rawAnswers.value[field.id] = field.type === 'checkbox' ? [] : '';
 
-        // Watcher para CPF e Data
-        if (isCPFField(field) || isDateField(field)) {
+        // Watcher para CPF, Data e Telefone
+        if (isCPFField(field) || isDateField(field) || isPhoneField(field)) {
             watch(() => answers.value[field.id], (newValue) => {
                 if (newValue && typeof newValue === 'string') {
                     const numbersOnly = newValue.replace(/\D/g, '');
@@ -111,6 +175,11 @@ if (statusConfig.value.canSubmit && props.form.fields) {
                         // ⭐ CPF: envia números puros (12345678901)
                         rawAnswers.value[field.id] = numbersOnly.substring(0, 11);
                         answers.value[field.id] = formatCPF(newValue);
+                    } else if (isPhoneField(field)) {
+                        // ⭐ TELEFONE: envia números puros (86994313116)
+                        rawAnswers.value[field.id] = numbersOnly.substring(0, 11);
+                        answers.value[field.id] = formatPhone(newValue);
+                        validatePhone(field, false);
                     } else if (isDateField(field)) {
                         // ⭐ DATA: envia formato brasileiro (DD/MM/YYYY)
                         const formatted = formatDate(newValue);
@@ -147,6 +216,13 @@ const submitForm = () => {
     }
     if (!validateTerms()) return;
 
+    // Telefones inválidos não chegam a ser enviados
+    const invalidPhone = (props.form.fields || []).filter(isPhoneField).find((f) => !validatePhone(f));
+    if (invalidPhone) {
+        showToast(errors.value[`answers.${invalidPhone.id}`], 'error');
+        return;
+    }
+
     const slug = props.form.slug || props.form.code || props.form.id;
     if (!slug) {
         showToast('Erro: Identificador do formulário não encontrado.', 'error');
@@ -159,10 +235,22 @@ const submitForm = () => {
     // ⭐ ENVIA rawAnswers (CPF = números, Data = DD/MM/YYYY)
     router.post(route('forms.public.store', { slug }), { 
         answers: rawAnswers.value, 
+        // phone_tokens: phoneTokens.value,
         accepted_terms: acceptedTerms.value 
     }, {
         onSuccess: () => showToast('Cadastro realizado com sucesso!', 'success'),
         onError: (e) => {
+            // // Só falta confirmar o(s) celular(es): abre a janela e envia o código por SMS
+            // const verificationKeys = Object.keys(e).filter((key) => key.startsWith('phone_verification.'));
+            // if (verificationKeys.length && verificationKeys.length === Object.keys(e).length) {
+            //     pendingPhones.value = verificationKeys.map((key) => {
+            //         const field = props.form.fields.find((f) => f.id == key.replace('phone_verification.', ''));
+            //         return { field, phone: String(rawAnswers.value[field.id] ?? '') };
+            //     });
+            //     verificationOpen.value = true;
+            //     return;
+            // }
+
             errors.value = e;
             let errorMessages = [];
             Object.keys(e).forEach(key => {
@@ -255,6 +343,13 @@ const progress = computed(() => {
                                     class="w-full bg-gray-800/90 text-white text-sm rounded-lg px-4 py-3 border-0 focus:ring-2 focus:ring-white/30 transition-all placeholder-gray-400 font-mono"
                                     :class="{ 'ring-2 ring-red-400': errors[`answers.${field.id}`] }" />
 
+                                <!-- ⭐ INPUT TELEFONE ((86)99431-3116) -->
+                                <input v-else-if="isPhoneField(field)" :id="`phone-field-${field.id}`" type="tel" v-model="answers[field.id]"
+                                    :placeholder="field.placeholder || '(00)00000-0000'" maxlength="14"
+                                    inputmode="numeric" autocomplete="tel" @blur="validatePhone(field)"
+                                    class="w-full bg-gray-800/90 text-white text-sm rounded-lg px-4 py-3 border-0 focus:ring-2 focus:ring-white/30 transition-all placeholder-gray-400 font-mono"
+                                    :class="{ 'ring-2 ring-red-400': errors[`answers.${field.id}`] }" />
+
                                 <!-- Input padrão -->
                                 <input v-else :type="field.type === 'date' ? 'text' : (field.type || 'text')"
                                     v-model="answers[field.id]" :placeholder="field.placeholder || ''"
@@ -264,6 +359,7 @@ const progress = computed(() => {
                                 <ChevronDown v-if="field.type === 'select'"
                                     class="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                             </div>
+
 
                             <p v-if="errors[`answers.${field.id}`]"
                                 class="text-red-200 text-xs flex items-center gap-1">
@@ -444,6 +540,25 @@ const progress = computed(() => {
                             </p>
                         </template>
 
+                        <!-- ⭐ TELEFONE ((86)99431-3116) -->
+                        <template v-else-if="isPhoneField(field)">
+                            <label class="block text-sm font-medium text-gray-700">
+                                {{ field.label }}
+                                <span v-if="field.required" class="text-red-500 ml-0.5">*</span>
+                            </label>
+                            <p v-if="field.help_text" class="text-xs text-gray-500">{{ field.help_text }}</p>
+                            <input :id="`phone-field-${field.id}`" type="tel" v-model="answers[field.id]"
+                                :placeholder="field.placeholder || '(00)00000-0000'" maxlength="14" inputmode="numeric"
+                                autocomplete="tel" @blur="validatePhone(field)"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-sm font-mono"
+                                :class="{ 'border-red-300': errors[`answers.${field.id}`] }" />
+                            <p v-if="errors[`answers.${field.id}`]"
+                                class="text-sm text-red-600 flex items-center gap-1">
+                                <AlertTriangle class="w-4 h-4" />
+                                {{ errors[`answers.${field.id}`] }}
+                            </p>
+                        </template>
+
                         <!-- Campos normais -->
                         <template v-else>
                             <FormField :field="field" v-model="answers[field.id]"
@@ -527,6 +642,11 @@ const progress = computed(() => {
 
     <LeiModal :lei="form.lei" :show="showLeiModal" @close="showLeiModal = false" :primary-color="primaryColor"
         :secondary-color="secondaryColor" />
+
+    <!-- DESATIVADO: confirmação do celular por SMS (após clicar em enviar)
+    <PhoneVerificationDialog v-model:open="verificationOpen" :slug="formSlug" :pending="pendingPhones"
+        :theme="formStyles" @verified="onPhoneVerified" @complete="submitForm" @change-number="focusPhoneField" />
+    -->
 </template>
 
 <style scoped>
