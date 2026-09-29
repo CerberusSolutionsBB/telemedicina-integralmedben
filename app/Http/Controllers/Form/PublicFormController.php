@@ -744,7 +744,9 @@ class PublicFormController extends Controller
         ?int $patientId = null
     ): void {
 
-        $telefone = $data['tel'] ?? ($data[$template->recipient_variable] ?? null);
+        $telefone = filled($data['tel'] ?? null)
+            ? $data['tel']
+            : ($data[$template->recipient_variable] ?? null);
 
         if (blank($telefone)) {
 
@@ -837,12 +839,28 @@ class PublicFormController extends Controller
 
             $question = $questions[$questionId] ?? null;
 
-            if ($question?->role) {
+            if ($question?->role && blank($data[$question->role->value] ?? null)) {
                 $data[$question->role->value] = $value;
             }
         }
 
-        return $data;
+        // Fallback pelos labels dos campos: garante as variáveis oferecidas em "Templates SMS"
+        // mesmo quando o campo não casa com uma Question que tenha role.
+        $paciente = $this->extrairDadosPaciente($fieldAnswers, $fields, $questions);
+
+        $data['nome']            = filled($data['nome'] ?? null) ? $data['nome'] : $paciente['nome'];
+        $data['cpf']             = filled($data['cpf'] ?? null) ? $data['cpf'] : $paciente['cpf'];
+        $data['email']           = filled($data['email'] ?? null) ? $data['email'] : $paciente['email'];
+        $data['tel']             = filled($data['tel'] ?? null) ? $data['tel'] : $paciente['numero'];
+        $data['sexo']            = filled($data['sexo'] ?? null) ? $data['sexo'] : $paciente['sexo'];
+        $data['birth_date']      = filled($data['birth_date'] ?? null) ? $data['birth_date'] : $paciente['data_nascimento'];
+        $data['nome_completo']   = $data['nome'];
+        $data['telefone']        = $data['tel'];
+        $data['data_nascimento'] = $data['birth_date'];
+        $data['data']            = now()->format('d/m/Y');
+        $data['hora']            = now()->format('H:i');
+
+        return array_map(fn ($v) => is_scalar($v) || $v === null ? (string) $v : implode(', ', (array) $v), $data);
     }
     // private function enviarSmsTemplate(string $tenantId, Form $form, array $processedAnswers): void
     // {
