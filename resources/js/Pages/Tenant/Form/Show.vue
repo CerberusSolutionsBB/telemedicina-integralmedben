@@ -32,6 +32,10 @@ import {
     PowerOff,
 } from "lucide-vue-next";
 const props = defineProps({
+    planos: {
+        type: Array,
+        default: () => [],
+    },
     form: {
         type: Object,
         required: true
@@ -647,6 +651,6 @@ const formatDateTime = (dateString) => {
             </div>
         </div>
         <CreatePatientFromResponseModal :open="patientDialogOpen" :response="selectedResponse"
-            :fields="props.form.fields" @update:open="patientDialogOpen = $event" />
+            :fields="props.form.fields" :planos="props.planos" @update:open="patientDialogOpen = $event" />
     </TenantAdminLayout>
 </template>

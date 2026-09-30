@@ -1,13 +1,12 @@
 <script setup>
-import { ref, computed, watch } from "vue";
-import { Head, router, usePage } from "@inertiajs/vue3";
+import { Head } from "@inertiajs/vue3";
 import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import PatientsTable from "@/Components/TablePatients.vue";
 import PatientImportDialog from "@/Components/PatientImportDialog.vue";
 import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal.vue";
 import { Button } from "@/Components/ui/button";
 import { Plus, Download, Upload, FileDown } from "lucide-vue-next";
-import { showToast } from "@/Utils/toast";
+import { usePatientIndex } from "@/Composables/Patient/usePatientIndex";
 
 const props = defineProps({
     patients: {
@@ -40,54 +39,17 @@ const props = defineProps({
     },
 });
 
-const page = usePage();
-
-const activeTab = ref("current");
-const openImportDialog = ref(false);
-
-const currentPatientsCount = computed(() => props.patients?.total ?? props.patients?.data?.length ?? 0);
-const newPatientsCount = computed(() => props.newPatients?.total ?? props.newPatients?.data?.length ?? 0);
-
-watch(() => page.props.flash?.success, (msg) => {
-    if (msg) showToast(msg, 'success');
-});
-
-watch(() => page.props.flash?.error, (msg) => {
-    if (msg) showToast(msg, 'error');
-});
-
-const deleteModal = ref({
-    show: false,
-    patient: null,
-    isProcessing: false,
-});
-
-const confirmDelete = (patient) => {
-    deleteModal.value = { show: true, patient, isProcessing: false };
-};
-
-const cancelDelete = () => {
-    deleteModal.value.show = false;
-};
-
-const confirmDeletePatient = () => {
-    deleteModal.value.isProcessing = true;
-    router.delete(route("patients.destroy", deleteModal.value.patient.id), {
-        preserveScroll: true,
-        onSuccess: () => {
-            deleteModal.value.show = false;
-            deleteModal.value.patient = null;
-        },
-        onError: (errors) => {
-            const errorMsg = Object.values(errors).flat()[0] || 'Erro ao excluir paciente.';
-            showToast(errorMsg, 'error');
-            deleteModal.value.show = false;
-        },
-        onFinish: () => {
-            deleteModal.value.isProcessing = false;
-        },
-    });
-};
+const {
+    activeTab,
+    openImportDialog,
+    currentPatientsCount,
+    newPatientsCount,
+    novoPaciente,
+    deleteModal,
+    confirmDelete,
+    cancelDelete,
+    confirmDeletePatient,
+} = usePatientIndex(props);
 </script>
 
 <template>
@@ -106,7 +68,7 @@ const confirmDeletePatient = () => {
 
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
-                    <Button size="sm" @click="router.visit(route('patients.create'))">
+                    <Button size="sm" @click="novoPaciente">
                         <Plus class="w-4 h-4 mr-1" />
                         Novo
                     </Button>
