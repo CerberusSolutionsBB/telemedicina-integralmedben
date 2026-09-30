@@ -20,6 +20,8 @@ use App\Services\Form\PhoneVerificationService;
 use App\Services\Siprov\SiprovIntegrationService;
 use App\Services\SmsSenderService;
 use App\Services\Tenant\FormsResponseTenentService;
+use App\Services\Tenant\PacientePlanoService;
+use App\Services\Tenant\TenantPlanoCotaService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,6 +41,8 @@ class PublicFormController extends Controller
         private FormsResponseTenentService $formsResponseTenentService,
         private SiprovIntegrationService $siprovIntegrationService,
         private PhoneVerificationService $phoneVerification,
+        private TenantPlanoCotaService $planoCotaService,
+        private PacientePlanoService $pacientePlanoService,
     ) {}
 
     private function canAcceptResponses(Form $form): bool
@@ -308,6 +312,12 @@ class PublicFormController extends Controller
             $attributes = $form->fields->mapWithKeys(fn ($f) => ["answers.{$f->id}" => trim($f->label, " :")])->all();
             $validated        = $request->validate($rules, $messages, $attributes);
 
+            // Formulário com plano vinculado: só aceita se o tenant ainda tem vaga no plano.
+            $tenantId = $this->tenantDaRequisicao();
+            if ($tenantId && $this->formularioTemPlano($form)) {
+                $this->validarVagaDoPlano($tenantId, $form);
+            }
+
             // DESATIVADO: confirmação do telefone por código SMS (reativar descomentando este bloco,
             // o bloco consumeToken() após o DB::commit() e as rotas em routes/form.php)
             // // Com os demais campos válidos, os telefones precisam ser confirmados por código SMS.
@@ -367,8 +377,9 @@ class PublicFormController extends Controller
             // $this->simpleSmsService->send("86994311316", $message);
 
             if ($currentTenant != null) {
-                $this->integrarSiprov($form, $processedAnswers);
+                // Paciente antes da SIPROV: ele é o parceiro que consome a vaga do plano.
                 $patientId = $this->criarPacienteDinamico($currentTenant, $form, $formResponse, $processedAnswers, $acceptedTerms);
+                $this->integrarSiprov($form, $processedAnswers, $tenantId, $patientId);
                 $this->enviarSmsTemplate($currentTenant, $form, $processedAnswers, $patientId);
             }
 
@@ -1058,7 +1069,50 @@ class PublicFormController extends Controller
         return $result;
     }
 
-    private function integrarSiprov(Form $form, array $processedAnswers): void
+    private function formularioTemPlano(Form $form): bool
+    {
+        return (bool) $form->status_beneficio && (bool) $form->plano_id;
+    }
+
+    /**
+     * Tenant do subdomínio da requisição, se existir (formulários também são
+     * respondidos fora de tenant, onde não há saldo a controlar).
+     */
+    private function tenantDaRequisicao(): ?string
+    {
+        $id = str(request()->getHost())->before('.')->toString();
+
+        return $id !== '' && Tenant::whereKey($id)->exists() ? $id : null;
+    }
+
+    /**
+     * Bloqueia a resposta quando o plano do formulário não está habilitado
+     * para o tenant ou está sem saldo.
+     *
+     * @throws ValidationException
+     */
+    private function validarVagaDoPlano(string $tenantId, Form $form): void
+    {
+        try {
+            $this->planoCotaService->validarVinculos($tenantId, [[
+                'nomePessoa' => 'Beneficiário',
+                'planos' => [['codPlano' => (string) $form->plano_id]],
+            ]]);
+        } catch (ValidationException $e) {
+            Log::warning('Formulário público | Plano sem vaga para o tenant', [
+                'form_id' => $form->id,
+                'tenant_id' => $tenantId,
+                'plano_id' => $form->plano_id,
+                'motivo' => collect($e->errors())->flatten()->implode(' '),
+            ]);
+
+            throw ValidationException::withMessages([
+                'plano' => 'Não há vagas disponíveis no plano deste formulário no momento. Entre em contato com o responsável.',
+            ]);
+        }
+    }
+
+    private function integrarSiprov(Form $form, array $processedAnswers, ?string $tenantId = null, ?int $patientId = null): void
     {
         if (! $form->status_beneficio || ! $form->plano_id) {
             return;
@@ -1084,7 +1138,8 @@ class PublicFormController extends Controller
                 nomePessoa: $dados['nome'],
                 cpfCnpj: preg_replace('/\D/', '', $dados['cpf']),
                 email: $dados['email'] ?? '',
-                sexo: $dados['sexo'] ?? 'Outro',
+                // 'I' (indefinido) como no SiprovExternalService: a coluna siprovs.sexo tem 1 caractere.
+                sexo: $dados['sexo'] ?? 'I',
                 dataNascimento: $dados['data_nascimento'] ?? '',
                 telefones: [['numero' => $dados['numero'] ?? '']],
                 plano: $planoKey,
@@ -1095,11 +1150,35 @@ class PublicFormController extends Controller
 
             $result = $this->siprovIntegrationService->execute($data);
 
+            // Associado criado na SIPROV: entra na lista de telemedicina do tenant e consome
+            // a vaga do plano antes do registro local (que não pode fazer a vaga se perder).
+            if ($tenantId) {
+                try {
+                    $this->pacientePlanoService->registrarVinculo(
+                        $tenantId,
+                        (string) $form->plano_id,
+                        $data->nomePessoa,
+                        $data->cpfCnpj,
+                        $result,
+                        $patientId,
+                        'formulario_publico',
+                    );
+                } catch (ValidationException $e) {
+                    // Vaga acabou entre a validação e o registro (respostas simultâneas).
+                    Log::warning('SIPROV | Formulário público registrado sem vaga no plano', [
+                        'form_id' => $form->id,
+                        'tenant_id' => $tenantId,
+                        'cpf' => $data->cpfCnpj,
+                        'motivo' => collect($e->errors())->flatten()->implode(' '),
+                    ]);
+                }
+            }
+
             $attributes = [
                 'nome_pessoa'     => $data->nomePessoa,
                 'email'           => $data->email,
                 'sexo'            => $data->sexo,
-                'data_nascimento' => $data->dataNascimento,
+                'data_nascimento' => $data->dataNascimento ?: null,
                 'cod_loja'        => (int) config('siprov.cod_loja'),
                 'dia_vencimento'  => $data->diaVencimento,
                 'ativo'           => $data->ativo,
