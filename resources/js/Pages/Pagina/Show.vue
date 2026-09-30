@@ -10,19 +10,34 @@ import Breadcrumb from '@/Components/Breadcrumb.vue'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import FormLinkedCard from '@/Components/Cards/FormLinkedCard.vue'
-import { showToast } from '@/Utils/toast'
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue'
 import SmsTemplateModal from '@/Components/SmsTemplateModal.vue'
 import EbaLogo from '@/Components/Ebas/EbaLogo.vue'
 import ImageUpload from '@/Components/ImageUpload.vue'
 import SearchInput from '@/Components/SearchInput.vue'
+import { formatDateTime } from '@/Composables/Pagina/helpers'
+import { usePaginaTenant } from '@/Composables/Pagina/usePaginaTenant'
+import { usePaginaForms } from '@/Composables/Pagina/usePaginaForms'
+import { usePaginaSms } from '@/Composables/Pagina/usePaginaSms'
+import { usePaginaConfig } from '@/Composables/Pagina/usePaginaConfig'
+import { useCartaoDinamico } from '@/Composables/Pagina/useCartaoDinamico'
+import { useTelemedicina } from '@/Composables/Pagina/useTelemedicina'
+import { usePaginaPlanos, quantidadeMinima } from '@/Composables/Pagina/usePaginaPlanos'
+import {
+    usePaginaPatients,
+    formatCpf,
+    formatDateShort,
+    patientSexoIcon,
+    patientSexoColor,
+    registroLabel,
+    registroColor,
+    registroIcon,
+} from '@/Composables/Pagina/usePaginaPatients'
 import {
     Home,
     Building2,
     Globe,
-    User,
     Calendar,
-    Database,
     Pencil,
     ExternalLink,
     Copy,
@@ -46,7 +61,9 @@ import {
     CreditCard,
     Sparkles,
     Palette,
-    QrCode
+    QrCode,
+    Layers,
+    Minus
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -106,907 +123,198 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    planos: {
+        type: Array,
+        default: () => [],
+    },
+    tenantPlanos: {
+        type: Array,
+        default: () => [],
+    },
+    planoUso: {
+        type: Object,
+        default: () => ({}),
+    },
+    planoRegistros: {
+        type: Array,
+        default: () => [],
+    },
 })
 
 const activeTab = ref('overview')
 const arquivosLocal = ref([...props.arquivos])
 
 watch(() => props.arquivos, (newVal) => {
-  arquivosLocal.value = [...newVal]
+    arquivosLocal.value = [...newVal]
 })
 
-const isGeneratingDetail = ref(false)
-const dialogOpen = ref(false)
-const selectedFormIds = ref([])
-const isSavingForms = ref(false)
+const {
+    detail,
+    user,
+    domains,
+    tenantName,
+    tenantSlug,
+    isGeneratingDetail,
+    copyToClipboard,
+    generateDetail,
+} = usePaginaTenant(props)
 
-const confirmDialogOpen = ref(false)
-const selectedFormToRemove = ref(null)
-const isRemoving = ref(false)
+const {
+    availableForms,
+    dialogOpen,
+    selectedFormIds,
+    isSavingForms,
+    confirmDialogOpen,
+    selectedFormToRemove,
+    isRemoving,
+    syncForms,
+    handleUpdateExpiresAt,
+    openRemoveLinkDialog,
+    closeRemoveLinkDialog,
+    confirmRemoveLink,
+} = usePaginaForms(props)
 
-const telemedicinaUnlinkModal = ref(false)
-const telemedicinaUnlinkItem = ref(null)
-const isUnlinkingTelemedicina = ref(false)
+const {
+    smsModalOpen,
+    smsModalTemplate,
+    smsDeleteModal,
+    smsDeleteItem,
+    isDeletingSms,
+    openSmsModal,
+    closeSmsModal,
+    deleteSmsTemplate,
+    closeSmsDeleteModal,
+    confirmDeleteSmsTemplate,
+} = usePaginaSms()
 
-const smsModalOpen = ref(false)
-const smsModalTemplate = ref(null)
+const {
+    isTogglingStatus,
+    toggleStatusFormularioDinamico,
+    isTogglingCartaoPaciente,
+    toggleCartaoPaciente,
+} = usePaginaConfig(props)
 
-const smsDeleteModal = ref(false)
-const smsDeleteItem = ref(null)
-const isDeletingSms = ref(false)
-const isTogglingStatus = ref(false)
-const isTogglingCartaoPaciente = ref(false)
-const isTogglingCartaoDinamico = ref(false)
-const isSavingCoresCartaoDinamico = ref(false)
-const corPrimariaCartaoDinamico = ref(props.cartaoDinamico?.cor_primaria || '#22d3ee')
-const corSecundariaCartaoDinamico = ref(props.cartaoDinamico?.cor_secundaria || '#0e7490')
-const corTextoCartaoDinamico = ref(props.cartaoDinamico?.cor_texto || '#ffffff')
-const fonteCartaoDinamico = ref(props.cartaoDinamico?.fonte || 'sans-serif')
-const fontesCartaoDinamico = [
-    { value: 'sans-serif', label: 'Sem serifa (padrão)' },
-    { value: 'serif', label: 'Com serifa' },
-    { value: 'monospace', label: 'Monoespaçada' },
-]
-const cartaoDinamicoAssets = ref({
-    logo: props.cartaoDinamico?.logo?.url ?? null,
-    frente: props.cartaoDinamico?.frente?.url ?? null,
-    verso: props.cartaoDinamico?.verso?.url ?? null,
-})
+const {
+    fontesCartaoDinamico,
+    isTogglingCartaoDinamico,
+    toggleCartaoDinamico,
+    isSavingCoresCartaoDinamico,
+    corPrimariaCartaoDinamico,
+    corSecundariaCartaoDinamico,
+    corTextoCartaoDinamico,
+    fonteCartaoDinamico,
+    salvarCoresCartaoDinamico,
+    isSavingQrcodeCartaoDinamico,
+    qrcodeHabilitadoCartaoDinamico,
+    qrcodeDadosCartaoDinamico,
+    versoTextoInfoCartaoDinamico,
+    versoRodapeCartaoDinamico,
+    salvarQrcodeCartaoDinamico,
+    cartaoDinamicoAssets,
+    isUploadingCartaoImagem,
+    handleCartaoImagemChange,
+    cartaoDinamicoSearch,
+    cartaoDinamicoActiveCategory,
+    cartaoDinamicoExpandedKey,
+    cartaoDinamicoConfigurations,
+    cartaoDinamicoAllCategories,
+    cartaoDinamicoFilteredConfigurations,
+    cartaoDinamicoConfigsByCategory,
+    isCartaoDinamicoExpanded,
+    toggleCartaoDinamicoExpand,
+    clearCartaoDinamicoFiltros,
+    cartaoDinamicoTypeIconClasses,
+    cartaoDinamicoHighlight,
+    cartaoDinamicoHasUnsavedChanges,
+} = useCartaoDinamico(props)
 
-const isSavingQrcodeCartaoDinamico = ref(false)
-const qrcodeHabilitadoCartaoDinamico = ref(!!props.cartaoDinamico?.qrcode_habilitado)
-const qrcodeDadosCartaoDinamico = ref(props.cartaoDinamico?.qrcode_dados || '')
-const versoTextoInfoCartaoDinamico = ref(props.cartaoDinamico?.verso_texto_info || '')
-const versoRodapeCartaoDinamico = ref(props.cartaoDinamico?.verso_rodape || '')
+const {
+    isSavingTelemedicina,
+    telemedicinaSearch,
+    selectedTelemedicinaIds,
+    telemedicinaUnlinkModal,
+    telemedicinaUnlinkItem,
+    isUnlinkingTelemedicina,
+    siprovModalOpen,
+    siprovSearch,
+    siprovResults,
+    siprovSelected,
+    siprovError,
+    siprovPage,
+    siprovHasNext,
+    siprovTotal,
+    isSearchingSiprov,
+    isSavingSiprov,
+    filteredTelemedicinaVinculados,
+    linkedTelemedicinaIds,
+    syncTelemedicina,
+    unlinkTelemedicina,
+    closeUnlinkTelemedicina,
+    confirmUnlinkTelemedicina,
+    searchSiprov,
+    goToSiprovPage,
+    openSiprovModal,
+    getSiprovKey,
+    toggleSiprovItem,
+    toggleSelectAllSiprov,
+    vincularSiprov,
+} = useTelemedicina(props)
 
-const isSavingTelemedicina = ref(false)
-const telemedicinaSearch = ref('')
-const selectedTelemedicinaIds = ref([])
+const {
+    patientSearch,
+    patientPage,
+    filteredPatients,
+    paginatedPatients,
+    totalPatientPages,
+    showingFrom,
+    showingTo,
+    patientPageLinks,
+    goToPatientPage,
+} = usePaginaPatients(props)
 
-const filteredTelemedicinaVinculados = computed(() => {
-    const query = siprovSearch.value.toLowerCase().trim()
-    if (!query) return props.telemedicinaVinculados
-    return props.telemedicinaVinculados.filter(item => {
-        const data = item.data || {}
-        return (data.title || '').toLowerCase().includes(query)
-            || (data.cpf_cnpj || '').toLowerCase().includes(query)
-            || (data.plano_label || '').toLowerCase().includes(query)
-            || (data.codigo_integracao || '').toLowerCase().includes(query)
-    })
-})
+const {
+    planoRows,
+    isSavingPlanos,
+    planosSelecionados,
+    totalQuantidadePlanos,
+    totalEmUsoPlanos,
+    planosHasUnsavedChanges,
+    isQuantidadeInvalida,
+    hasQuantidadeInvalida,
+    planoVagas,
+    errosCotaSiprov,
+    descartarPlanos,
+    salvarPlanos,
+} = usePaginaPlanos(props)
 
-const linkedTelemedicinaIds = computed(() =>
-    props.telemedicinaVinculados.map(v => v.data?.question_id).filter(Boolean)
+const siprovCotaErros = computed(() =>
+    errosCotaSiprov(siprovResults.value.filter(item => siprovSelected.value.includes(getSiprovKey(item)))),
 )
 
-const siprovModalOpen = ref(false)
-const siprovSearch = ref('')
-const siprovResults = ref([])
-const siprovSelected = ref([])
-const siprovError = ref(null)
-const siprovPage = ref(1)
-const siprovHasNext = ref(false)
-const siprovTotal = ref(0)
-const isSearchingSiprov = ref(false)
-const isSavingSiprov = ref(false)
-
-const patientSearch = ref('')
-const patientPage = ref(1)
-const perPage = 25
-
-const filteredPatients = computed(() => {
-    const q = patientSearch.value.toLowerCase().trim()
-    if (!q) return props.patients
-    return props.patients.filter(p =>
-        (p.nome || '').toLowerCase().includes(q) ||
-        (p.cpf || '').includes(q) ||
-        (p.email || '').toLowerCase().includes(q) ||
-        (p.telefone || '').includes(q)
-    )
-})
-
-const paginatedPatients = computed(() => {
-    const start = (patientPage.value - 1) * perPage
-    return filteredPatients.value.slice(start, start + perPage)
-})
-
-const totalPatientPages = computed(() => Math.ceil(filteredPatients.value.length / perPage))
-
-const showingFrom = computed(() => filteredPatients.value.length === 0 ? 0 : (patientPage.value - 1) * perPage + 1)
-const showingTo = computed(() => Math.min(patientPage.value * perPage, filteredPatients.value.length))
-
-const patientPageLinks = computed(() => {
-    const total = totalPatientPages.value
-    const current = patientPage.value
-    const pages = []
-
-    if (total <= 7) {
-        for (let i = 1; i <= total; i++) {
-            pages.push({ label: String(i), active: i === current, page: i })
-        }
-        return pages
-    }
-
-    pages.push({ label: '1', active: current === 1, page: 1 })
-
-    if (current > 3) {
-        pages.push({ label: '...', active: false, page: null })
-    }
-
-    const start = Math.max(2, current - 1)
-    const end = Math.min(total - 1, current + 1)
-
-    for (let i = start; i <= end; i++) {
-        pages.push({ label: String(i), active: i === current, page: i })
-    }
-
-    if (current < total - 2) {
-        pages.push({ label: '...', active: false, page: null })
-    }
-
-    pages.push({ label: String(total), active: current === total, page: total })
-
-    return pages
-})
-
-const goToPatientPage = (page) => {
-    if (page < 1 || page > totalPatientPages.value) return
-    patientPage.value = page
-}
-
-const formatCpf = (cpf) => {
-    if (!cpf) return '—'
-    const cleaned = cpf.replace(/\D/g, '')
-    if (cleaned.length !== 11) return cpf
-    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-}
-
-const formatDateShort = (date) => {
-    if (!date) return '—'
-    const d = new Date(date)
-    if (isNaN(d.getTime())) return date
-    return d.toLocaleDateString('pt-BR')
-}
-
-const patientSexoIcon = (sexo) => {
-    if (!sexo) return null
-    const s = String(sexo).toLowerCase()
-    return s === 'm' || s === 'masculino' ? 'M' : 'F'
-}
-
-const patientSexoColor = (sexo) => {
-    if (!sexo) return 'bg-gray-100 text-gray-500'
-    const s = String(sexo).toLowerCase()
-    return s === 'm' || s === 'masculino'
-        ? 'bg-blue-100 text-blue-700'
-        : 'bg-pink-100 text-pink-700'
-}
-
-const registroLabel = (registro) => {
-    const map = {
-        formulario: 'Formulário',
-        'form-dinamico': 'Form. Dinâmico',
-        importacao: 'Importação',
-        'form-publico': 'Form. Público',
-        vinculo: 'Vínculo',
-    }
-    return map[registro] || registro || '—'
-}
-
-const registroColor = (registro) => {
-    const map = {
-        formulario: 'bg-blue-50 text-blue-700 border border-blue-200',
-        'form-dinamico': 'bg-purple-50 text-purple-700 border border-purple-200',
-        importacao: 'bg-orange-50 text-orange-700 border border-orange-200',
-        'form-publico': 'bg-teal-50 text-teal-700 border border-teal-200',
-        vinculo: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
-    }
-    return map[registro] || 'bg-gray-50 text-gray-600 border border-gray-200'
-}
-
-const registroIcon = (registro) => {
-    const map = {
-        formulario: '📝',
-        'form-dinamico': '⚡',
-        importacao: '📥',
-        'form-publico': '🌐',
-        vinculo: '🔗',
-    }
-    return map[registro] || '•'
-}
-
-const detail = computed(() => props.tenant?.details?.[0] ?? null)
-const user = computed(() => detail.value?.user ?? null)
-const availableForms = computed(() => props.forms ?? [])
-const domains = computed(() => props.tenant?.domains ?? [])
-
-const tenantName = computed(() => {
-    return detail.value?.descricao || detail.value?.slug || props.tenant?.id || 'Tenant'
-})
-
-const tenantSlug = computed(() => {
-    return detail.value?.slug || props.tenant?.id || '-'
-})
-
 const tabs = computed(() => [
-    {
-        key: 'overview',
-        label: 'Visão geral',
-        icon: Building2,
-    },
-    {
-        key: 'details',
-        label: 'Dados complementares',
-        icon: Database,
-        disabled: !detail.value,
-    },
-    {
-        key: 'forms',
-        label: 'Formulários',
-        icon: FileText,
-        badge: props.fomrs_tenants.length,
-    },
-    {
-        key: 'responsible',
-        label: 'Responsável',
-        icon: User,
-        disabled: !user.value,
-    },
-    {
-        key: 'domains',
-        label: 'Domínios',
-        icon: Globe,
-        badge: domains.value.length,
-    },
-    {
-        key: 'sms',
-        label: 'Templates SMS',
-        icon: MessageSquare,
-        badge: props.smsTemplates.length,
-    },
-    {
-        key: 'telemedicina',
-        label: 'Telemedicina',
-        icon: HeartPulse,
-        badge: props.telemedicinaVinculados.length || null,
-    },
-    {
-        key: 'patients',
-        label: 'Pacientes',
-        icon: Users,
-        badge: props.patients.length || null,
-    },
-    {
-        key: 'logo',
-        label: 'Logos',
-        icon: ImagesIcon,
-        badge: null,
-    },
-    {
-        key: 'config',
-        label: 'Configuração',
-        icon: Settings,
-    },
-    {
-        key: 'cartao-dinamico',
-        label: 'Cartão Dinâmico',
-        icon: Sparkles,
-    },
+    { key: 'overview', label: 'Visão geral', icon: Building2 },
+    { key: 'forms', label: 'Formulários', icon: FileText, badge: props.fomrs_tenants.length },
+    { key: 'sms', label: 'Templates SMS', icon: MessageSquare, badge: props.smsTemplates.length },
+    { key: 'telemedicina', label: 'Telemedicina', icon: HeartPulse, badge: props.telemedicinaVinculados.length || null },
+    { key: 'planos', label: 'Planos', icon: Layers, badge: props.tenantPlanos.length || null },
+    { key: 'patients', label: 'Pacientes', icon: Users, badge: props.patients.length || null },
+    { key: 'logo', label: 'Logos', icon: ImagesIcon, badge: null },
+    { key: 'cartao-dinamico', label: 'Cartão Dinâmico', icon: Sparkles },
+    { key: 'config', label: 'Configuração', icon: Settings },
 ])
 
 const breadcrumbs = computed(() => [
-    {
-        label: 'Página de Parceiros',
-        href: route('pagina.index'),
-        icon: Home,
-    },
-    {
-        label: tenantName.value,
-        href: null,
-    },
+    { label: 'Página de Parceiros', href: route('pagina.index'), icon: Home },
+    { label: tenantName.value, href: null },
 ])
 
-const formatDateTime = (date) => {
-    if (!date) return '-'
-
-    const parsedDate = new Date(date)
-
-    if (Number.isNaN(parsedDate.getTime())) return '-'
-
-    return new Intl.DateTimeFormat('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(parsedDate)
-}
-
-const copyToClipboard = async (text) => {
-    if (!text) {
-        showToast('Link não encontrado.', 'error')
-        return
-    }
-
-    try {
-        await navigator.clipboard.writeText(text)
-        showToast('Link copiado com sucesso!', 'success')
-    } catch {
-        showToast('Não foi possível copiar o link.', 'error')
-    }
-}
-
-const generateDetail = (tenantId) => {
-    if (!tenantId) {
-        showToast('Identificador da página não encontrado.', 'error')
-        return
-    }
-
-    isGeneratingDetail.value = true
-
-    router.get(
-        route('pagina.configuracao.generate.detail', tenantId),
-        {},
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Configuração gerada com sucesso!', 'success')
-            },
-
-            onError: (errors) => {
-                const message =
-                    Object.values(errors)?.[0] ||
-                    'Erro ao gerar configuração.'
-
-                showToast(message, 'error')
-            },
-
-            onFinish: () => {
-                isGeneratingDetail.value = false
-            },
-        },
-    )
-}
-
-const syncForms = (selected) => {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    if (!selected?.length) {
-        showToast('Selecione ao menos um formulário.', 'warning')
-        return
-    }
-
-    isSavingForms.value = true
-
-    router.post(
-        route('pagina.configuracao.forms', props.tenant.id),
-        {
-            forms: selected,
-        },
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Formulários vinculados com sucesso!', 'success')
-                dialogOpen.value = false
-                selectedFormIds.value = []
-
-                router.reload({
-                    only: ['tenant', 'forms', 'fomrs_tenants'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: (errors) => {
-                const message =
-                    Object.values(errors)?.[0] ||
-                    'Erro ao vincular formulários.'
-
-                showToast(message, 'error')
-            },
-
-            onFinish: () => {
-                isSavingForms.value = false
-            },
-        },
-    )
-}
-
-const handleUpdateExpiresAt = (payload) => {
-    router.put(
-        route('pagina.configuracao.expires-at', payload.id),
-        {
-            expires_at: payload.expires_at,
-        },
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Data de expiração atualizada com sucesso!', 'success')
-
-                router.reload({
-                    only: ['tenant', 'forms', 'fomrs_tenants'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: (errors) => {
-                const message =
-                    Object.values(errors)?.[0] ||
-                    'Erro ao atualizar data de expiração.'
-
-                showToast(message, 'error')
-            },
-        },
-    )
-}
-
-const openRemoveLinkDialog = (item) => {
-    selectedFormToRemove.value = item
-    confirmDialogOpen.value = true
-}
-
-const closeRemoveLinkDialog = () => {
-    confirmDialogOpen.value = false
-    selectedFormToRemove.value = null
-}
-
-const openSmsModal = (template = null) => {
-    smsModalTemplate.value = template
-    smsModalOpen.value = true
-}
-
-const closeSmsModal = () => {
-    smsModalOpen.value = false
-    smsModalTemplate.value = null
-}
-
-const deleteSmsTemplate = (template) => {
-    smsDeleteItem.value = template
-    smsDeleteModal.value = true
-}
-
-const closeSmsDeleteModal = () => {
-    smsDeleteModal.value = false
-    smsDeleteItem.value = null
-}
-
-const confirmDeleteSmsTemplate = async () => {
-    const template = smsDeleteItem.value
-    if (!template) return
-
-    isDeletingSms.value = true
-    try {
-        const response = await fetch(route('forms.sms-templates.destroy', template.id), {
-            method: 'DELETE',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
-            },
-        })
-        const data = await response.json()
-        if (response.ok) {
-            showToast(data.message || 'Template removido com sucesso.', 'success')
-            closeSmsDeleteModal()
-            router.reload({ only: ['smsTemplates'] })
-        } else {
-            showToast(data.message || 'Erro ao remover template.', 'error')
-        }
-    } catch {
-        showToast('Erro ao remover template. Tente novamente.', 'error')
-    } finally {
-        isDeletingSms.value = false
-    }
-}
-
-const toggleStatusFormularioDinamico = () => {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    isTogglingStatus.value = true
-
-    router.put(
-        route('pagina.configuracao.status-formulario-dinamico', props.tenant.id),
-        {},
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Status atualizado com sucesso!', 'success')
-                router.reload({
-                    only: ['statusFormularioDinamico'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: () => {
-                showToast('Erro ao atualizar status.', 'error')
-            },
-
-            onFinish: () => {
-                isTogglingStatus.value = false
-            },
-        },
-    )
-}
-
-const toggleCartaoPaciente = () => {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    isTogglingCartaoPaciente.value = true
-
-    router.put(
-        route('pagina.configuracao.cartao-paciente', props.tenant.id),
-        {},
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Status atualizado com sucesso!', 'success')
-                router.reload({
-                    only: ['cartaoPacienteEnabled'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: () => {
-                showToast('Erro ao atualizar status.', 'error')
-            },
-
-            onFinish: () => {
-                isTogglingCartaoPaciente.value = false
-            },
-        },
-    )
-}
-
-const toggleCartaoDinamico = () => {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    isTogglingCartaoDinamico.value = true
-
-    router.put(
-        route('pagina.configuracao.cartao-dinamico.toggle', props.tenant.id),
-        {},
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Status atualizado com sucesso!', 'success')
-                router.reload({
-                    only: ['cartaoDinamicoEnabled'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: () => {
-                showToast('Erro ao atualizar status.', 'error')
-            },
-
-            onFinish: () => {
-                isTogglingCartaoDinamico.value = false
-            },
-        },
-    )
-}
-
-const salvarCoresCartaoDinamico = () => {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    isSavingCoresCartaoDinamico.value = true
-
-    router.put(
-        route('pagina.configuracao.cartao-dinamico.cores', props.tenant.id),
-        {
-            cartao_cor_primaria: corPrimariaCartaoDinamico.value,
-            cartao_cor_secundaria: corSecundariaCartaoDinamico.value,
-            cartao_cor_texto: corTextoCartaoDinamico.value,
-            cartao_fonte: fonteCartaoDinamico.value,
-        },
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                showToast('Estilo do Cartão Dinâmico salvo com sucesso!', 'success')
-                cartaoDinamicoEstiloSalvo.value = {
-                    cor_primaria: corPrimariaCartaoDinamico.value,
-                    cor_secundaria: corSecundariaCartaoDinamico.value,
-                    cor_texto: corTextoCartaoDinamico.value,
-                    fonte: fonteCartaoDinamico.value,
-                }
-            },
-            onError: () => {
-                showToast('Erro ao salvar o estilo.', 'error')
-            },
-            onFinish: () => {
-                isSavingCoresCartaoDinamico.value = false
-            },
-        },
-    )
-}
-
-const salvarQrcodeCartaoDinamico = () => {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    isSavingQrcodeCartaoDinamico.value = true
-
-    router.put(
-        route('pagina.configuracao.cartao-dinamico.qrcode', props.tenant.id),
-        {
-            cartao_qrcode_habilitado: qrcodeHabilitadoCartaoDinamico.value,
-            cartao_qrcode_dados: qrcodeDadosCartaoDinamico.value,
-            cartao_verso_texto_info: versoTextoInfoCartaoDinamico.value,
-            cartao_verso_rodape: versoRodapeCartaoDinamico.value,
-        },
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                showToast('QR Code e textos do verso salvos com sucesso!', 'success')
-                cartaoDinamicoQrcodeSalvo.value = {
-                    habilitado: qrcodeHabilitadoCartaoDinamico.value,
-                    dados: qrcodeDadosCartaoDinamico.value,
-                    texto_info: versoTextoInfoCartaoDinamico.value,
-                    rodape: versoRodapeCartaoDinamico.value,
-                }
-            },
-            onError: () => {
-                showToast('Erro ao salvar o QR Code e textos do verso.', 'error')
-            },
-            onFinish: () => {
-                isSavingQrcodeCartaoDinamico.value = false
-            },
-        },
-    )
-}
-
-const isUploadingCartaoImagem = ref({ logo: false, frente: false, verso: false })
-
-const handleCartaoImagemChange = (tipo, value) => {
-    if (value instanceof File) {
-        uploadCartaoImagem(tipo, value)
-    } else if (value === null) {
-        deleteCartaoImagem(tipo)
-    }
-}
-
-async function uploadCartaoImagem(tipo, file) {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    isUploadingCartaoImagem.value[tipo] = true
-
-    try {
-        const formData = new FormData()
-        formData.append('imagem', file)
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-
-        const response = await fetch(route('pagina.configuracao.cartao-dinamico.imagem.store', [props.tenant.id, tipo]), {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            credentials: 'same-origin',
-            body: formData,
-        })
-
-        const data = await response.json()
-
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Erro ao enviar imagem.')
-        }
-
-        cartaoDinamicoAssets.value[tipo] = data.imagem.url
-        showToast('Imagem enviada com sucesso!', 'success')
-    } catch (error) {
-        showToast(error.message || 'Erro ao enviar imagem. Tente novamente.', 'error')
-    } finally {
-        isUploadingCartaoImagem.value[tipo] = false
-    }
-}
-
-async function deleteCartaoImagem(tipo) {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    isUploadingCartaoImagem.value[tipo] = true
-
-    try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-
-        const response = await fetch(route('pagina.configuracao.cartao-dinamico.imagem.destroy', [props.tenant.id, tipo]), {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            credentials: 'same-origin',
-        })
-
-        const data = await response.json()
-
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Erro ao remover imagem.')
-        }
-
-        cartaoDinamicoAssets.value[tipo] = null
-        showToast('Imagem removida com sucesso!', 'success')
-    } catch (error) {
-        showToast(error.message || 'Erro ao remover imagem. Tente novamente.', 'error')
-    } finally {
-        isUploadingCartaoImagem.value[tipo] = false
-    }
-}
-
-// Opções de configuração do Cartão Dinâmico (busca + edição)
-const cartaoDinamicoSearch = ref('')
-const cartaoDinamicoActiveCategory = ref('all')
-// Apenas um card aberto por vez (accordion) e nada expandido por padrão:
-// reduz a quantidade de informação simultânea na tela.
-const cartaoDinamicoExpandedKey = ref(null)
-
-// Baseline usada para detectar alterações de estilo ainda não salvas.
-const cartaoDinamicoEstiloSalvo = ref({
-    cor_primaria: corPrimariaCartaoDinamico.value,
-    cor_secundaria: corSecundariaCartaoDinamico.value,
-    cor_texto: corTextoCartaoDinamico.value,
-    fonte: fonteCartaoDinamico.value,
-})
-
-// Baseline usada para detectar alterações do QR Code/textos do verso ainda não salvas.
-const cartaoDinamicoQrcodeSalvo = ref({
-    habilitado: qrcodeHabilitadoCartaoDinamico.value,
-    dados: qrcodeDadosCartaoDinamico.value,
-    texto_info: versoTextoInfoCartaoDinamico.value,
-    rodape: versoRodapeCartaoDinamico.value,
-})
-
-const cartaoDinamicoConfigurations = computed(() => [
-    {
-        key: 'estilo',
-        label: 'Estilo do Cartão',
-        description: 'Cores de fundo (gradiente usado quando não houver imagem de frente/verso), cor do texto e fonte.',
-        category: 'Aparência',
-        type: 'style',
-    },
-    {
-        key: 'logo',
-        label: 'Logo',
-        description: 'Logo exibida na frente e no verso do cartão.',
-        category: 'Imagens',
-        type: 'image',
-    },
-    {
-        key: 'frente',
-        label: 'Imagem de Frente',
-        description: 'Fundo da frente do cartão.',
-        category: 'Imagens',
-        type: 'image',
-    },
-    {
-        key: 'verso',
-        label: 'Imagem de Verso',
-        description: 'Fundo do verso do cartão.',
-        category: 'Imagens',
-        type: 'image',
-    },
-    {
-        key: 'status',
-        label: 'Cartão Dinâmico Ativo',
-        description: 'Quando ativado, o botão "Cartão Dinâmico" fica disponível na listagem de pacientes deste tenant.',
-        category: 'Status',
-        type: 'toggle',
-    },
-    {
-        key: 'qrcode',
-        label: 'QR Code e Textos do Verso',
-        description: 'Habilite o QR Code exibido no verso do cartão, informe os dados que serão codificados e edite os textos fixos do verso.',
-        category: 'QR Code',
-        type: 'qrcode',
-    },
-])
-
-const cartaoDinamicoAllCategories = computed(() => {
-    const categories = new Set(cartaoDinamicoConfigurations.value.map((config) => config.category))
-    return ['all', ...Array.from(categories)]
-})
-
-const cartaoDinamicoFilteredConfigurations = computed(() => {
-    let configs = cartaoDinamicoConfigurations.value
-
-    if (cartaoDinamicoActiveCategory.value !== 'all') {
-        configs = configs.filter((config) => config.category === cartaoDinamicoActiveCategory.value)
-    }
-
-    const term = cartaoDinamicoSearch.value.toLowerCase().trim()
-
-    if (!term) {
-        return configs
-    }
-
-    return configs.filter(
-        (config) =>
-            config.label.toLowerCase().includes(term) ||
-            config.description.toLowerCase().includes(term) ||
-            config.key.toLowerCase().includes(term),
-    )
-})
-
-const cartaoDinamicoConfigsByCategory = computed(() => {
-    const grouped = {}
-
-    cartaoDinamicoFilteredConfigurations.value.forEach((config) => {
-        if (!grouped[config.category]) {
-            grouped[config.category] = []
-        }
-
-        grouped[config.category].push(config)
-    })
-
-    return grouped
-})
-
-const isCartaoDinamicoExpanded = (key) =>
-    cartaoDinamicoExpandedKey.value === key || cartaoDinamicoSearch.value.trim().length > 0
-
-const toggleCartaoDinamicoExpand = (key) => {
-    cartaoDinamicoExpandedKey.value = cartaoDinamicoExpandedKey.value === key ? null : key
-}
-
-const clearCartaoDinamicoFiltros = () => {
-    cartaoDinamicoSearch.value = ''
-    cartaoDinamicoActiveCategory.value = 'all'
-}
-
-// Ícone + cor por tipo de configuração: permite reconhecer o tipo de cada
-// card sem precisar ler o texto (leitura visual rápida).
+// Ícone por tipo de configuração/categoria do Cartão Dinâmico: permite
+// reconhecer o tipo de cada card sem precisar ler o texto.
 const cartaoDinamicoTypeIcon = (config) => {
     if (config.type === 'image') return ImagesIcon
     if (config.type === 'toggle') return Sparkles
     if (config.type === 'qrcode') return QrCode
     return Palette
-}
-
-const cartaoDinamicoTypeIconClasses = (config) => {
-    if (config.type === 'toggle') {
-        return props.cartaoDinamicoEnabled
-            ? 'bg-emerald-50 text-emerald-600'
-            : 'bg-gray-100 text-gray-400'
-    }
-
-    if (config.type === 'image') {
-        return 'bg-cyan-50 text-cyan-600'
-    }
-
-    if (config.type === 'qrcode') {
-        return qrcodeHabilitadoCartaoDinamico.value
-            ? 'bg-indigo-50 text-indigo-600'
-            : 'bg-gray-100 text-gray-400'
-    }
-
-    return 'bg-purple-50 text-purple-600'
 }
 
 const cartaoDinamicoCategoryIconMap = {
@@ -1018,273 +326,6 @@ const cartaoDinamicoCategoryIconMap = {
 }
 
 const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[category] || Settings
-
-// Destaca o termo pesquisado no rótulo/descrição para reduzir o esforço de
-// leitura ao escanear os resultados. Os textos vêm de metadados fixos
-// definidos no próprio componente, então usar v-html é seguro.
-const cartaoDinamicoEscapeHtml = (value) =>
-    String(value).replace(/[&<>"']/g, (char) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
-    }[char]))
-
-const cartaoDinamicoHighlight = (text) => {
-    const safe = cartaoDinamicoEscapeHtml(text || '')
-    const term = cartaoDinamicoSearch.value.trim()
-
-    if (!term) return safe
-
-    const escapedTerm = cartaoDinamicoEscapeHtml(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-    return safe.replace(
-        new RegExp(`(${escapedTerm})`, 'ig'),
-        '<mark class="bg-amber-200 text-gray-900 rounded px-0.5">$1</mark>',
-    )
-}
-
-// Indicador de "alterações não salvas" (apenas o card de estilo tem edição
-// em duas etapas: ajustar e depois salvar).
-const cartaoDinamicoHasUnsavedChanges = (config) => {
-    if (config.type === 'style') {
-        return (
-            corPrimariaCartaoDinamico.value !== cartaoDinamicoEstiloSalvo.value.cor_primaria ||
-            corSecundariaCartaoDinamico.value !== cartaoDinamicoEstiloSalvo.value.cor_secundaria ||
-            corTextoCartaoDinamico.value !== cartaoDinamicoEstiloSalvo.value.cor_texto ||
-            fonteCartaoDinamico.value !== cartaoDinamicoEstiloSalvo.value.fonte
-        )
-    }
-
-    if (config.type === 'qrcode') {
-        return (
-            qrcodeHabilitadoCartaoDinamico.value !== cartaoDinamicoQrcodeSalvo.value.habilitado ||
-            qrcodeDadosCartaoDinamico.value !== cartaoDinamicoQrcodeSalvo.value.dados ||
-            versoTextoInfoCartaoDinamico.value !== cartaoDinamicoQrcodeSalvo.value.texto_info ||
-            versoRodapeCartaoDinamico.value !== cartaoDinamicoQrcodeSalvo.value.rodape
-        )
-    }
-
-    return false
-}
-
-const syncTelemedicina = () => {
-    if (!props.tenant?.id) {
-        showToast('Tenant não encontrado.', 'error')
-        return
-    }
-
-    isSavingTelemedicina.value = true
-
-    router.put(
-        route('pagina.configuracao.telemedicina', props.tenant.id),
-        {
-            enabled: true,
-            questions: selectedTelemedicinaIds.value,
-        },
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Telemedicina atualizada com sucesso!', 'success')
-                selectedTelemedicinaIds.value = []
-                router.reload({
-                    only: ['tenant', 'telemedicinaEnabled', 'telemedicinaQuestions', 'telemedicinaVinculados'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: () => {
-                showToast('Erro ao atualizar telemedicina.', 'error')
-            },
-
-            onFinish: () => {
-                isSavingTelemedicina.value = false
-            },
-        },
-    )
-}
-
-const unlinkTelemedicina = (item) => {
-    telemedicinaUnlinkItem.value = item
-    telemedicinaUnlinkModal.value = true
-}
-
-const closeUnlinkTelemedicina = () => {
-    telemedicinaUnlinkModal.value = false
-    telemedicinaUnlinkItem.value = null
-}
-
-const confirmUnlinkTelemedicina = () => {
-    const item = telemedicinaUnlinkItem.value
-    if (!props.tenant?.id || !item) return
-
-    isUnlinkingTelemedicina.value = true
-
-    router.delete(
-        route('pagina.configuracao.telemedicina.unlink', { tenant: props.tenant.id, telemedicinaTenant: item.id }),
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Item desvinculado com sucesso!', 'success')
-                closeUnlinkTelemedicina()
-                router.reload({
-                    only: ['telemedicinaVinculados'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: () => {
-                showToast('Erro ao desvincular item.', 'error')
-            },
-
-            onFinish: () => {
-                isUnlinkingTelemedicina.value = false
-            },
-        },
-    )
-}
-
-const searchSiprov = async (page = 1) => {
-    isSearchingSiprov.value = true
-    siprovError.value = null
-    try {
-        const params = new URLSearchParams()
-        if (siprovSearch.value) params.append('q', siprovSearch.value)
-        if (page > 1) params.append('pagina', page)
-
-        const response = await fetch(route('pagina.configuracao.telemedicina.searchSiprov') + '?' + params.toString())
-        if (!response.ok) {
-            throw new Error('Erro ao buscar associados.')
-        }
-        const data = await response.json()
-
-        let itens = data.itens ?? data
-        if (Array.isArray(itens) && itens.length === 1 && itens[0].itens) {
-            itens = itens[0].itens
-        }
-        siprovResults.value = Array.isArray(itens) ? itens : []
-
-        siprovPage.value = data.paginaAtual ?? 1
-        siprovHasNext.value = data.proximaPagina ?? false
-        siprovTotal.value = data.quantidade ?? siprovResults.value.length
-    } catch {
-        siprovResults.value = []
-        siprovError.value = 'Não foi possível conectar à SIPROV. Tente novamente.'
-    } finally {
-        isSearchingSiprov.value = false
-    }
-}
-
-const goToSiprovPage = (page) => {
-    if (page < 1) return
-    searchSiprov(page)
-}
-
-const openSiprovModal = () => {
-    siprovModalOpen.value = true
-    siprovSelected.value = []
-    siprovError.value = null
-    siprovPage.value = 1
-    searchSiprov(1)
-}
-
-const getSiprovKey = (item) => `${item.codPessoa}-${item.codBeneficio}`
-
-const toggleSiprovItem = (item) => {
-    const key = getSiprovKey(item)
-    const idx = siprovSelected.value.indexOf(key)
-    if (idx >= 0) {
-        siprovSelected.value.splice(idx, 1)
-    } else {
-        siprovSelected.value.push(key)
-    }
-}
-
-const toggleSelectAllSiprov = () => {
-    if (siprovSelected.value.length === siprovResults.value.length) {
-        siprovSelected.value = []
-    } else {
-        siprovSelected.value = siprovResults.value.map(r => getSiprovKey(r))
-    }
-}
-
-const vincularSiprov = () => {
-    if (!props.tenant?.id || !siprovSelected.value.length) return
-
-    isSavingSiprov.value = true
-
-    const selectedItems = siprovResults.value
-        .filter(r => siprovSelected.value.includes(getSiprovKey(r)))
-        .map(({ codPessoa, nomePessoa, cpfCnpj, planos, codBeneficio, email, dataNascimento, telefoneCelular, sexo }) => ({
-            codPessoa, nomePessoa, cpfCnpj, planos, codBeneficio, email, dataNascimento, telefoneCelular, sexo
-        }))
-
-    router.put(
-        route('pagina.configuracao.telemedicina', props.tenant.id),
-        {
-            enabled: true,
-            siprov_items: selectedItems,
-        },
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Itens SIPROV vinculados com sucesso!', 'success')
-                siprovModalOpen.value = false
-                siprovSelected.value = []
-                router.reload({
-                    only: ['telemedicinaVinculados'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: () => {
-                showToast('Erro ao vincular itens SIPROV.', 'error')
-            },
-
-            onFinish: () => {
-                isSavingSiprov.value = false
-            },
-        },
-    )
-}
-
-const confirmRemoveLink = () => {
-    if (!selectedFormToRemove.value?.id) {
-        showToast('Formulário vinculado não encontrado.', 'error')
-        return
-    }
-
-    isRemoving.value = true
-
-    router.delete(
-        route('pagina.configuracao.unlink', selectedFormToRemove.value.id),
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showToast('Formulário desvinculado com sucesso!', 'success')
-                closeRemoveLinkDialog()
-
-                router.reload({
-                    only: ['tenant', 'forms', 'fomrs_tenants'],
-                    preserveScroll: true,
-                })
-            },
-
-            onError: () => {
-                showToast('Erro ao remover vínculo.', 'error')
-            },
-
-            onFinish: () => {
-                isRemoving.value = false
-            },
-        },
-    )
-}
 </script>
 
 <template>
@@ -1490,6 +531,24 @@ const confirmRemoveLink = () => {
                             </div>
                         </div>
 
+                        <div class="md:col-span-2">
+                            <label class="text-xs uppercase tracking-wide text-gray-500">
+                                Domínios ({{ domains.length }})
+                            </label>
+
+                            <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50">
+                                <ul v-if="domains.length" class="space-y-2">
+                                    <li v-for="domain in domains" :key="domain.id || domain.domain"
+                                        class="flex items-center gap-2 break-all">
+                                        <Globe class="w-4 h-4 text-cyan-500 shrink-0" />
+                                        {{ domain.domain }}
+                                    </li>
+                                </ul>
+
+                                <span v-else class="text-gray-500">Nenhum domínio cadastrado.</span>
+                            </div>
+                        </div>
+
                         <div>
                             <label class="text-xs uppercase tracking-wide text-gray-500">
                                 Criado em
@@ -1511,48 +570,57 @@ const confirmRemoveLink = () => {
                                 {{ formatDateTime(tenant.updated_at) }}
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Dados complementares -->
-                    <div v-if="activeTab === 'details' && detail" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
+                        <template v-if="detail">
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-gray-500">
+                                    Código
+                                </label>
+
+                                <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50">
+                                    {{ detail.code || '-' }}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-gray-500">
+                                    Sigla
+                                </label>
+
+                                <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50">
+                                    {{ detail.sigla || '-' }}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-gray-500">
+                                    Path Arquivos
+                                </label>
+
+                                <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50 break-words">
+                                    {{ detail.path_arquivos || '-' }}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-gray-500">
+                                    Cores
+                                </label>
+
+                                <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50">
+                                    Primária: {{ detail.cor_primaria || '-' }} /
+                                    Secundária: {{ detail.cor_secundaria || '-' }}
+                                </div>
+                            </div>
+                        </template>
+
+                        <div v-if="user" class="md:col-span-2">
                             <label class="text-xs uppercase tracking-wide text-gray-500">
-                                Código
+                                Responsável
                             </label>
 
                             <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50">
-                                {{ detail.code || '-' }}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="text-xs uppercase tracking-wide text-gray-500">
-                                Sigla
-                            </label>
-
-                            <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50">
-                                {{ detail.sigla || '-' }}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="text-xs uppercase tracking-wide text-gray-500">
-                                Path Arquivos
-                            </label>
-
-                            <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50 break-words">
-                                {{ detail.path_arquivos || '-' }}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="text-xs uppercase tracking-wide text-gray-500">
-                                Cores
-                            </label>
-
-                            <div class="mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50">
-                                Primária: {{ detail.cor_primaria || '-' }} /
-                                Secundária: {{ detail.cor_secundaria || '-' }}
+                                <UserBadge :user="user" show-email />
                             </div>
                         </div>
                     </div>
@@ -1590,25 +658,6 @@ const confirmRemoveLink = () => {
 
                         <div v-else class="text-center py-10 text-gray-500">
                             Nenhum formulário vinculado.
-                        </div>
-                    </div>
-
-                    <!-- Responsável -->
-                    <div v-if="activeTab === 'responsible' && user">
-                        <div class="max-w-md mx-auto text-center rounded-2xl border border-gray-100 bg-gray-50 p-6">
-                            <UserBadge :user="user" size="lg" show-email />
-                        </div>
-                    </div>
-
-                    <!-- Domínios -->
-                    <div v-if="activeTab === 'domains'" class="space-y-3">
-                        <div v-for="domain in domains" :key="domain.id || domain.domain"
-                            class="p-3 rounded-xl bg-gray-50 border border-gray-200 break-words">
-                            {{ domain.domain }}
-                        </div>
-
-                        <div v-if="!domains.length" class="text-sm text-gray-500 text-center py-10">
-                            Nenhum domínio cadastrado.
                         </div>
                     </div>
 
@@ -1863,6 +912,144 @@ const confirmRemoveLink = () => {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Planos -->
+                    <div v-if="activeTab === 'planos'" class="space-y-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <h2 class="text-lg font-semibold flex items-center gap-2">
+                                    <Layers class="w-5 h-5 text-cyan-500" />
+                                    Planos
+                                </h2>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    Escolha quais planos de telemedicina este tenant oferece e quantos associados cada um comporta.
+                                </p>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <span v-if="planosHasUnsavedChanges" class="text-xs font-medium text-amber-600">
+                                    Alterações não salvas
+                                </span>
+
+                                <Button v-if="planosHasUnsavedChanges" variant="outline" :disabled="isSavingPlanos"
+                                    @click="descartarPlanos">
+                                    Descartar
+                                </Button>
+
+                                <Button variant="primary"
+                                    :disabled="isSavingPlanos || !planosHasUnsavedChanges || hasQuantidadeInvalida"
+                                    @click="salvarPlanos">
+                                    <Loader2 v-if="isSavingPlanos" class="w-4 h-4 mr-1 animate-spin" />
+                                    <Check v-else class="w-4 h-4 mr-1" />
+                                    Salvar
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div v-if="!planoRows.length" class="text-center py-10 text-gray-500">
+                            Nenhum plano configurado no sistema.
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <div v-for="row in planoRows" :key="row.cod_plano"
+                                class="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border transition-colors"
+                                :class="row.selecionado ? 'border-cyan-200 bg-cyan-50/40' : 'border-gray-200 bg-gray-50'">
+                                <label class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+                                    <input v-model="row.selecionado" type="checkbox"
+                                        :disabled="row.selecionado && row.emUso > 0"
+                                        :title="row.selecionado && row.emUso > 0 ? 'Plano com associados vinculados não pode ser removido' : ''"
+                                        class="w-5 h-5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer" />
+                                    <div class="min-w-0">
+                                        <p class="font-medium text-gray-900">{{ row.label }}</p>
+                                        <p class="text-xs text-gray-500">Código SIPROV: {{ row.cod_plano }}</p>
+                                        <p v-if="row.emUso > 0 || row.selecionado" class="text-xs mt-1"
+                                            :class="row.selecionado && row.emUso >= Number(row.quantidade) ? 'text-amber-600 font-medium' : 'text-gray-600'">
+                                            {{ row.emUso }} de {{ row.selecionado ? row.quantidade : 0 }} vaga(s) em uso
+                                            <template v-if="row.selecionado && row.emUso >= Number(row.quantidade)"> · cota esgotada</template>
+                                        </p>
+                                    </div>
+                                </label>
+
+                                <div class="flex items-center gap-2" :class="{ 'opacity-40': !row.selecionado }">
+                                    <span class="text-sm text-gray-600">Quantidade</span>
+                                    <div class="flex items-center">
+                                        <button type="button" class="btn btn-sm btn-ghost px-2" title="Diminuir"
+                                            :disabled="!row.selecionado || Number(row.quantidade) <= quantidadeMinima(row)"
+                                            @click="row.quantidade = Math.max(quantidadeMinima(row), Number(row.quantidade) - 1)">
+                                            <Minus class="w-4 h-4" />
+                                        </button>
+                                        <input v-model.number="row.quantidade" type="number" :min="quantidadeMinima(row)" step="1"
+                                            :disabled="!row.selecionado" :aria-label="`Quantidade do plano ${row.label}`"
+                                            class="w-24 px-2 py-1.5 text-center rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            :class="isQuantidadeInvalida(row) ? 'border-red-300 bg-red-50' : 'border-gray-300'" />
+                                        <button type="button" class="btn btn-sm btn-ghost px-2" title="Aumentar"
+                                            :disabled="!row.selecionado"
+                                            @click="row.quantidade = (Number(row.quantidade) || 0) + 1">
+                                            <Plus class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between px-1 pt-1 text-sm text-gray-600">
+                                <span>{{ planosSelecionados.length }} de {{ planoRows.length }} plano(s) selecionado(s)</span>
+                                <span>Em uso: <strong class="text-gray-900">{{ totalEmUsoPlanos }}</strong> de <strong class="text-gray-900">{{ totalQuantidadePlanos }}</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- Histórico de registros (auditoria) -->
+                        <div class="space-y-3 border-t border-gray-100 pt-5">
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Histórico de registros</h3>
+                                <p class="text-sm text-gray-500">
+                                    Últimos pacientes registrados nos planos: quem registrou, de onde e como ficou o saldo.
+                                </p>
+                            </div>
+
+                            <p v-if="!planoRegistros.length" class="py-6 text-center text-sm text-gray-500">
+                                Nenhum registro ainda.
+                            </p>
+
+                            <div v-else class="overflow-x-auto rounded-xl border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        <tr>
+                                            <th class="px-4 py-3">Data</th>
+                                            <th class="px-4 py-3">Paciente</th>
+                                            <th class="px-4 py-3">Plano</th>
+                                            <th class="px-4 py-3">Origem</th>
+                                            <th class="px-4 py-3">Usuário</th>
+                                            <th class="px-4 py-3">IP</th>
+                                            <th class="px-4 py-3">Dispositivo</th>
+                                            <th class="px-4 py-3 text-right">Saldo após</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                        <tr v-for="registro in planoRegistros" :key="registro.id">
+                                            <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ registro.data }}</td>
+                                            <td class="px-4 py-3 font-medium text-gray-900">{{ registro.paciente }}</td>
+                                            <td class="whitespace-nowrap px-4 py-3">{{ registro.plano }}</td>
+                                            <td class="whitespace-nowrap px-4 py-3">{{ registro.origem }}</td>
+                                            <td class="whitespace-nowrap px-4 py-3">{{ registro.usuario || '—' }}</td>
+                                            <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-gray-600">{{ registro.ip || '—' }}</td>
+                                            <td class="whitespace-nowrap px-4 py-3 text-gray-600" :title="registro.user_agent">
+                                                <template v-if="registro.dispositivo">
+                                                    {{ registro.dispositivo.tipo }} · {{ registro.dispositivo.sistema }} · {{ registro.dispositivo.navegador }}
+                                                </template>
+                                                <template v-else>—</template>
+                                            </td>
+                                            <td class="whitespace-nowrap px-4 py-3 text-right">
+                                                <span v-if="registro.saldo !== null" :class="registro.saldo < 1 ? 'font-semibold text-amber-700' : 'text-gray-900'">
+                                                    {{ registro.saldo }} de {{ registro.quantidade }}
+                                                </span>
+                                                <span v-else>—</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -2386,16 +1573,16 @@ const confirmRemoveLink = () => {
                         <div class="space-y-3">
                             <div class="relative">
                                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input v-model="siprovSearch" type="text"
+                                <input v-model="telemedicinaSearch" type="text"
                                     placeholder="Filtrar vinculados por nome, CPF ou plano..."
                                     class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all" />
-                                <button v-if="siprovSearch" type="button" @click="siprovSearch = ''"
+                                <button v-if="telemedicinaSearch" type="button" @click="telemedicinaSearch = ''"
                                     class="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
                                     <X class="w-4 h-4" />
                                 </button>
                             </div>
 
-                            <div v-if="siprovSearch && telemedicinaVinculados.length" class="text-xs text-gray-500">
+                            <div v-if="telemedicinaSearch && telemedicinaVinculados.length" class="text-xs text-gray-500">
                                 {{ filteredTelemedicinaVinculados.length }} de {{ telemedicinaVinculados.length }}
                                 resultado(s)
                             </div>
@@ -2446,7 +1633,7 @@ const confirmRemoveLink = () => {
                             </div>
                             <p class="text-sm font-medium text-gray-700 mt-3" v-if="telemedicinaVinculados.length">
                                 Nenhum resultado
-                                para "{{ siprovSearch }}"</p>
+                                para "{{ telemedicinaSearch }}"</p>
                             <p class="text-sm font-medium text-gray-700 mt-3" v-else>Nenhum associado vinculado</p>
                             <p class="text-xs text-gray-400 mt-1" v-if="telemedicinaVinculados.length">Tente outro termo
                                 de busca.
@@ -2512,6 +1699,19 @@ const confirmRemoveLink = () => {
                                 <Users class="w-4 h-4 shrink-0 mt-0.5" />
                                 <span>O paciente ficará disponível na aba <strong>Pacientes</strong> vinculado a este
                                     parceiro.</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <Layers class="w-4 h-4 shrink-0 mt-0.5" />
+                                <span v-if="planoVagas.length">
+                                    Vagas por plano:
+                                    <template v-for="(vaga, i) in planoVagas" :key="vaga.cod_plano">
+                                        <strong>{{ vaga.label }}</strong> {{ vaga.disponivel }} de {{ vaga.quantidade }}<template v-if="i < planoVagas.length - 1"> · </template>
+                                    </template>
+                                </span>
+                                <span v-else>
+                                    Nenhum plano habilitado. Configure os planos na aba <strong>Planos</strong> antes de
+                                    vincular associados.
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -2678,6 +1878,14 @@ const confirmRemoveLink = () => {
                     </div>
                 </div>
 
+                <div v-if="siprovCotaErros.length"
+                    class="px-4 py-3 border-t border-red-200 bg-red-50 text-xs text-red-700 space-y-1">
+                    <div v-for="erro in siprovCotaErros" :key="erro" class="flex items-start gap-2">
+                        <AlertCircle class="w-4 h-4 shrink-0" />
+                        <span>{{ erro }}</span>
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-between p-4 border-t border-gray-100 bg-gray-50/50"
                     :class="{ 'bg-cyan-50/70 border-cyan-200': siprovSelected.length > 0 }">
                     <span class="text-sm font-medium"
@@ -2695,7 +1903,7 @@ const confirmRemoveLink = () => {
                         <Button variant="secondary" @click="siprovModalOpen = false">
                             Cancelar
                         </Button>
-                        <Button variant="primary" :disabled="!siprovSelected.length || isSavingSiprov"
+                        <Button variant="primary" :disabled="!siprovSelected.length || isSavingSiprov || siprovCotaErros.length > 0"
                             @click="vincularSiprov">
                             <Loader2 v-if="isSavingSiprov" class="w-4 h-4 mr-2 animate-spin" />
                             <Plus v-else class="w-4 h-4 mr-2" />
