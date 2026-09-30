@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Form;
 use App\Models\FormsResponseTenent;
 use App\Models\SmsTemplate;
+use App\Services\Tenant\PacientePlanoService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -81,6 +82,7 @@ class FormShowController extends Controller
         }
 
         return Inertia::render('Tenant/Form/Show', [
+            'planos' => app(PacientePlanoService::class)->opcoes((string) tenant('id')),
             'form' => [
                 'id' => $form->id,
                 'code' => $form->code,

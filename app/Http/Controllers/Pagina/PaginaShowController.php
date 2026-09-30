@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pagina;
 
 use App\Enums\QuestionRoleEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Audit;
 use App\Models\CentralPatient;
 use App\Models\CentralPatientAnswer;
 use App\Models\Form;
@@ -13,13 +14,16 @@ use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
 use App\Models\TenantsDetail;
 use App\Models\TenantForm;
+use App\Models\TenantPlano;
+use App\Services\Tenant\TenantPlanoCotaService;
+use App\Support\SiprovPlanos;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaginaShowController extends Controller
 {
-    public function __invoke(Tenant $tenant): Response
+    public function __invoke(Tenant $tenant, TenantPlanoCotaService $planoCotaService): Response
     {
         $tenant = Tenant::with(['details', 'details.user', 'forms'])->where('id', $tenant->id)->firstOrFail();
 
@@ -100,6 +104,11 @@ class PaginaShowController extends Controller
             'cartaoDinamico' => $cartaoDinamico,
             'telemedicinaQuestions' => $telemedicinaQuestions,
             'telemedicinaVinculados' => $telemedicinaVinculados,
+            'planos' => SiprovPlanos::options(),
+            'tenantPlanos' => TenantPlano::where('tenant_id', $tenant->id)
+                ->get(['cod_plano', 'quantidade']),
+            'planoUso' => (object) $planoCotaService->uso($tenant->id),
+            'planoRegistros' => $this->planoRegistros($tenant),
             'allTenants' => Tenant::whereNull('deleted_at')
                 ->with(['details', 'forms'])
                 ->orderBy('id')
@@ -134,6 +143,42 @@ class PaginaShowController extends Controller
                     'tenants' => $t->tenants->pluck('id')->toArray(),
                 ]),
         ]);
+    }
+
+    /**
+     * Últimos registros de pacientes nos planos (auditoria registro_plano).
+     */
+    private function planoRegistros(Tenant $tenant): array
+    {
+        $origens = [
+            'cadastro_paciente' => 'Cadastro manual',
+            'formulario_publico' => 'Formulário público',
+        ];
+
+        return Audit::where('event', 'registro_plano')
+            ->where('tags', 'tenant:'.$tenant->id)
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->map(function (Audit $audit) use ($origens) {
+                $dados = $audit->new_values ?? [];
+                $plano = $dados['planos'][$dados['cod_plano'] ?? ''] ?? [];
+
+                return [
+                    'id' => $audit->id,
+                    'data' => $audit->created_at?->format('d/m/Y H:i'),
+                    'paciente' => $dados['paciente'] ?? (isset($dados['paciente_id']) ? "#{$dados['paciente_id']}" : '-'),
+                    'plano' => $dados['plano'] ?? '-',
+                    'origem' => $origens[$dados['origem'] ?? ''] ?? ($dados['origem'] ?? '-'),
+                    'usuario' => $dados['usuario'] ?? null,
+                    'ip' => $audit->ip_address,
+                    'dispositivo' => $audit->dispositivo,
+                    'user_agent' => $audit->user_agent,
+                    'saldo' => $plano['saldo'] ?? null,
+                    'quantidade' => $plano['quantidade'] ?? null,
+                ];
+            })
+            ->all();
     }
 
     private function resolveCartaoAsset(Tenant $tenant, ?TenantsDetail $detail, string $coluna, string $tipo): ?array

@@ -258,6 +258,9 @@ const submitForm = () => {
                     const fieldId = key.replace('answers.', '');
                     const field = props.form.fields.find(f => f.id == fieldId);
                     errorMessages.push(`${field?.label || 'Campo'}: ${Array.isArray(e[key]) ? e[key][0] : e[key]}`);
+                } else {
+                    // Erros fora dos campos (ex.: plano sem vagas) aparecem antes dos de campo.
+                    errorMessages.unshift(Array.isArray(e[key]) ? e[key][0] : e[key]);
                 }
             });
             showToast(errorMessages[0] || 'Erro ao enviar cadastro.', 'error');

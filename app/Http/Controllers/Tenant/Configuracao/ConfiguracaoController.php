@@ -18,6 +18,7 @@ use App\Models\TenantsDetail;
 use App\Services\Siprov\SiprovAssociadoService;
 use App\Services\Tenant\TenantConfigurationService;
 use App\Services\Tenant\TenantFormService;
+use App\Services\Tenant\TenantPlanoCotaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +37,7 @@ class ConfiguracaoController extends Controller
         private readonly TenantConfigurationService $configuracaoService,
         private TenantFormService $tenantFormService,
         private readonly SiprovAssociadoService $siprovAssociadoService,
+        private readonly TenantPlanoCotaService $planoCotaService,
     ) {}
 
     private function tenantId(): string
@@ -506,6 +508,11 @@ class ConfiguracaoController extends Controller
 
     public function syncTelemedicina(Request $request, Tenant $tenant)
     {
+        // Fora do try: o catch abaixo transformaria a ValidationException em erro genérico.
+        if (! empty($request->input('siprov_items'))) {
+            $this->planoCotaService->validarVinculos($tenant->id, $request->input('siprov_items'));
+        }
+
         try {
             $request->validate([
                 'enabled' => ['boolean'],
@@ -554,18 +561,20 @@ class ConfiguracaoController extends Controller
             if (!empty($request->input('siprov_items'))) {
                 $cpfQuestion = Question::where('role', QuestionRoleEnum::Cpf)->first();
                 $nomeQuestion = Question::where('role', QuestionRoleEnum::Nome)->first();
+                $vinculosCriados = [];
 
                 foreach ($request->input('siprov_items') as $item) {
                     $planos = $item['planos'] ?? [];
                     $primeiroPlano = !empty($planos) ? $planos[0] : [];
 
-                    TelemedicinaTenant::create([
+                    $vinculosCriados[] = TelemedicinaTenant::create([
                         'tenant_id' => $tenant->id,
                         'data' => [
                             'siprov_id' => $item['codPessoa'] ?? null,
                             'title' => $item['nomePessoa'] ?? '',
                             'cpf_cnpj' => $item['cpfCnpj'] ?? '',
                             'cod_plano' => $primeiroPlano['codPlano'] ?? null,
+                            'cod_planos' => TenantPlanoCotaService::codigosDoItemSiprov($item),
                             'plano_label' => $primeiroPlano['nome'] ?? '',
                             'codigo_integracao' => $item['codPessoa'] ?? null,
                             'codBeneficio' => $item['codBeneficio'] ?? null,
@@ -663,6 +672,16 @@ class ConfiguracaoController extends Controller
                 }
             }
 
+            // Consome uma vaga por plano de cada vínculo criado, com o paciente como parceiro.
+            foreach ($vinculosCriados ?? [] as $vinculo) {
+                $this->planoCotaService->consumir(
+                    $tenant->id,
+                    TenantPlanoCotaService::codigosDoVinculo($vinculo->data),
+                    $this->pacienteIdPorCpf($tenant, $vinculo->data['cpf_cnpj'] ?? null),
+                    $vinculo->id,
+                );
+            }
+
             return redirect()
                 ->route('pagina.show', $tenant->id)
                 ->with('message', 'Configuração de telemedicina atualizada com sucesso.')
@@ -685,6 +704,9 @@ class ConfiguracaoController extends Controller
         try {
             $cpf = preg_replace('/\D/', '', $telemedicinaTenant->data['cpf_cnpj'] ?? '');
 
+            // Antes de apagar o paciente: ele é o parceiro do movimento de devolução.
+            $parceiroId = $this->pacienteIdPorCpf($tenant, $cpf);
+
             if ($cpf) {
                 $tenant->run(function () use ($cpf) {
                     \App\Models\Patient::where('cpf', $cpf)
@@ -700,7 +722,10 @@ class ConfiguracaoController extends Controller
                 }
             }
 
-            $telemedicinaTenant->delete();
+            \Illuminate\Support\Facades\DB::connection('mysql')->transaction(function () use ($telemedicinaTenant, $parceiroId) {
+                $this->planoCotaService->devolver($telemedicinaTenant, $parceiroId);
+                $telemedicinaTenant->delete();
+            });
 
             return redirect()
                 ->route('pagina.show', $tenant->id)
@@ -717,6 +742,19 @@ class ConfiguracaoController extends Controller
                 ->with('message', 'Não foi possível desvincular o item.')
                 ->with('type', 'error');
         }
+    }
+
+    private function pacienteIdPorCpf(Tenant $tenant, ?string $cpf): ?int
+    {
+        $cpf = preg_replace('/\D/', '', (string) $cpf);
+
+        if (! $cpf) {
+            return null;
+        }
+
+        $id = $tenant->run(fn () => \App\Models\Patient::withTrashed()->where('cpf', $cpf)->value('id'));
+
+        return $id ? (int) $id : null;
     }
 
     public function searchSiprov(Request $request)

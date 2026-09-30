@@ -8,6 +8,7 @@ use App\Http\Services\Patient\PatientCardPdfService;
 use App\Http\Services\Patient\PatientService;
 use App\Http\Services\Patient\PatientsReportPdfService;
 use App\Http\Services\Sms\ResendSmsService;
+use App\Services\Tenant\PacientePlanoService;
 use App\Models\Patient;
 use App\Models\SmsLogs;
 use App\Models\Tenant;
@@ -24,6 +25,7 @@ class PatientController extends Controller
         private ResendSmsService $resendSmsService,
         private PatientsReportPdfService $patientsReportPdfService,
         private PatientCardPdfService $patientCardPdfService,
+        private PacientePlanoService $pacientePlanoService,
     ) {}
 
     public function index(Request $request)
@@ -55,21 +57,39 @@ class PatientController extends Controller
         return Inertia::render('Patient/Create', [
             'tenantName' => $tenant->name,
             'tenantPhoto' => $tenant->photo_url,
+            'planos' => $this->pacientePlanoService->opcoes(tenant('id')),
+            'breadcrumbs' => [
+                ['label' => 'Beneficiários', 'href' => route('patients.index')],
+                ['label' => 'Novo beneficiário', 'href' => null],
+            ],
         ]);
     }
 
     public function store(StorePatientRequest $request)
     {
-        $this->patientService->store($request->validated());
+        $data = $request->validated();
+        $codPlano = $data['cod_plano'] ?? null;
 
-        return redirect()->route('patients.index')
-            ->with('success', 'Paciente cadastrado com sucesso.');
+        // Cota e CPF são validados antes de salvar: nesses casos o paciente não é criado.
+        if ($codPlano) {
+            $this->pacientePlanoService->validar(tenant('id'), $codPlano, $data);
+        }
+
+        $patient = $this->patientService->store($data);
+
+        return $this->redirectAfterPlano($patient, $codPlano, 'Paciente cadastrado com sucesso.');
     }
 
     public function edit(Patient $patient)
     {
         return Inertia::render('Patient/Edit', [
             'patient' => $patient,
+            'planos' => $this->pacientePlanoService->opcoes(tenant('id')),
+            'planoAtual' => $this->pacientePlanoService->vinculoAtual(tenant('id'), $patient->cpf),
+            'breadcrumbs' => [
+                ['label' => 'Beneficiários', 'href' => route('patients.index')],
+                ['label' => $patient->nome ?: "Beneficiário #{$patient->id}", 'href' => null],
+            ],
         ]);
     }
 
@@ -90,10 +110,36 @@ class PatientController extends Controller
 
     public function update(Patient $patient, StorePatientRequest $request)
     {
-        $this->patientService->update($patient, $request->validated());
+        $data = $request->validated();
+        $codPlano = $data['cod_plano'] ?? null;
 
-        return redirect()->route('patients.index')
-            ->with('success', 'Paciente atualizado com sucesso.');
+        // No Edit o plano só pode ser adicionado; validar() recusa CPF que já tem vínculo.
+        if ($codPlano) {
+            $this->pacientePlanoService->validar(tenant('id'), $codPlano, $data);
+        }
+
+        $this->patientService->update($patient, $data);
+
+        return $this->redirectAfterPlano($patient->refresh(), $codPlano, 'Paciente atualizado com sucesso.');
+    }
+
+    /**
+     * Registra o plano (SIPROV + telemedicina) e redireciona. Se a SIPROV falhar,
+     * o paciente continua salvo e o erro é exibido junto da mensagem de sucesso.
+     */
+    private function redirectAfterPlano(Patient $patient, ?string $codPlano, string $success)
+    {
+        $redirect = redirect()->route('patients.index')->with('success', $success);
+
+        if (! $codPlano) {
+            return $redirect;
+        }
+
+        $erro = $this->pacientePlanoService->registrar(tenant('id'), $patient, $codPlano);
+
+        return $erro
+            ? $redirect->with('error', 'Não foi possível registrar o plano na SIPROV; o paciente foi salvo sem vínculo de telemedicina. Detalhe: '.$erro)
+            : $redirect;
     }
 
     public function toggleStatus(Patient $patient)

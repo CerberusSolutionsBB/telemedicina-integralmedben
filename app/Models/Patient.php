@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Auditable as AuditableTrait;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Patient extends Model
+class Patient extends Model implements Auditable
 {
-    use SoftDeletes;
+    use AuditableTrait, SoftDeletes;
 
     protected $fillable = [
         'user_id',

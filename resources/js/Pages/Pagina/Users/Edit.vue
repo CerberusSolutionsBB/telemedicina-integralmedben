@@ -2,10 +2,10 @@
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue'
 import Breadcrumb from '@/Components/Breadcrumb.vue'
 import PasswordInput from '@/Components/PasswordInput.vue'
-import { router, useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
-import { showToast } from '@/Utils/toast'
 import Button from '@/Components/ui/button/Button.vue'
+import { usePaginaUserForm } from '@/Composables/Pagina/usePaginaUserForm'
+
 import {
     Home,
     User,
@@ -28,17 +28,15 @@ const props = defineProps({
     },
 })
 
-const inputClass =
-    'input input-bordered w-full rounded-2xl pl-12 h-14 bg-slate-50 border-slate-100 focus:border-primary focus:ring-2 focus:ring-primary/20'
-
-const passwordInputClass =
-    'input input-bordered w-full rounded-2xl pl-12 pr-12 h-14 bg-slate-50 border-slate-100 focus:border-primary focus:ring-2 focus:ring-primary/20'
-
-const inputErrorClass =
-    'input input-bordered w-full rounded-2xl pl-12 h-14 bg-red-50 border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-
-const passwordInputErrorClass =
-    'input input-bordered w-full rounded-2xl pl-12 pr-12 h-14 bg-red-50 border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+const {
+    inputClass,
+    passwordInputClass,
+    inputErrorClass,
+    passwordInputErrorClass,
+    form,
+    submit,
+    goBack,
+} = usePaginaUserForm(props)
 
 const breadcrumbs = computed(() => [
     {
@@ -54,42 +52,6 @@ const breadcrumbs = computed(() => [
         label: 'Editar usuário',
     },
 ])
-
-const form = useForm({
-    name: props.user?.name || '',
-    email: props.user?.email || '',
-    password: '',
-    role: props.selectedRoles?.[0] || '',
-})
-
-const submit = () => {
-    form.put(
-        route('pagina.users.update', {
-            tenant: props.tenant.id,
-            user: props.user.id,
-        }),
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                form.reset('password')
-                showToast('Usuário atualizado com sucesso!', 'success')
-            },
-
-            onError: (errors) => {
-                const message =
-                    Object.values(errors).flat()[0] ||
-                    'Erro ao atualizar usuário'
-
-                showToast(message, 'error')
-            },
-        }
-    )
-}
-
-const goBack = () => {
-    router.visit(route('pagina.users.index', props.tenant.id))
-}
 </script>
 
 <template>

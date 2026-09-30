@@ -26,4 +26,16 @@ export default defineConfig({
             extensions: ['vue'],
         }),
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) return;
+                    if (id.includes('@vueup/vue-quill') || id.includes('quill')) return 'vendor-quill';
+                    if (id.includes('@tiptap') || id.includes('prosemirror')) return 'vendor-tiptap';
+                    if (/node_modules\/(vue|@vue|@inertiajs)\//.test(id)) return 'vendor-vue';
+                },
+            },
+        },
+    },
 });

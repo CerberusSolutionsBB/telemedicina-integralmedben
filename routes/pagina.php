@@ -5,6 +5,7 @@ use App\Http\Controllers\Pagina\PaginaDestroyController;
 use App\Http\Controllers\Pagina\PaginaIndexController;
 use App\Http\Controllers\Pagina\PaginaCartaoDinamicoController;
 use App\Http\Controllers\Pagina\PaginaLogoController;
+use App\Http\Controllers\Pagina\PaginaPlanoController;
 use App\Http\Controllers\Pagina\PaginaShowController;
 use App\Http\Controllers\Pagina\PaginaStoreController;
 use App\Http\Controllers\Pagina\PaginaStatusController;
@@ -36,6 +37,7 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::put('/{tenant}/cartao-paciente', [ConfiguracaoController::class, 'toggleCartaoPaciente'])->name('cartao-paciente');
     Route::put('/{tenant}/telemedicina', [ConfiguracaoController::class, 'syncTelemedicina'])->name('telemedicina');
     Route::delete('/{tenant}/telemedicina/{telemedicinaTenant}', [ConfiguracaoController::class, 'unlinkTelemedicina'])->name('telemedicina.unlink');
+    Route::put('/{tenant}/planos', [PaginaPlanoController::class, 'sync'])->middleware('auth')->name('planos');
     Route::get('/siprov/search', [ConfiguracaoController::class, 'searchSiprov'])->name('telemedicina.searchSiprov');
     Route::post('/{tenant}/logo', [PaginaLogoController::class, 'store'])->middleware('auth')->name('logo.store');
     Route::delete('/{tenant}/logo', [PaginaLogoController::class, 'destroy'])->middleware('auth')->name('logo.destroy');

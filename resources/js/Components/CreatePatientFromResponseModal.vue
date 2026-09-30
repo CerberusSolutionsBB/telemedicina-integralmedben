@@ -10,6 +10,9 @@ import {
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
+import PatientPlanoSelect from "@/Components/PatientPlanoSelect.vue";
+import UfCidadeSelect from "@/Components/UfCidadeSelect.vue";
+import { siglaDoEstado } from "@/Composables/useLocalidades";
 import {
     User,
     Mail,
@@ -25,6 +28,7 @@ const props = defineProps({
     open: { type: Boolean, default: false },
     response: { type: Object, default: null },
     fields: { type: Array, default: () => [] },
+    planos: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(["update:open", "patient-created"]);
@@ -39,6 +43,7 @@ const form = useForm({
     numero: "",
     status: false,
     response_id: null,
+    cod_plano: "",
     enderecos: {
         cep: "",
         logradouro: "",
@@ -93,7 +98,8 @@ watch(
             } else if (label.includes("cidade") || label.includes("município")) {
                 form.enderecos.cidade = stringValue;
             } else if (label.includes("estado") || label.includes("uf")) {
-                form.enderecos.estado = stringValue;
+                // Respostas livres ("São Paulo", "sp") viram a sigla; sem correspondência, fica vazio.
+                form.enderecos.estado = siglaDoEstado(stringValue);
             }
         }
     },
@@ -163,10 +169,12 @@ const submit = () => {
                         <div>
                             <Label class="flex items-center gap-1 text-gray-700 pb-1 font-medium">
                                 <CreditCard class="w-4 h-4 text-gray-400" />
-                                CPF
+                                CPF <span class="text-red-500">*</span>
                             </Label>
                             <Input v-model="form.cpf" type="text" inputmode="numeric" maxlength="14"
-                                placeholder="000.000.000-00" @input="maskCpf" />
+                                placeholder="000.000.000-00" @input="maskCpf"
+                                :class="form.errors.cpf ? 'border-red-500' : ''" />
+                            <p v-if="form.errors.cpf" class="mt-1 text-sm text-red-600">{{ form.errors.cpf }}</p>
                         </div>
                         <div>
                             <Label class="flex items-center gap-1 text-gray-700 pb-1 font-medium">
@@ -211,9 +219,11 @@ const submit = () => {
                         <div>
                             <Label class="flex items-center gap-1 text-gray-700 pb-1 font-medium">
                                 <Mail class="w-4 h-4 text-gray-400" />
-                                E-mail
+                                E-mail <span class="text-red-500">*</span>
                             </Label>
-                            <Input v-model="form.email" type="email" placeholder="paciente@exemplo.com" />
+                            <Input v-model="form.email" type="email" placeholder="paciente@exemplo.com"
+                                :class="form.errors.email ? 'border-red-500' : ''" />
+                            <p v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</p>
                         </div>
                     </div>
 
@@ -245,24 +255,20 @@ const submit = () => {
                             <Input v-model="form.enderecos.bairro" type="text" placeholder="Bairro" />
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 mt-3">
-                        <div>
-                            <Label class="text-gray-700 pb-1 font-medium text-sm">Cidade</Label>
-                            <Input v-model="form.enderecos.cidade" type="text" placeholder="Cidade" />
-                        </div>
-                        <div>
-                            <Label class="text-gray-700 pb-1 font-medium text-sm">Estado</Label>
-                            <Input v-model="form.enderecos.estado" type="text" maxlength="2" placeholder="UF" />
-                        </div>
-                        </div>
+                    <UfCidadeSelect v-model:uf="form.enderecos.estado" v-model:cidade="form.enderecos.cidade"
+                        class="mt-3" :disabled="form.processing" :error-uf="form.errors['enderecos.estado']"
+                        :error-cidade="form.errors['enderecos.cidade']" />
                     </div>
                 </div>
+
+                <PatientPlanoSelect v-model="form.cod_plano" :planos="planos" :error="form.errors.cod_plano"
+                    :disabled="form.processing" required />
 
                 <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
                     <Button type="button" variant="outline" @click="emit('update:open', false)">
                         Cancelar
                     </Button>
-                    <Button type="submit" :disabled="form.processing || !form.nome">
+                    <Button type="submit" :disabled="form.processing || !form.nome || !form.cod_plano">
                         {{ form.processing ? 'Salvando...' : 'Criar Paciente' }}
                     </Button>
                 </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { Head, router } from "@inertiajs/vue3";
+import { Head } from "@inertiajs/vue3";
 import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
 import {
@@ -16,94 +16,35 @@ import ConfirmResendSmsDialog from "@/Components/ConfirmResendSmsDialog.vue";
 import AppSwitch from "@/Components/ui/switch/Switch.vue";
 import Breadcrumb from "@/Components/Breadcrumb.vue";
 import { RefreshCw, CheckCircle2, Clock, XCircle, MapPin, Users } from "lucide-vue-next";
-import { computed, ref } from "vue";
-import { showToast } from "@/Utils/toast";
+import { computed } from "vue";
+import { usePatientShow } from "@/Composables/Patient/usePatientShow";
+import { formatarCpf as formatCpf, formatarDataHora as formatDate } from "@/Composables/Patient/formatadores";
 
 const props = defineProps({
   patient: { type: Object, required: true },
   smsLogs: { type: Array, default: () => [] },
 });
 
-const showFlashToast = (visitedPage) => {
-  const successMsg = visitedPage.props.flash?.success;
-  const errorMsg = visitedPage.props.flash?.error;
-  if (successMsg) showToast(successMsg, "success");
-  else if (errorMsg) showToast(errorMsg, "error");
-};
+const {
+  isActive,
+  enderecoFormatado,
+  logToResend,
+  resendLogDialogOpen,
+  openResendLogDialog,
+  resendLog,
+  toggleStatus,
+} = usePatientShow(props);
 
 const breadcrumbs = computed(() => [
   { label: "Pacientes", href: route("patients.index"), icon: Users },
   { label: `Detalhes do Paciente #${props.patient.id}`, href: null },
 ]);
 
-const isActive = computed(() => Boolean(props.patient.status));
-
-const enderecoFormatado = computed(() => {
-  const e = props.patient.enderecos;
-  if (!e) return null;
-  const partes = [];
-  if (e.logradouro) {
-    let linha = e.logradouro;
-    if (e.numero) linha += `, ${e.numero}`;
-    if (e.complemento) linha += ` - ${e.complemento}`;
-    partes.push(linha);
-  }
-  if (e.bairro) partes.push(e.bairro);
-  const cidadeEstado = [];
-  if (e.cidade) cidadeEstado.push(e.cidade);
-  if (e.estado) cidadeEstado.push(e.estado);
-  if (cidadeEstado.length) partes.push(cidadeEstado.join("/"));
-  if (e.cep) partes.push(`CEP: ${e.cep}`);
-  return partes.length ? partes.join(", ") : null;
-});
-
+// Ícone e cor por status do SMS (apresentação).
 const statusConfig = {
   sent:    { label: "Enviado",  icon: CheckCircle2, class: "text-green-600" },
   pending: { label: "Pendente", icon: Clock,         class: "text-yellow-600" },
   failed:  { label: "Falhou",   icon: XCircle,       class: "text-red-600" },
-};
-
-const formatDate = (date) => {
-  if (!date) return "-";
-  return new Date(date).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const formatCpf = (cpf) => {
-  if (!cpf) return "-";
-  const cleaned = cpf.replace(/\D/g, "");
-  if (cleaned.length !== 11) return cpf;
-  return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-};
-
-const logToResend = ref(null);
-const resendLogDialogOpen = ref(false);
-
-const openResendLogDialog = (log) => {
-  logToResend.value = log;
-  resendLogDialogOpen.value = true;
-};
-
-const resendLog = () => {
-  if (!logToResend.value) return;
-  router.post(route("patients.sms-logs.resend", [props.patient.id, logToResend.value.id]), {}, {
-    preserveScroll: true,
-    onSuccess: showFlashToast,
-    onError: () => showToast("Erro ao reenviar SMS.", "error"),
-  });
-};
-
-const toggleStatus = () => {
-  router.patch(route("patients.toggle-status", props.patient.id), {}, {
-    preserveScroll: true,
-    preserveState: true,
-    onSuccess: showFlashToast,
-  });
 };
 </script>
 
