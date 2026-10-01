@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\TenantPlano;
 use App\Services\Tenant\TenantPlanoCotaService;
-use App\Support\SiprovPlanos;
+use App\Support\Planos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -21,7 +21,7 @@ class PaginaPlanoController extends Controller
     {
         $validated = $request->validate([
             'planos' => ['present', 'array'],
-            'planos.*.cod_plano' => ['required', 'string', 'distinct', Rule::in(SiprovPlanos::codigos())],
+            'planos.*.cod_plano' => ['required', 'string', 'distinct', Rule::in(Planos::codigos())],
             'planos.*.quantidade' => ['required', 'integer', 'min:1', 'max:1000000'],
         ], [
             'planos.*.cod_plano.in' => 'Plano inválido.',
@@ -54,6 +54,19 @@ class PaginaPlanoController extends Controller
     }
 
     /**
+     * Zera a contagem de registrados de um plano (saldo volta ao contratado).
+     */
+    public function zerar(Tenant $tenant, string $codPlano, TenantPlanoCotaService $planoCotaService)
+    {
+        $liberadas = $planoCotaService->zerarContagem($tenant->id, $codPlano);
+
+        return redirect()
+            ->route('pagina.show', $tenant->id)
+            ->with('message', "Contagem zerada: {$liberadas} vaga(s) liberada(s).")
+            ->with('type', 'success');
+    }
+
+    /**
      * A quantidade não pode ficar abaixo das vagas já ocupadas, nem um plano em uso pode ser removido.
      *
      * @param  array<string, int>  $uso
@@ -63,7 +76,7 @@ class PaginaPlanoController extends Controller
      */
     private function validarContraUso(array $uso, array $quantidades): void
     {
-        $labels = collect(SiprovPlanos::options())->pluck('label', 'value')->all();
+        $labels = collect(Planos::options())->pluck('label', 'value')->all();
         $erros = [];
 
         foreach ($uso as $codigo => $emUso) {

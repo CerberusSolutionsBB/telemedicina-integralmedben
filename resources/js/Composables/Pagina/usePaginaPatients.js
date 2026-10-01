@@ -62,17 +62,47 @@ export const registroColor = (registro) =>
 
 export const registroIcon = (registro) => registroIcons[registro] || '•'
 
+// Cards por origem do registro: os dois primeiros sempre aparecem; os demais só com pacientes.
+const ORIGENS_CARDS = [
+    { key: 'formulario', label: 'Formulário', sempre: true },
+    { key: 'form-dinamico', label: 'Formulário dinâmico', sempre: true },
+    { key: 'form-publico', label: 'Formulário público' },
+    { key: 'importacao', label: 'Importação' },
+    { key: 'vinculo', label: 'Vínculo SIPROV' },
+]
+
 /**
- * Aba de pacientes: busca local e paginação client-side.
+ * Aba de pacientes: busca local, filtro por origem do registro e paginação client-side.
  */
 export function usePaginaPatients(props) {
     const patientSearch = ref('')
     const patientPage = ref(1)
+    const registroFiltro = ref('')
+
+    const totaisPorRegistro = computed(() => {
+        const contagem = props.patients.reduce((acc, p) => {
+            acc[p.status_registro] = (acc[p.status_registro] ?? 0) + 1
+            return acc
+        }, {})
+
+        return ORIGENS_CARDS
+            .map((origem) => ({ ...origem, total: contagem[origem.key] ?? 0 }))
+            .filter((origem) => origem.sempre || origem.total > 0)
+    })
+
+    // Card de origem: filtra a lista por ela; clicar de novo remove o filtro.
+    const alternarRegistro = (key) => {
+        registroFiltro.value = registroFiltro.value === key ? '' : key
+        patientPage.value = 1
+    }
 
     const filteredPatients = computed(() => {
         const q = patientSearch.value.toLowerCase().trim()
-        if (!q) return props.patients
-        return props.patients.filter(p =>
+        const porOrigem = registroFiltro.value
+            ? props.patients.filter(p => p.status_registro === registroFiltro.value)
+            : props.patients
+        if (!q) return porOrigem
+        return porOrigem.filter(p =>
             (p.nome || '').toLowerCase().includes(q) ||
             (p.cpf || '').includes(q) ||
             (p.email || '').toLowerCase().includes(q) ||
@@ -135,6 +165,9 @@ export function usePaginaPatients(props) {
         perPage,
         patientSearch,
         patientPage,
+        registroFiltro,
+        totaisPorRegistro,
+        alternarRegistro,
         filteredPatients,
         paginatedPatients,
         totalPatientPages,

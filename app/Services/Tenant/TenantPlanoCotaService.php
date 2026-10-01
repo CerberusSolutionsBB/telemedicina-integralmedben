@@ -4,8 +4,9 @@ namespace App\Services\Tenant;
 
 use App\Models\TelemedicinaTenant;
 use App\Models\TenantPlano;
+use App\Models\TenantPlanoBeneficiario;
 use App\Models\TenantQuantidadeParceiro;
-use App\Support\SiprovPlanos;
+use App\Support\Planos;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -92,7 +93,9 @@ class TenantPlanoCotaService
     }
 
     /**
-     * Contagem de vínculos por plano (usada para saldo inicial e planos não configurados).
+     * Contagem de vínculos por plano (usada para saldo inicial, planos não
+     * configurados e total de pacientes): associados da telemedicina (SIPROV)
+     * + beneficiários dos planos internos.
      *
      * @return array<string, int>
      */
@@ -107,6 +110,14 @@ class TenantPlanoCotaService
                 foreach (self::codigosDoVinculo($vinculo->data ?? []) as $codigo) {
                     $uso[$codigo] = ($uso[$codigo] ?? 0) + 1;
                 }
+            });
+
+        TenantPlanoBeneficiario::where('tenant_id', $tenantId)
+            ->selectRaw('cod_plano, count(*) as total')
+            ->groupBy('cod_plano')
+            ->pluck('total', 'cod_plano')
+            ->each(function ($total, $codigo) use (&$uso) {
+                $uso[(string) $codigo] = ($uso[(string) $codigo] ?? 0) + (int) $total;
             });
 
         return $uso;
@@ -245,6 +256,31 @@ class TenantPlanoCotaService
     }
 
     /**
+     * Zera a contagem de registrados do plano: o saldo volta à quantidade
+     * contratada. Vínculos existentes e o histórico são mantidos.
+     *
+     * @return int vagas liberadas
+     */
+    public function zerarContagem(string $tenantId, string $codPlano): int
+    {
+        return DB::connection('mysql')->transaction(function () use ($tenantId, $codPlano) {
+            $plano = $this->travarPlanos($tenantId, [$codPlano])[$codPlano] ?? null;
+
+            if (! $plano) {
+                throw ValidationException::withMessages(['plano' => 'Plano não habilitado para este tenant.']);
+            }
+
+            $liberadas = $plano->quantidade - $plano->saldo;
+
+            if ($liberadas > 0) {
+                $this->movimentar($plano, $liberadas, TenantQuantidadeParceiro::TIPO_ZERAGEM);
+            }
+
+            return max(0, $liberadas);
+        });
+    }
+
+    /**
      * @return \Illuminate\Support\Collection<string, TenantPlano>
      */
     private function travarPlanos(string $tenantId, array $codigos)
@@ -294,6 +330,6 @@ class TenantPlanoCotaService
 
     private static function label(string $codigo): string
     {
-        return collect(SiprovPlanos::options())->pluck('label', 'value')[$codigo] ?? "Plano {$codigo}";
+        return collect(Planos::options())->pluck('label', 'value')[$codigo] ?? "Plano {$codigo}";
     }
 }

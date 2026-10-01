@@ -16,6 +16,9 @@ class TenantQuantidadeParceiro extends Model
 
     public const TIPO_AJUSTE = 'ajuste';
 
+    // Contagem de registrados zerada manualmente: saldo volta ao contratado.
+    public const TIPO_ZERAGEM = 'zeragem';
+
     protected $connection = 'mysql';
 
     protected $table = 'tenants_quantidade_parceiros';

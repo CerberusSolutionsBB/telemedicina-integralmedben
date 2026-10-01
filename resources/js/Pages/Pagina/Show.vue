@@ -23,6 +23,8 @@ import { usePaginaConfig } from '@/Composables/Pagina/usePaginaConfig'
 import { useCartaoDinamico } from '@/Composables/Pagina/useCartaoDinamico'
 import { useTelemedicina } from '@/Composables/Pagina/useTelemedicina'
 import { usePaginaPlanos, quantidadeMinima } from '@/Composables/Pagina/usePaginaPlanos'
+import { useAbaAtiva } from '@/Composables/Pagina/useAbaAtiva'
+import { usePaginaHistorico } from '@/Composables/Pagina/usePaginaHistorico'
 import {
     usePaginaPatients,
     formatCpf,
@@ -63,7 +65,8 @@ import {
     Palette,
     QrCode,
     Layers,
-    Minus
+    Minus,
+    RotateCcw
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -139,9 +142,20 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    planoRegistrosFiltros: {
+        type: Object,
+        default: () => ({}),
+    },
+    planoRegistrosTotais: {
+        type: Object,
+        default: () => ({ total: 0, planos: [] }),
+    },
+    planoRegistrosLimite: {
+        type: Number,
+        default: 100,
+    },
 })
 
-const activeTab = ref('overview')
 const arquivosLocal = ref([...props.arquivos])
 
 watch(() => props.arquivos, (newVal) => {
@@ -263,6 +277,9 @@ const {
 const {
     patientSearch,
     patientPage,
+    registroFiltro,
+    totaisPorRegistro,
+    alternarRegistro,
     filteredPatients,
     paginatedPatients,
     totalPatientPages,
@@ -283,6 +300,10 @@ const {
     hasQuantidadeInvalida,
     planoVagas,
     errosCotaSiprov,
+    zerarModal,
+    abrirZerarContagem,
+    fecharZerarContagem,
+    confirmarZerarContagem,
     descartarPlanos,
     salvarPlanos,
 } = usePaginaPlanos(props)
@@ -302,6 +323,20 @@ const tabs = computed(() => [
     { key: 'cartao-dinamico', label: 'Cartão Dinâmico', icon: Sparkles },
     { key: 'config', label: 'Configuração', icon: Settings },
 ])
+
+// Aba sobrevive ao recarregar (?aba=) e aos redirects após ações (guardada por parceiro).
+const { activeTab } = useAbaAtiva(`pagina:${props.tenant.id}:aba`, tabs.value.map((tab) => tab.key), 'overview')
+
+// Sub-abas de Planos: Dados do plano | Histórico (também persistidas, em ?planos=).
+const { activeTab: planosAba } = useAbaAtiva(`pagina:${props.tenant.id}:planos`, ['dados', 'historico'], 'dados', 'planos')
+
+const {
+    filtros: historicoFiltros,
+    carregando: historicoCarregando,
+    temFiltro: historicoTemFiltro,
+    alternarPlano: alternarHistoricoPlano,
+    limparFiltros: limparHistoricoFiltros,
+} = usePaginaHistorico(props)
 
 const breadcrumbs = computed(() => [
     { label: 'Página de Parceiros', href: route('pagina.index'), icon: Home },
@@ -925,11 +960,11 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                     Planos
                                 </h2>
                                 <p class="text-sm text-gray-500 mt-1">
-                                    Escolha quais planos de telemedicina este tenant oferece e quantos associados cada um comporta.
+                                    Escolha quais planos este tenant oferece e quantos beneficiários cada um comporta.
                                 </p>
                             </div>
 
-                            <div class="flex items-center gap-2">
+                            <div v-if="planosAba === 'dados'" class="flex items-center gap-2">
                                 <span v-if="planosHasUnsavedChanges" class="text-xs font-medium text-amber-600">
                                     Alterações não salvas
                                 </span>
@@ -949,6 +984,24 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                             </div>
                         </div>
 
+                        <!-- Sub-abas: Dados do plano | Histórico -->
+                        <nav class="flex gap-1 border-b border-gray-200" aria-label="Seções de planos">
+                            <button v-for="sub in [{ key: 'dados', label: 'Dados do plano' }, { key: 'historico', label: 'Histórico' }]"
+                                :key="sub.key" type="button" :aria-current="planosAba === sub.key ? 'page' : undefined"
+                                class="-mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
+                                :class="planosAba === sub.key
+                                    ? 'border-cyan-600 text-cyan-700'
+                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                                @click="planosAba = sub.key">
+                                {{ sub.label }}
+                                <span v-if="sub.key === 'dados' && planosHasUnsavedChanges" class="h-2 w-2 rounded-full bg-amber-500"
+                                    title="Alterações não salvas" />
+                                <span v-if="sub.key === 'historico' && planoRegistros.length"
+                                    class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{{ planoRegistros.length }}</span>
+                            </button>
+                        </nav>
+
+                        <template v-if="planosAba === 'dados'">
                         <div v-if="!planoRows.length" class="text-center py-10 text-gray-500">
                             Nenhum plano configurado no sistema.
                         </div>
@@ -964,7 +1017,9 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                         class="w-5 h-5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer" />
                                     <div class="min-w-0">
                                         <p class="font-medium text-gray-900">{{ row.label }}</p>
-                                        <p class="text-xs text-gray-500">Código SIPROV: {{ row.cod_plano }}</p>
+                                        <p class="text-xs text-gray-500">
+                                            {{ row.siprov ? `Código SIPROV: ${row.cod_plano}` : 'Plano próprio do sistema (sem SIPROV)' }}
+                                        </p>
                                         <p v-if="row.emUso > 0 || row.selecionado" class="text-xs mt-1"
                                             :class="row.selecionado && row.emUso >= Number(row.quantidade) ? 'text-amber-600 font-medium' : 'text-gray-600'">
                                             {{ row.emUso }} de {{ row.selecionado ? row.quantidade : 0 }} vaga(s) em uso
@@ -972,6 +1027,14 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                         </p>
                                     </div>
                                 </label>
+
+                                <Button v-if="row.selecionado && row.emUso > 0" type="button" variant="outline" size="sm"
+                                    :disabled="planosHasUnsavedChanges || isSavingPlanos"
+                                    :title="planosHasUnsavedChanges ? 'Salve ou descarte as alterações antes de zerar' : 'Volta o saldo ao total contratado'"
+                                    @click="abrirZerarContagem(row)">
+                                    <RotateCcw class="w-4 h-4 mr-1" />
+                                    Zerar contagem
+                                </Button>
 
                                 <div class="flex items-center gap-2" :class="{ 'opacity-40': !row.selecionado }">
                                     <span class="text-sm text-gray-600">Quantidade</span>
@@ -1000,20 +1063,84 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                             </div>
                         </div>
 
+                        </template>
+
                         <!-- Histórico de registros (auditoria) -->
-                        <div class="space-y-3 border-t border-gray-100 pt-5">
+                        <div v-else class="space-y-3">
                             <div>
-                                <h3 class="font-semibold text-gray-900">Histórico de registros</h3>
                                 <p class="text-sm text-gray-500">
-                                    Últimos pacientes registrados nos planos: quem registrou, de onde e como ficou o saldo.
+                                    Pacientes registrados nos planos: quem registrou, de onde e como ficou o saldo.
                                 </p>
                             </div>
 
+                            <!-- Totalizadores por plano (respeitam busca e período) -->
+                            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                                <button type="button" :aria-pressed="!historicoFiltros.plano"
+                                    class="rounded-xl border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                                    :class="!historicoFiltros.plano ? 'border-cyan-300 bg-cyan-50' : 'border-gray-200 bg-white hover:bg-gray-50'"
+                                    @click="historicoFiltros.plano = ''">
+                                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Total de registros</p>
+                                    <p class="mt-1 text-2xl font-bold text-gray-900">{{ planoRegistrosTotais.total }}</p>
+                                    <p class="text-xs text-gray-500">todos os planos</p>
+                                </button>
+
+                                <button v-for="card in planoRegistrosTotais.planos" :key="card.cod_plano" type="button"
+                                    :aria-pressed="historicoFiltros.plano === card.cod_plano"
+                                    :title="historicoFiltros.plano === card.cod_plano ? 'Remover filtro deste plano' : 'Filtrar por este plano'"
+                                    class="rounded-xl border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                                    :class="historicoFiltros.plano === card.cod_plano ? 'border-cyan-300 bg-cyan-50' : 'border-gray-200 bg-white hover:bg-gray-50'"
+                                    @click="alternarHistoricoPlano(card.cod_plano)">
+                                    <p class="truncate text-xs font-medium uppercase tracking-wide text-gray-500">{{ card.plano }}</p>
+                                    <p class="mt-1 text-2xl font-bold text-gray-900">{{ card.total }}</p>
+                                    <p class="text-xs text-gray-500">
+                                        {{ planoRegistrosTotais.total ? Math.round((card.total / planoRegistrosTotais.total) * 100) : 0 }}% do total
+                                    </p>
+                                </button>
+                            </div>
+
+                            <!-- Filtros -->
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+                                <div class="lg:col-span-4">
+                                    <label for="hist_busca" class="mb-1 block text-xs font-medium text-gray-600">Quem registrou ou paciente</label>
+                                    <div class="relative">
+                                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <input id="hist_busca" v-model="historicoFiltros.busca" type="search" placeholder="Buscar por nome..."
+                                            class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                                    </div>
+                                </div>
+                                <div class="lg:col-span-2">
+                                    <label for="hist_plano" class="mb-1 block text-xs font-medium text-gray-600">Plano</label>
+                                    <select id="hist_plano" v-model="historicoFiltros.plano"
+                                        class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                        <option value="">Todos</option>
+                                        <option v-for="plano in planos" :key="plano.value" :value="plano.value">{{ plano.label }}</option>
+                                    </select>
+                                </div>
+                                <div class="lg:col-span-2">
+                                    <label for="hist_de" class="mb-1 block text-xs font-medium text-gray-600">De</label>
+                                    <input id="hist_de" v-model="historicoFiltros.de" type="datetime-local"
+                                        class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                                </div>
+                                <div class="lg:col-span-2">
+                                    <label for="hist_ate" class="mb-1 block text-xs font-medium text-gray-600">Até</label>
+                                    <input id="hist_ate" v-model="historicoFiltros.ate" type="datetime-local" :min="historicoFiltros.de || undefined"
+                                        class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                                </div>
+                                <div class="flex items-center gap-2 lg:col-span-2">
+                                    <Button v-if="historicoTemFiltro" type="button" variant="outline" class="h-10" @click="limparHistoricoFiltros">
+                                        <X class="mr-1 h-4 w-4" />
+                                        Limpar
+                                    </Button>
+                                    <Loader2 v-if="historicoCarregando" class="h-4 w-4 animate-spin text-gray-400" />
+                                </div>
+                            </div>
+
                             <p v-if="!planoRegistros.length" class="py-6 text-center text-sm text-gray-500">
-                                Nenhum registro ainda.
+                                {{ historicoTemFiltro ? 'Nenhum registro encontrado com esses filtros.' : 'Nenhum registro ainda.' }}
                             </p>
 
-                            <div v-else class="overflow-x-auto rounded-xl border border-gray-200">
+                            <div v-else class="overflow-x-auto rounded-xl border border-gray-200 transition-opacity"
+                                :class="{ 'opacity-60': historicoCarregando }">
                                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                                     <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                                         <tr>
@@ -1051,6 +1178,10 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                     </tbody>
                                 </table>
                             </div>
+
+                            <p v-if="planoRegistros.length >= planoRegistrosLimite" class="text-xs text-gray-500">
+                                Mostrando os {{ planoRegistrosLimite }} registros mais recentes. Use os filtros para encontrar registros mais antigos.
+                            </p>
                         </div>
                     </div>
 
@@ -1074,6 +1205,34 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                             </span>
                         </div>
 
+                        <!-- Totalizadores por origem do registro -->
+                        <div v-if="patients.length" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            <button type="button" :aria-pressed="!registroFiltro"
+                                class="rounded-xl border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                                :class="!registroFiltro ? 'border-cyan-300 bg-cyan-50' : 'border-gray-200 bg-white hover:bg-gray-50'"
+                                @click="registroFiltro = ''; patientPage = 1">
+                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Total de pacientes</p>
+                                <p class="mt-1 text-2xl font-bold text-gray-900">{{ patients.length }}</p>
+                                <p class="text-xs text-gray-500">todas as origens</p>
+                            </button>
+
+                            <button v-for="card in totaisPorRegistro" :key="card.key" type="button"
+                                :aria-pressed="registroFiltro === card.key"
+                                :title="registroFiltro === card.key ? 'Remover filtro' : 'Filtrar por esta origem'"
+                                class="rounded-xl border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                                :class="registroFiltro === card.key ? 'border-cyan-300 bg-cyan-50' : 'border-gray-200 bg-white hover:bg-gray-50'"
+                                @click="alternarRegistro(card.key)">
+                                <p class="flex items-center gap-1.5 truncate text-xs font-medium uppercase tracking-wide text-gray-500">
+                                    <span aria-hidden="true">{{ registroIcon(card.key) }}</span>
+                                    {{ card.label }}
+                                </p>
+                                <p class="mt-1 text-2xl font-bold text-gray-900">{{ card.total }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ patients.length ? Math.round((card.total / patients.length) * 100) : 0 }}% do total
+                                </p>
+                            </button>
+                        </div>
+
                         <div v-if="patients.length">
                             <div class="relative w-full">
                                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -1086,7 +1245,7 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                 </button>
                             </div>
 
-                            <div v-if="patientSearch" class="text-xs text-gray-500 mt-2">
+                            <div v-if="patientSearch || registroFiltro" class="text-xs text-gray-500 mt-2">
                                 {{ filteredPatients.length }} de {{ patients.length }} resultado(s)
                             </div>
 
@@ -1656,6 +1815,12 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
 
         <FormSelectorDialog v-model:open="dialogOpen" v-model="selectedFormIds" :forms="availableForms"
             @confirm="syncForms" />
+
+        <ConfirmDeleteModal :show="zerarModal.show" title="Zerar contagem de registrados"
+            :message="zerarModal.row ? `Zerar a contagem do plano ${zerarModal.row.label}? ${zerarModal.row.emUso} vaga(s) em uso voltam a ficar disponíveis.` : 'Zerar a contagem deste plano?'"
+            warning-message="Os associados já vinculados e o histórico de registros são mantidos. A ação fica registrada na auditoria."
+            confirm-text="Sim, zerar" cancel-text="Cancelar" :isProcessing="zerarModal.isProcessing"
+            @close="fecharZerarContagem" @confirm="confirmarZerarContagem" />
 
         <ConfirmDeleteModal :show="confirmDialogOpen" title="Remover vínculo" message="Deseja remover esse vínculo?"
             confirm-text="Sim, remover" cancel-text="Cancelar" :isProcessing="isRemoving" @close="closeRemoveLinkDialog"
