@@ -41,6 +41,15 @@ class Patient extends Model implements Auditable
         'data_nascimento_formatada',
     ];
 
+    /**
+     * Tag das auditorias: ids de paciente se repetem entre tenants (cada um tem
+     * seu banco), então a auditoria precisa do tenant para ser encontrada.
+     */
+    public function generateTags(): array
+    {
+        return tenant() ? ['tenant:'.tenant('id')] : [];
+    }
+
     public function getDataNascimentoFormatadaAttribute(): ?string
     {
         return $this->data_nascimento?->format('d/m/Y');

@@ -3,11 +3,16 @@
 namespace App\Services\Tenant;
 
 use App\Http\Services\ExternalApi\SiprovExternalService;
+use App\Models\Audit;
 use App\Models\ExternalApiLog;
 use App\Models\Patient;
 use App\Models\TelemedicinaTenant;
 use App\Models\TenantPlano;
-use App\Support\SiprovPlanos;
+use App\Models\TenantPlanoBeneficiario;
+use App\Models\User;
+use App\Support\Formatar;
+use App\Support\Planos;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
@@ -31,11 +36,11 @@ class PacientePlanoService
      * Planos habilitados para o tenant com as vagas disponíveis (saldo gravado).
      * Plano com saldo 0 vem como `esgotado` e não pode ser escolhido.
      *
-     * @return array<int, array{value: string, label: string, quantidade: int, emUso: int, disponivel: int, esgotado: bool}>
+     * @return array<int, array{value: string, label: string, quantidade: int, emUso: int, disponivel: int, esgotado: bool, siprov: bool}>
      */
     public function opcoes(string $tenantId): array
     {
-        $labels = collect(SiprovPlanos::options())->pluck('label', 'value');
+        $labels = collect(Planos::options())->pluck('label', 'value');
 
         return TenantPlano::where('tenant_id', $tenantId)
             ->get(['cod_plano', 'quantidade', 'saldo'])
@@ -49,6 +54,7 @@ class PacientePlanoService
                     'emUso' => max(0, $plano->quantidade - $plano->saldo),
                     'disponivel' => $disponivel,
                     'esgotado' => $disponivel < 1,
+                    'siprov' => Planos::integraSiprov($plano->cod_plano),
                 ];
             })
             ->values()
@@ -62,23 +68,14 @@ class PacientePlanoService
      */
     public function vinculoAtual(string $tenantId, ?string $cpf): ?array
     {
-        $cpfLimpo = preg_replace('/\D/', '', (string) $cpf);
-
-        if (! $cpfLimpo) {
-            return null;
-        }
-
-        $vinculo = TelemedicinaTenant::where('tenant_id', $tenantId)
-            ->whereIn('data->cpf_cnpj', array_unique([$cpfLimpo, (string) $cpf]))
-            ->latest()
-            ->first();
+        $vinculo = $this->vinculo($tenantId, $cpf);
 
         if (! $vinculo) {
             return null;
         }
 
-        $codigos = TenantPlanoCotaService::codigosDoVinculo($vinculo->data ?? []);
-        $labels = collect(SiprovPlanos::options())->pluck('label', 'value');
+        $codigos = $this->codigos($vinculo);
+        $labels = collect(Planos::options())->pluck('label', 'value');
 
         return [
             'cod_plano' => $codigos[0] ?? null,
@@ -86,6 +83,106 @@ class PacientePlanoService
                 ? collect($codigos)->map(fn ($c) => $labels[$c] ?? "Plano {$c}")->implode(', ')
                 : ($vinculo->data['plano_label'] ?? 'Plano não identificado'),
         ];
+    }
+
+    /**
+     * Detalhes para a tela do beneficiário: o plano (quem registrou, quando e por
+     * onde) e o cadastro (quem criou e quando), a partir da auditoria.
+     */
+    public function detalhes(string $tenantId, Patient $patient): array
+    {
+        return [
+            'plano' => $this->detalhePlano($tenantId, $patient),
+            'cadastro' => $this->detalheCadastro($tenantId, $patient),
+        ];
+    }
+
+    private function detalhePlano(string $tenantId, Patient $patient): ?array
+    {
+        $vinculo = $this->vinculo($tenantId, $patient->cpf);
+
+        if (! $vinculo) {
+            return null;
+        }
+
+        $atual = $this->vinculoAtual($tenantId, $patient->cpf);
+
+        // registro_plano (cadastro manual/formulário público) tem usuário e origem;
+        // vínculos pelo modal SIPROV só têm o "created" do vínculo.
+        $audit = Audit::where('auditable_type', $vinculo::class)
+            ->where('auditable_id', $vinculo->id)
+            ->whereIn('event', ['registro_plano', 'created'])
+            ->orderByRaw("event = 'registro_plano' desc")
+            ->first();
+
+        $origem = $audit?->new_values['origem'] ?? null;
+
+        return [
+            'plano' => $atual['plano_label'],
+            'siprov' => $vinculo instanceof TelemedicinaTenant,
+            'origem' => match ($origem) {
+                'cadastro_paciente' => 'Cadastro manual',
+                'formulario_publico' => 'Formulário público',
+                default => $vinculo instanceof TelemedicinaTenant ? 'Vínculo pela SIPROV' : 'Cadastro',
+            },
+            // cadastro_paciente | formulario_publico | null (vínculo pela SIPROV)
+            'origem_tipo' => $origem,
+            'usuario' => $audit?->event === 'registro_plano' ? ($audit->new_values['usuario'] ?? null) : null,
+            'data_hora' => Formatar::dataHora($audit?->created_at ?? $vinculo->created_at),
+        ];
+    }
+
+    private function detalheCadastro(string $tenantId, Patient $patient): array
+    {
+        $base = fn () => Audit::where('auditable_type', Patient::class)
+            ->where('auditable_id', $patient->id)
+            ->where('event', 'created');
+
+        // Auditorias anteriores à tag do tenant: aceita a sem tag gravada no mesmo
+        // instante da criação (ids de paciente se repetem entre tenants).
+        $audit = $base()->where('tags', 'tenant:'.$tenantId)->first()
+            ?? ($patient->created_at
+                ? $base()->whereNull('tags')
+                    ->whereBetween('created_at', [$patient->created_at->copy()->subSeconds(5), $patient->created_at->copy()->addSeconds(5)])
+                    ->first()
+                : null);
+
+        // Auditoria gravada no contexto do tenant: user_id é um usuário do tenant.
+        $usuario = $audit?->user_id ? User::find($audit->user_id)?->name : null;
+
+        return [
+            'usuario' => $usuario,
+            'data_hora' => Formatar::dataHora($audit?->created_at ?? $patient->created_at),
+            'auditado' => (bool) $audit,
+        ];
+    }
+
+    /**
+     * Vínculo de plano do CPF: plano interno ou associado da telemedicina (SIPROV).
+     */
+    private function vinculo(string $tenantId, ?string $cpf): TenantPlanoBeneficiario|TelemedicinaTenant|null
+    {
+        $cpfLimpo = preg_replace('/\D/', '', (string) $cpf);
+
+        if (! $cpfLimpo) {
+            return null;
+        }
+
+        return TenantPlanoBeneficiario::where('tenant_id', $tenantId)->where('cpf', $cpfLimpo)->latest('id')->first()
+            ?? TelemedicinaTenant::where('tenant_id', $tenantId)
+                ->whereIn('data->cpf_cnpj', array_unique([$cpfLimpo, (string) $cpf]))
+                ->latest()
+                ->first();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function codigos(TenantPlanoBeneficiario|TelemedicinaTenant $vinculo): array
+    {
+        return $vinculo instanceof TenantPlanoBeneficiario
+            ? [(string) $vinculo->cod_plano]
+            : TenantPlanoCotaService::codigosDoVinculo($vinculo->data ?? []);
     }
 
     /**
@@ -118,6 +215,17 @@ class PacientePlanoService
     public function registrar(string $tenantId, Patient $patient, string $codPlano): ?string
     {
         $cpf = preg_replace('/\D/', '', (string) $patient->cpf);
+
+        // Plano interno: sem SIPROV; só vínculo próprio + consumo da vaga.
+        if (! Planos::integraSiprov($codPlano)) {
+            try {
+                $this->registrarVinculoInterno($tenantId, $codPlano, (string) $patient->nome, $cpf, $patient->id, 'cadastro_paciente');
+            } catch (ValidationException $e) {
+                return collect($e->errors())->flatten()->implode(' ');
+            }
+
+            return null;
+        }
 
         $payload = [
             'tenant_id' => $tenantId,
@@ -169,7 +277,7 @@ class PacientePlanoService
     public function registrarVinculo(string $tenantId, string $codPlano, string $nome, string $cpf, array $result, ?int $patientId, string $origem): TelemedicinaTenant
     {
         $cpf = preg_replace('/\D/', '', $cpf);
-        $label = collect(SiprovPlanos::options())->pluck('label', 'value')[$codPlano] ?? '';
+        $label = collect(Planos::options())->pluck('label', 'value')[$codPlano] ?? '';
 
         $vinculo = DB::connection('mysql')->transaction(function () use ($tenantId, $codPlano, $nome, $cpf, $result, $patientId, $origem, $label) {
             $vinculo = TelemedicinaTenant::create([
@@ -199,11 +307,41 @@ class PacientePlanoService
     }
 
     /**
+     * Vincula o beneficiário a um plano interno (sem SIPROV/telemedicina) e consome
+     * a vaga, juntos: sem saldo, nada é criado. Auditado como os demais registros.
+     *
+     * @throws ValidationException quando o plano não tem saldo
+     */
+    public function registrarVinculoInterno(string $tenantId, string $codPlano, string $nome, string $cpf, ?int $patientId, string $origem): TenantPlanoBeneficiario
+    {
+        $cpf = preg_replace('/\D/', '', $cpf) ?: null;
+        $label = collect(Planos::options())->pluck('label', 'value')[$codPlano] ?? '';
+
+        $vinculo = DB::connection('mysql')->transaction(function () use ($tenantId, $codPlano, $nome, $cpf, $patientId) {
+            $vinculo = TenantPlanoBeneficiario::create([
+                'tenant_id' => $tenantId,
+                'cod_plano' => $codPlano,
+                'patient_id' => $patientId,
+                'nome' => $nome,
+                'cpf' => $cpf,
+            ]);
+
+            $this->planoCotaService->consumir($tenantId, [$codPlano], $patientId);
+
+            return $vinculo;
+        });
+
+        $this->auditarRegistro($vinculo, $tenantId, $codPlano, $label, $nome, $patientId, $origem);
+
+        return $vinculo;
+    }
+
+    /**
      * Auditoria do registro do paciente no plano, depois do consumo da vaga:
      * além de usuário, IP e dispositivo (resolvers), guarda o saldo de cada plano
      * do tenant e o total de pacientes por plano naquele momento.
      */
-    private function auditarRegistro(TelemedicinaTenant $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem): void
+    private function auditarRegistro(Model&\OwenIt\Auditing\Contracts\Auditable $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem): void
     {
         $vinculo->auditEvent = 'registro_plano';
         $vinculo->isCustomEvent = true;

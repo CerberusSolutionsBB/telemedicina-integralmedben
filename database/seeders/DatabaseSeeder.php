@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             // AdminUserSeeder::class,
             RolePermissionSeeder::class,
             AclPermissionSeeder::class,
+            TenantRolesSeeder::class,
             QuestionSeeder::class,
         ]);
     }

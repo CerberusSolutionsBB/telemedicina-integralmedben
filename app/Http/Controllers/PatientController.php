@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportPatientRequest;
 use App\Http\Requests\StorePatientRequest;
+use App\Http\Services\Patient\FichaBeneficiarioPdfService;
 use App\Http\Services\Patient\PatientCardPdfService;
 use App\Http\Services\Patient\PatientService;
 use App\Http\Services\Patient\PatientsReportPdfService;
@@ -13,7 +14,6 @@ use App\Models\Patient;
 use App\Models\SmsLogs;
 use App\Models\Tenant;
 use App\Models\TenantsDetail;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Inertia\Inertia;
@@ -105,6 +105,7 @@ class PatientController extends Controller
         return Inertia::render('Patient/Show', [
             'patient' => $patient,
             'smsLogs' => $smsLogs,
+            'registro' => $this->pacientePlanoService->detalhes(tenant('id'), $patient),
         ]);
     }
 
@@ -212,36 +213,20 @@ class PatientController extends Controller
         );
     }
 
-    public function reportPdf()
+    public function reportPdf(Request $request)
     {
-        $pdf = $this->patientsReportPdfService->generate(tenant('id'));
+        // Mesmos filtros da lista de beneficiários (busca, status e origem).
+        $pdf = $this->patientsReportPdfService->generate(tenant('id'), $request->only(['search', 'status', 'registro']));
 
         return new Response($pdf, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="relatorio-pacientes.pdf"',
+            'Content-Disposition' => 'attachment; filename="relatorio-beneficiarios-'.now('America/Sao_Paulo')->format('Y-m-d').'.pdf"',
         ]);
     }
 
-    public function downloadPdf(Patient $patient)
+    public function downloadPdf(Patient $patient, FichaBeneficiarioPdfService $fichaPdf)
     {
-        $patient = $this->patientService->getPatientDetails($patient);
-
-        $tenant = Tenant::find(tenant('id'));
-        $logoBase64 = null;
-        if ($tenant->photo_path) {
-            $absolutePath = base_path('storage/app/public/'.$tenant->photo_path);
-            if (file_exists($absolutePath)) {
-                $logoBase64 = 'data:'.mime_content_type($absolutePath).';base64,'.base64_encode(file_get_contents($absolutePath));
-            }
-        }
-
-        $pdf = Pdf::loadView('pdf.patient', [
-            'patient' => $patient,
-            'tenant' => $tenant,
-            'logoBase64' => $logoBase64,
-        ]);
-
-        return $pdf->download('paciente-'.$patient->id.'.pdf');
+        return $fichaPdf->gerar($patient, tenant('id'))->download('ficha-beneficiario-'.$patient->id.'.pdf');
     }
 
     public function cartao(Patient $patient)

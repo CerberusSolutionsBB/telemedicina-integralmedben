@@ -10,6 +10,9 @@ class Siprov extends Model
 {
     use SoftDeletes;
 
+    // Tabela no banco central; também é gravada a partir de contexto de tenant.
+    protected $connection = 'mysql';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_PROCESSING = 'processing';

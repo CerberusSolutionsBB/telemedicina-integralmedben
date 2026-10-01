@@ -38,6 +38,7 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::put('/{tenant}/telemedicina', [ConfiguracaoController::class, 'syncTelemedicina'])->name('telemedicina');
     Route::delete('/{tenant}/telemedicina/{telemedicinaTenant}', [ConfiguracaoController::class, 'unlinkTelemedicina'])->name('telemedicina.unlink');
     Route::put('/{tenant}/planos', [PaginaPlanoController::class, 'sync'])->middleware('auth')->name('planos');
+    Route::put('/{tenant}/planos/{codPlano}/zerar', [PaginaPlanoController::class, 'zerar'])->middleware('auth')->name('planos.zerar');
     Route::get('/siprov/search', [ConfiguracaoController::class, 'searchSiprov'])->name('telemedicina.searchSiprov');
     Route::post('/{tenant}/logo', [PaginaLogoController::class, 'store'])->middleware('auth')->name('logo.store');
     Route::delete('/{tenant}/logo', [PaginaLogoController::class, 'destroy'])->middleware('auth')->name('logo.destroy');

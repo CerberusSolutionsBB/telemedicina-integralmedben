@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -38,6 +39,19 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Sessão expirada em PUT/PATCH/DELETE via Inertia: o middleware auth roda antes
+        // do HandleInertiaRequests, então o 302 não vira 303 e o navegador repete o
+        // método no /login (405). Redireciona com 303 e volta à página de origem.
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if (! $request->header('X-Inertia') || $request->isMethod('GET')) {
+                return null;
+            }
+
+            redirect()->setIntendedUrl(url()->previous());
+
+            return redirect($e->redirectTo($request) ?? route('login'), 303);
+        });
+
         // Módulo ACL: em requisições Inertia, erros HTTP viram mensagem amigável
         // (toast) em vez do modal com o HTML da página de erro
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {

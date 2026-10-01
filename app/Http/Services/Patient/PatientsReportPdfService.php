@@ -3,202 +3,223 @@
 namespace App\Http\Services\Patient;
 
 use App\Models\Patient;
+use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
-use App\Support\PatientAnswerFormatter;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Process;
+use App\Models\TenantPlano;
+use App\Models\TenantPlanoBeneficiario;
+use App\Services\Tenant\TenantPlanoCotaService;
+use App\Support\Formatar;
+use App\Support\Planos;
+use App\Support\RodapePdf;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use RuntimeException;
 
+/**
+ * Relatório geral de beneficiários em PDF (dompdf): resumo por status, plano e
+ * origem + tabela com os dados de cada beneficiário, respeitando os filtros da lista.
+ */
 class PatientsReportPdfService
 {
-    public function generate(string $tenantId): string
+    // Linhas da tabela por página. A paginação é feita aqui porque o dompdf
+    // ignora a margem inferior ao quebrar tabelas longas na primeira página.
+    // A primeira página tem menos linhas por causa do cabeçalho e do resumo.
+    public const LINHAS_PRIMEIRA_PAGINA = 18;
+
+    public const LINHAS_POR_PAGINA = 28;
+
+    public const ORIGENS = [
+        'formulario' => 'Formulário',
+        'form-dinamico' => 'Formulário dinâmico',
+        'form-publico' => 'Formulário público',
+        'importacao' => 'Importação',
+        'vinculo' => 'Vínculo SIPROV',
+    ];
+
+    /**
+     * @param  array{search?: ?string, status?: ?string, registro?: ?string}  $filtros
+     */
+    public function generate(string $tenantId, array $filtros = []): string
     {
-        $patients = Patient::with('answers.question')->latest()->get();
-        $questions = $patients->flatMap(fn ($p) => $p->answers->pluck('question'))->unique('id')->values();
-        $tenant = Tenant::with('details')->find($tenantId);
+        $tenant = Tenant::find($tenantId);
+        $parceiro = $tenant?->name ?: ($tenant?->details()->first()?->descricao ?? $tenantId);
+        $dados = $this->dados($tenantId, $filtros);
 
-        $tex = $this->buildLatex($patients, $questions, $tenant);
+        $pdf = Pdf::loadView('pdf.relatorio-beneficiarios', [
+            ...$dados,
+            'tenant' => $tenant,
+            'parceiro' => $parceiro,
+            'logoBase64' => $this->logo($tenant),
+        ])->setPaper('a4', 'landscape');
 
-        return $this->compile($tex);
+        return RodapePdf::aplicar(
+            $pdf,
+            'Gerado por '.($dados['gerado_por'] ?? 'sistema').' em '.$dados['gerado_em'],
+            $parceiro.' · Relatório geral de beneficiários',
+        )->output();
     }
 
-    private function buildLatex($patients, $questions, ?Tenant $tenant): string
+    /**
+     * Dados do relatório, já formatados para exibição.
+     */
+    public function dados(string $tenantId, array $filtros = []): array
     {
-        $tenantName = $tenant?->details->first()?->descricao ?: ($tenant?->name ?: 'Relatório de Pacientes');
-        $generatedAt = now()->setTimezone('America/Sao_Paulo')->format('d/m/Y \à\s H:i');
-        $total = $patients->count();
-        $subtitle = $total.' '.($total === 1 ? 'paciente' : 'pacientes').' --- Gerado em '.$generatedAt;
+        $pacientes = $this->pacientes($filtros);
+        $planoPorCpf = $this->planoPorCpf($tenantId);
+        $labels = collect(Planos::options())->pluck('label', 'value');
 
-        $logoPath = null;
-        if ($tenant?->photo_path) {
-            $absolute = base_path('storage/app/public/'.$tenant->photo_path);
-            if (file_exists($absolute)) {
-                $logoPath = $absolute;
-            }
-        }
+        $linhas = $pacientes->map(function (Patient $patient) use ($planoPorCpf, $labels) {
+            $codPlano = $planoPorCpf[Formatar::digitos($patient->cpf)] ?? null;
+            $idade = Formatar::idade($patient->data_nascimento);
+            $origem = $patient->status_registro?->value ?? $patient->status_registro;
 
-        $columnSpec = 'c'.str_repeat('X', $questions->count()).'c';
+            return [
+                'id' => $patient->id,
+                // Uma linha por beneficiário (altura previsível para a paginação).
+                'nome' => $patient->nome ? Str::limit($patient->nome, 32, '…') : null,
+                'cpf' => Formatar::cpf($patient->cpf),
+                'nascimento' => Formatar::data($patient->data_nascimento),
+                'idade' => $idade,
+                'sexo' => Formatar::sexo($patient->sexo?->value ?? $patient->sexo),
+                'celular' => Formatar::telefone($patient->numero),
+                'email' => $patient->email ? Str::limit($patient->email, 30, '…') : null,
+                'cod_plano' => $codPlano,
+                'plano' => $codPlano ? ($labels[$codPlano] ?? "Plano {$codPlano}") : null,
+                'origem_key' => $origem,
+                'origem' => self::ORIGENS[$origem] ?? null,
+                'ativo' => (bool) $patient->status,
+                'cadastro' => Formatar::dataHora($patient->created_at),
+            ];
+        });
 
-        $headerCells = ['\textbf{\#}'];
-        foreach ($questions as $question) {
-            $headerCells[] = '\textbf{'.$this->escapeLatex($question->title).'}';
-        }
-        $headerCells[] = '\textbf{Data}';
-        $headerRow = implode(' & ', $headerCells).' \\\\';
-
-        $bodyRows = [];
-        foreach ($patients as $patient) {
-            $cells = [$this->escapeLatex((string) $patient->id)];
-
-            $answers = $patient->answers->keyBy('question_id');
-            foreach ($questions as $question) {
-                $formatted = PatientAnswerFormatter::formatAnswer($answers->get($question->id)?->answer, $question);
-                $cells[] = $this->escapeLatex($formatted ?: '-');
-            }
-
-            $cells[] = $this->escapeLatex($patient->created_at->setTimezone('America/Sao_Paulo')->format('d/m/Y H:i'));
-
-            $bodyRows[] = implode(' & ', $cells).' \\\\';
-        }
-
-        $body = $patients->isEmpty()
-            ? '\multicolumn{'.($questions->count() + 2).'}{c}{\textit{Não existem pacientes registrados.}} \\\\'
-            : implode("\n", $bodyRows);
-
-        $logoBlock = $logoPath
-            ? '\includegraphics[height=1.6cm]{'.$this->escapeLatexPath($logoPath).'}'
-            : '';
-
-        // Nowdoc (aspas simples): nenhuma interpolação/escape do PHP é aplicada,
-        // evitando que sequências como \v (vspace) ou \f (familydefault) sejam
-        // interpretadas como caracteres de escape (vertical tab / form feed).
-        $template = <<<'LATEX'
-\documentclass{article}
-\usepackage[a4paper,landscape,margin=1.2cm]{geometry}
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[brazilian]{babel}
-\usepackage{helvet}
-\renewcommand{\familydefault}{\sfdefault}
-\usepackage{graphicx}
-\usepackage{array}
-\usepackage{tabularx}
-\usepackage{ltablex}
-\keepXColumns
-\usepackage{booktabs}
-\pagestyle{empty}
-\setlength{\parindent}{0pt}
-
-\begin{document}
-
-\begin{center}
-__LOGO__
-
-{\Large\textbf{__TENANT_NAME__}}
-
-\small __SUBTITLE__
-\end{center}
-
-\vspace{0.8em}
-
-\begin{tabularx}{\linewidth}{__COLUMN_SPEC__}
-\toprule
-__HEADER_ROW__
-\midrule
-\endhead
-__BODY__
-\bottomrule
-\end{tabularx}
-
-\end{document}
-LATEX;
-
-        return strtr($template, [
-            '__LOGO__' => $logoBlock,
-            '__TENANT_NAME__' => $this->escapeLatex($tenantName),
-            '__SUBTITLE__' => $this->escapeLatex($subtitle),
-            '__COLUMN_SPEC__' => $columnSpec,
-            '__HEADER_ROW__' => $headerRow,
-            '__BODY__' => $body,
-        ]);
+        return [
+            'linhas' => $linhas->all(),
+            'paginas' => $this->paginar($linhas->all()),
+            'resumo' => $this->resumo($tenantId, $linhas, $labels),
+            'filtros' => $this->descreverFiltros($filtros),
+            'gerado_por' => auth()->user()?->name,
+            'gerado_em' => Formatar::dataHora(now()),
+        ];
     }
 
-    private function compile(string $tex): string
+    /**
+     * @return array<int, array<int, array>>
+     */
+    private function paginar(array $linhas): array
     {
-        $workDir = storage_path('app/tmp/patients-report-'.Str::random(16));
-        File::ensureDirectoryExists($workDir);
-
-        try {
-            $texPath = $workDir.'/report.tex';
-            File::put($texPath, $tex);
-
-            for ($i = 0; $i < 2; $i++) {
-                $result = Process::path($workDir)
-                    ->timeout(60)
-                    ->run([
-                        $this->pdflatexBinary(),
-                        '-interaction=nonstopmode',
-                        '-halt-on-error',
-                        '-output-directory='.$workDir,
-                        $texPath,
-                    ]);
-
-                if ($result->failed()) {
-                    throw new RuntimeException(
-                        'Falha ao compilar o relatório em PDF: '.$result->output().$result->errorOutput()
-                    );
-                }
-            }
-
-            $pdfPath = $workDir.'/report.pdf';
-
-            if (! file_exists($pdfPath)) {
-                throw new RuntimeException('PDF não foi gerado pelo pdflatex.');
-            }
-
-            return file_get_contents($pdfPath);
-        } finally {
-            File::deleteDirectory($workDir);
-        }
-    }
-
-    private function escapeLatex(?string $value): string
-    {
-        if ($value === null || $value === '') {
-            return '';
+        if (! $linhas) {
+            return [];
         }
 
-        $value = str_replace('\\', "\x00BACKSLASH\x00", $value);
-
-        $value = strtr($value, [
-            '{' => '\{',
-            '}' => '\}',
-            '$' => '\$',
-            '&' => '\&',
-            '#' => '\#',
-            '%' => '\%',
-            '_' => '\_',
-            '~' => '\textasciitilde{}',
-            '^' => '\textasciicircum{}',
-        ]);
-
-        return str_replace("\x00BACKSLASH\x00", '\textbackslash{}', $value);
+        return [
+            array_slice($linhas, 0, self::LINHAS_PRIMEIRA_PAGINA),
+            ...array_chunk(array_slice($linhas, self::LINHAS_PRIMEIRA_PAGINA), self::LINHAS_POR_PAGINA),
+        ];
     }
 
-    private function escapeLatexPath(string $path): string
+    /**
+     * Mesmos filtros da listagem (GetPatientsService), sem paginação.
+     *
+     * @return Collection<int, Patient>
+     */
+    private function pacientes(array $filtros): Collection
     {
-        return str_replace('\\', '/', $path);
+        $search = trim((string) ($filtros['search'] ?? ''));
+        $status = $filtros['status'] ?? null;
+        $registro = $filtros['registro'] ?? null;
+
+        return Patient::query()
+            ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
+                ->where('nome', 'like', "%{$search}%")
+                ->orWhere('cpf', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")))
+            ->when($status !== null && $status !== '', fn ($query) => $query->where('status', $status))
+            ->when($registro !== null && $registro !== '', fn ($query) => $query->where('status_registro', $registro))
+            ->orderBy('nome')
+            ->get();
     }
 
-    private function pdflatexBinary(): string
+    /**
+     * CPF (só dígitos) → código do plano: planos internos + associados da telemedicina.
+     *
+     * @return array<string, string>
+     */
+    private function planoPorCpf(string $tenantId): array
     {
-        foreach (['/usr/bin/pdflatex', '/usr/local/bin/pdflatex'] as $candidate) {
-            if (is_executable($candidate)) {
-                return $candidate;
+        $mapa = [];
+
+        TelemedicinaTenant::where('tenant_id', $tenantId)->get(['data'])->each(function ($vinculo) use (&$mapa) {
+            $cpf = Formatar::digitos($vinculo->data['cpf_cnpj'] ?? '');
+            $codigo = TenantPlanoCotaService::codigosDoVinculo($vinculo->data ?? [])[0] ?? null;
+            if ($cpf && $codigo) {
+                $mapa[$cpf] = $codigo;
             }
+        });
+
+        TenantPlanoBeneficiario::where('tenant_id', $tenantId)->whereNotNull('cpf')
+            ->get(['cpf', 'cod_plano'])
+            ->each(function ($vinculo) use (&$mapa) {
+                $mapa[$vinculo->cpf] = (string) $vinculo->cod_plano;
+            });
+
+        return $mapa;
+    }
+
+    private function resumo(string $tenantId, Collection $linhas, Collection $labels): array
+    {
+        $total = $linhas->count();
+        $porPlano = $linhas->countBy(fn ($linha) => $linha['cod_plano'] ?? '');
+        $configurados = TenantPlano::where('tenant_id', $tenantId)->pluck('cod_plano')->map(fn ($c) => (string) $c);
+
+        // Planos habilitados no tenant (mesmo zerados) + os que aparecem nos dados.
+        $planos = $configurados->merge($porPlano->keys()->filter())->unique()
+            ->map(fn ($codigo) => ['label' => $labels[$codigo] ?? "Plano {$codigo}", 'total' => $porPlano[$codigo] ?? 0])
+            ->values();
+
+        $origens = collect(self::ORIGENS)
+            ->map(fn ($label, $key) => ['label' => $label, 'total' => $linhas->where('origem_key', $key)->count()])
+            ->filter(fn ($origem) => $origem['total'] > 0)
+            ->values();
+
+        return [
+            'total' => $total,
+            'ativos' => $linhas->where('ativo', true)->count(),
+            'inativos' => $linhas->where('ativo', false)->count(),
+            'planos' => $planos->push(['label' => 'Sem plano', 'total' => $porPlano[''] ?? 0])->all(),
+            'origens' => $origens->all(),
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function descreverFiltros(array $filtros): array
+    {
+        $descricao = [];
+
+        if (filled($filtros['search'] ?? null)) {
+            $descricao[] = 'Busca: "'.trim($filtros['search']).'"';
+        }
+        if (($filtros['status'] ?? '') !== '' && ($filtros['status'] ?? null) !== null) {
+            $descricao[] = 'Status: '.($filtros['status'] ? 'Ativo' : 'Inativo');
+        }
+        if (filled($filtros['registro'] ?? null)) {
+            $descricao[] = 'Origem: '.(self::ORIGENS[$filtros['registro']] ?? $filtros['registro']);
         }
 
-        return 'pdflatex';
+        return $descricao;
+    }
+
+    private function logo(?Tenant $tenant): ?string
+    {
+        if (! $tenant?->photo_path) {
+            return null;
+        }
+
+        $caminho = base_path('storage/app/public/'.$tenant->photo_path);
+
+        return file_exists($caminho)
+            ? 'data:'.mime_content_type($caminho).';base64,'.base64_encode(file_get_contents($caminho))
+            : null;
     }
 }

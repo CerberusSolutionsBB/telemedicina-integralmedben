@@ -14,6 +14,7 @@ const buildRows = (planos, tenantPlanos, planoUso) => {
         return {
             cod_plano: plano.value,
             label: plano.label,
+            siprov: plano.siprov !== false,
             emUso,
             selecionado: salvos.has(plano.value),
             quantidade: salvos.get(plano.value) ?? Math.max(1, emUso),
@@ -120,6 +121,39 @@ export function usePaginaPlanos(props) {
         return erros
     }
 
+    // Zerar contagem de registrados (saldo volta ao contratado).
+    const zerarModal = ref({ show: false, row: null, isProcessing: false })
+
+    const abrirZerarContagem = (row) => {
+        zerarModal.value = { show: true, row, isProcessing: false }
+    }
+
+    const fecharZerarContagem = () => {
+        zerarModal.value.show = false
+    }
+
+    const confirmarZerarContagem = () => {
+        const row = zerarModal.value.row
+        if (!props.tenant?.id || !row) return
+
+        zerarModal.value.isProcessing = true
+
+        router.put(route('pagina.configuracao.planos.zerar', [props.tenant.id, row.cod_plano]), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showToast(`Contagem do plano ${row.label} zerada.`, 'success')
+                fecharZerarContagem()
+                router.reload({ only: ['tenantPlanos', 'planoUso', 'planoRegistros'], preserveScroll: true })
+            },
+            onError: (errors) => {
+                showToast(firstError(errors, 'Erro ao zerar a contagem.'), 'error')
+            },
+            onFinish: () => {
+                zerarModal.value.isProcessing = false
+            },
+        })
+    }
+
     const descartarPlanos = () => {
         planoRows.value = buildRows(props.planos, props.tenantPlanos, props.planoUso)
     }
@@ -172,6 +206,10 @@ export function usePaginaPlanos(props) {
         hasQuantidadeInvalida,
         planoVagas,
         errosCotaSiprov,
+        zerarModal,
+        abrirZerarContagem,
+        fecharZerarContagem,
+        confirmarZerarContagem,
         descartarPlanos,
         salvarPlanos,
     }

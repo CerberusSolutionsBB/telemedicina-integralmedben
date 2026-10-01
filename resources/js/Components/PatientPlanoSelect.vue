@@ -79,9 +79,13 @@ const inputClass =
 
             <div v-if="model" class="flex items-start gap-2 p-3 rounded-lg bg-cyan-50 border border-cyan-200 text-xs text-cyan-800">
                 <Info class="w-4 h-4 shrink-0 mt-0.5" />
-                <span>
+                <span v-if="selecionado?.siprov === false">
+                    Plano próprio do sistema: o beneficiário é vinculado ao <strong>{{ selecionado.label }}</strong>, sem
+                    registro na SIPROV. O CPF passa a ser obrigatório.
+                </span>
+                <span v-else>
                     Ao salvar, o beneficiário será registrado na <strong>SIPROV</strong> (associado com benefício) e
-                    adicionado aos associados da <strong>Telemedicina</strong>. CPF e e-mail passam a ser obrigatórios.
+                    adicionado aos associados da <strong>Telemedicina</strong>. O CPF passa a ser obrigatório.
                 </span>
             </div>
         </div>

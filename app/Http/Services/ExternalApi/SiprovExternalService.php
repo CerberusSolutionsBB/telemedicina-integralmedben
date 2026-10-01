@@ -44,9 +44,10 @@ class SiprovExternalService implements ExternalApiInterface
         $birthDate = $data['birth_date'] ?? $data['data_nascimento'] ?? null;
         $plano = $data['plan'] ?? null;
 
-        if (! $nome || ! $cpf || ! $email) {
+        // E-mail é opcional no cadastro do beneficiário: vai vazio (como no formulário público).
+        if (! $nome || ! $cpf) {
             throw new \InvalidArgumentException(
-                'SIPROV: campos obrigatórios ausentes (nome, cpf, email).'
+                'SIPROV: campos obrigatórios ausentes (nome, cpf).'
             );
         }
 
@@ -83,7 +84,7 @@ class SiprovExternalService implements ExternalApiInterface
             codigoIntegracao: 'USR-'.$cpfClean,
             nomePessoa: $nome,
             cpfCnpj: $cpfClean,
-            email: $email,
+            email: (string) $email,
             sexo: $sexoNormalizado,
             dataNascimento: $dataNascimento,
             telefones: $telefones,

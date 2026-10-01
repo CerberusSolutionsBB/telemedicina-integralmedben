@@ -3,12 +3,12 @@ import { Head } from "@inertiajs/vue3";
 import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "@/Components/ui/table";
 import { Button } from "@/Components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs";
@@ -21,193 +21,244 @@ import { usePatientShow } from "@/Composables/Patient/usePatientShow";
 import { formatarCpf as formatCpf, formatarDataHora as formatDate } from "@/Composables/Patient/formatadores";
 
 const props = defineProps({
-  patient: { type: Object, required: true },
-  smsLogs: { type: Array, default: () => [] },
+    patient: { type: Object, required: true },
+    smsLogs: { type: Array, default: () => [] },
+    // { plano: { plano, siprov, origem, usuario, data_hora } | null, cadastro: { usuario, data_hora, auditado } }
+    registro: { type: Object, default: () => ({ plano: null, cadastro: {} }) },
 });
 
 const {
-  isActive,
-  enderecoFormatado,
-  logToResend,
-  resendLogDialogOpen,
-  openResendLogDialog,
-  resendLog,
-  toggleStatus,
+    isActive,
+    enderecoFormatado,
+    registradoPor,
+    criadoPor,
+    logToResend,
+    resendLogDialogOpen,
+    openResendLogDialog,
+    resendLog,
+    toggleStatus,
 } = usePatientShow(props);
 
 const breadcrumbs = computed(() => [
-  { label: "Pacientes", href: route("patients.index"), icon: Users },
-  { label: `Detalhes do Paciente #${props.patient.id}`, href: null },
+    { label: "Beneficiários", href: route("patients.index"), icon: Users },
+    { label: `Detalhes do Beneficiário #${props.patient.id}`, href: null },
 ]);
 
 // Ícone e cor por status do SMS (apresentação).
 const statusConfig = {
-  sent:    { label: "Enviado",  icon: CheckCircle2, class: "text-green-600" },
-  pending: { label: "Pendente", icon: Clock,         class: "text-yellow-600" },
-  failed:  { label: "Falhou",   icon: XCircle,       class: "text-red-600" },
+    sent: { label: "Enviado", icon: CheckCircle2, class: "text-green-600" },
+    pending: { label: "Pendente", icon: Clock, class: "text-yellow-600" },
+    failed: { label: "Falhou", icon: XCircle, class: "text-red-600" },
 };
 </script>
 
 <template>
-  <Head title="Detalhes do Paciente" />
 
-  <TenantAdminLayout>
-    <div class="space-y-6">
+    <Head title="Detalhes do Beneficiário" />
 
-      <Breadcrumb :items="breadcrumbs" />
+    <TenantAdminLayout>
+        <div class="space-y-6">
 
-      <div class="flex items-center gap-3">
-        <h1 class="text-xl font-bold">Detalhes do Paciente #{{ patient.id }}</h1>
-      </div>
+            <Breadcrumb :items="breadcrumbs" />
 
-      <Tabs default-value="dados">
-        <TabsList>
-          <TabsTrigger value="dados">Dados</TabsTrigger>
-          <TabsTrigger v-if="patient.answers && patient.answers.length" value="respostas">Respostas</TabsTrigger>
-          <TabsTrigger v-if="enderecoFormatado" value="endereco">Endereço</TabsTrigger>
-          <TabsTrigger value="sms">SMS</TabsTrigger>
-        </TabsList>
+            <div class="flex items-center gap-3">
+                <h1 class="text-xl font-bold">Detalhes do Beneficiário #{{ patient.id }}</h1>
+            </div>
 
-        <TabsContent value="dados">
-          <Card>
-            <CardHeader>
-              <CardTitle class="text-base flex items-center justify-between">
-                <span>Dados do Paciente</span>
-                <div class="flex items-center gap-2">
-                  <AppSwitch :model-value="isActive" @update:model-value="toggleStatus" />
-                  <span class="text-sm font-medium" :class="isActive ? 'text-green-700' : 'text-red-700'">
-                    {{ isActive ? 'Ativo' : 'Inativo' }}
-                  </span>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                <div>
-                  <dt class="text-xs text-muted-foreground font-medium">Nome</dt>
-                  <dd class="text-sm mt-0.5">{{ patient.nome || '-' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs text-muted-foreground font-medium">CPF</dt>
-                  <dd class="text-sm mt-0.5">{{ formatCpf(patient.cpf) }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs text-muted-foreground font-medium">Email</dt>
-                  <dd class="text-sm mt-0.5">{{ patient.email || '-' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs text-muted-foreground font-medium">Sexo</dt>
-                  <dd class="text-sm mt-0.5">{{ patient.sexo || '-' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs text-muted-foreground font-medium">Data de Nascimento</dt>
-                  <dd class="text-sm mt-0.5">{{ patient.data_nascimento_formatada || '-' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs text-muted-foreground font-medium">RG</dt>
-                  <dd class="text-sm mt-0.5">{{ patient.rg || '-' }}</dd>
-                </div>
-              </dl>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <Tabs default-value="dados">
+                <TabsList>
+                    <TabsTrigger value="dados">Dados</TabsTrigger>
+                    <TabsTrigger v-if="patient.answers && patient.answers.length" value="respostas">Respostas
+                    </TabsTrigger>
+                    <TabsTrigger v-if="enderecoFormatado" value="endereco">Endereço</TabsTrigger>
+                    <TabsTrigger value="sms">SMS</TabsTrigger>
+                </TabsList>
 
-        <TabsContent v-if="patient.answers && patient.answers.length" value="respostas">
-          <Card>
-            <CardHeader>
-              <CardTitle class="text-base">Respostas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                <div v-for="answer in patient.answers" :key="answer.id">
-                  <dt class="text-xs text-muted-foreground font-medium">
-                    {{ answer.question?.title }}
-                  </dt>
-                  <dd class="text-sm mt-0.5">{{ answer.answer || "-" }}</dd>
-                </div>
-              </dl>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <TabsContent value="dados">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-base flex items-center justify-between">
+                                <span>Dados do Beneficiário</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                                <div>
+                                    <dt class="text-xs text-muted-foreground font-medium">Nome</dt>
+                                    <dd class="text-sm mt-0.5">{{ patient.nome || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-muted-foreground font-medium">CPF</dt>
+                                    <dd class="text-sm mt-0.5">{{ formatCpf(patient.cpf) }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-muted-foreground font-medium">Email</dt>
+                                    <dd class="text-sm mt-0.5">{{ patient.email || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-muted-foreground font-medium">Sexo</dt>
+                                    <dd class="text-sm mt-0.5">{{ patient.sexo || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-muted-foreground font-medium">Data de Nascimento</dt>
+                                    <dd class="text-sm mt-0.5">{{ patient.data_nascimento_formatada || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-muted-foreground font-medium">RG</dt>
+                                    <dd class="text-sm mt-0.5">{{ patient.rg || '-' }}</dd>
+                                </div>
+                            </dl>
+                        </CardContent>
+                    </Card>
 
-        <TabsContent v-if="enderecoFormatado" value="endereco">
-          <Card>
-            <CardHeader>
-              <CardTitle class="text-base flex items-center gap-2">
-                <MapPin class="w-4 h-4 text-cyan-600" />
-                Endereço
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p class="text-sm text-gray-700">{{ enderecoFormatado }}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    <Card class="mt-4">
+                        <CardHeader>
+                            <CardTitle class="text-base">Plano e registro</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <!-- Plano -->
+                                <div>
+                                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                        Plano</p>
+                                    <dl v-if="registro.plano" class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                                        <div class="sm:col-span-2">
+                                            <dt class="text-xs text-muted-foreground font-medium">Plano</dt>
+                                            <dd class="mt-0.5 flex flex-wrap items-center gap-2 text-sm font-medium">
+                                                {{ registro.plano.plano }}
+                                                <span class="rounded-full px-2 py-0.5 text-xs font-medium"
+                                                    :class="registro.plano.siprov ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-purple-50 text-purple-700 border border-purple-200'">
+                                                    {{ registro.plano.siprov ? 'SIPROV' : 'Próprio do sistema' }}
+                                                </span>
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-xs text-muted-foreground font-medium">Registrado por</dt>
+                                            <dd class="text-sm mt-0.5">{{ registradoPor }}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-xs text-muted-foreground font-medium">Data e horário</dt>
+                                            <dd class="text-sm mt-0.5">{{ registro.plano.data_hora || '-' }}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-xs text-muted-foreground font-medium">Origem</dt>
+                                            <dd class="text-sm mt-0.5">{{ registro.plano.origem }}</dd>
+                                        </div>
+                                    </dl>
+                                    <p v-else class="text-sm text-muted-foreground">Sem plano vinculado.</p>
+                                </div>
 
-        <TabsContent value="sms">
-          <Card>
-            <CardHeader>
-              <CardTitle class="text-base">Histórico de SMS</CardTitle>
-            </CardHeader>
-            <CardContent class="p-0">
-              <div v-if="smsLogs.length === 0" class="py-8 text-center text-sm text-muted-foreground">
-                Nenhum SMS registrado para este paciente.
-              </div>
-              <Table v-else>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead class="text-center">Status</TableHead>
-                    <TableHead>Mensagem</TableHead>
-                    <TableHead class="text-center">Destinatário</TableHead>
-                    <TableHead class="text-center">Enviado em</TableHead>
-                    <TableHead class="text-center">Registrado em</TableHead>
-                    <TableHead class="text-center">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow v-for="log in smsLogs" :key="log.id">
-                    <TableCell class="text-center">
-                      <span
-                        class="inline-flex items-center gap-1 text-xs font-semibold"
-                        :class="statusConfig[log.status]?.class"
-                        :title="log.error_message ?? undefined"
-                      >
-                        <component :is="statusConfig[log.status]?.icon" class="w-4 h-4" />
-                        {{ statusConfig[log.status]?.label }}
-                      </span>
-                    </TableCell>
-                    <TableCell class="max-w-xs">
-                      <span class="text-sm line-clamp-2" :title="log.message">
-                        {{ log.message }}
-                      </span>
-                    </TableCell>
-                    <TableCell class="text-center text-sm">{{ log.recipient ?? "-" }}</TableCell>
-                    <TableCell class="text-center text-sm">{{ formatDate(log.sent_at) }}</TableCell>
-                    <TableCell class="text-center text-sm">{{ formatDate(log.created_at) }}</TableCell>
-                    <TableCell class="text-center">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        @click="openResendLogDialog(log)"
-                      >
-                        <RefreshCw class="w-4 h-4 mr-1" />
-                        Reenviar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                                <!-- Cadastro -->
+                                <div>
+                                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                        Cadastro do beneficiário</p>
+                                    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                                        <div>
+                                            <dt class="text-xs text-muted-foreground font-medium">Criado por</dt>
+                                            <dd class="text-sm mt-0.5">{{ criadoPor }}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-xs text-muted-foreground font-medium">Data e horário</dt>
+                                            <dd class="text-sm mt-0.5">{{ registro.cadastro.data_hora || '-' }}</dd>
+                                        </div>
+                                    </dl>
+                                    <p v-if="!registro.cadastro.auditado" class="mt-2 text-xs text-muted-foreground">
+                                        Cadastro anterior à auditoria: o usuário que criou não foi registrado.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-      <ConfirmResendSmsDialog
-        v-model:open="resendLogDialogOpen"
-        :recipient="logToResend?.recipient"
-        @confirm="resendLog"
-      />
+                <TabsContent v-if="patient.answers && patient.answers.length" value="respostas">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-base">Respostas</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                                <div v-for="answer in patient.answers" :key="answer.id">
+                                    <dt class="text-xs text-muted-foreground font-medium">
+                                        {{ answer.question?.title }}
+                                    </dt>
+                                    <dd class="text-sm mt-0.5">{{ answer.answer || "-" }}</dd>
+                                </div>
+                            </dl>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-    </div>
-  </TenantAdminLayout>
+                <TabsContent v-if="enderecoFormatado" value="endereco">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-base flex items-center gap-2">
+                                <MapPin class="w-4 h-4 text-cyan-600" />
+                                Endereço
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p class="text-sm text-gray-700">{{ enderecoFormatado }}</p>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="sms">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-base">Histórico de SMS</CardTitle>
+                        </CardHeader>
+                        <CardContent class="p-0">
+                            <div v-if="smsLogs.length === 0" class="py-8 text-center text-sm text-muted-foreground">
+                                Nenhum SMS registrado para este beneficiário.
+                            </div>
+                            <Table v-else>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead class="text-center">Status</TableHead>
+                                        <TableHead>Mensagem</TableHead>
+                                        <TableHead class="text-center">Destinatário</TableHead>
+                                        <TableHead class="text-center">Enviado em</TableHead>
+                                        <TableHead class="text-center">Registrado em</TableHead>
+                                        <TableHead class="text-center">Ações</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    <TableRow v-for="log in smsLogs" :key="log.id">
+                                        <TableCell class="text-center">
+                                            <span class="inline-flex items-center gap-1 text-xs font-semibold"
+                                                :class="statusConfig[log.status]?.class"
+                                                :title="log.error_message ?? undefined">
+                                                <component :is="statusConfig[log.status]?.icon" class="w-4 h-4" />
+                                                {{ statusConfig[log.status]?.label }}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell class="max-w-xs">
+                                            <span class="text-sm line-clamp-2" :title="log.message">
+                                                {{ log.message }}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell class="text-center text-sm">{{ log.recipient ?? "-" }}</TableCell>
+                                        <TableCell class="text-center text-sm">{{ formatDate(log.sent_at) }}</TableCell>
+                                        <TableCell class="text-center text-sm">{{ formatDate(log.created_at) }}
+                                        </TableCell>
+                                        <TableCell class="text-center">
+                                            <Button size="sm" variant="outline" @click="openResendLogDialog(log)">
+                                                <RefreshCw class="w-4 h-4 mr-1" />
+                                                Reenviar
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+
+            <ConfirmResendSmsDialog v-model:open="resendLogDialogOpen" :recipient="logToResend?.recipient"
+                @confirm="resendLog" />
+
+        </div>
+    </TenantAdminLayout>
 </template>

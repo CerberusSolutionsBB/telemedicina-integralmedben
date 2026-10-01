@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Pagina;
 
 use App\Enums\QuestionRoleEnum;
 use App\Http\Controllers\Controller;
-use App\Models\Audit;
 use App\Models\CentralPatient;
 use App\Models\CentralPatientAnswer;
 use App\Models\Form;
@@ -15,15 +14,17 @@ use App\Models\Tenant;
 use App\Models\TenantsDetail;
 use App\Models\TenantForm;
 use App\Models\TenantPlano;
+use App\Services\Tenant\PlanoHistoricoService;
 use App\Services\Tenant\TenantPlanoCotaService;
-use App\Support\SiprovPlanos;
+use App\Support\Planos;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaginaShowController extends Controller
 {
-    public function __invoke(Tenant $tenant, TenantPlanoCotaService $planoCotaService): Response
+    public function __invoke(Request $request, Tenant $tenant, TenantPlanoCotaService $planoCotaService, PlanoHistoricoService $planoHistorico): Response
     {
         $tenant = Tenant::with(['details', 'details.user', 'forms'])->where('id', $tenant->id)->firstOrFail();
 
@@ -104,11 +105,15 @@ class PaginaShowController extends Controller
             'cartaoDinamico' => $cartaoDinamico,
             'telemedicinaQuestions' => $telemedicinaQuestions,
             'telemedicinaVinculados' => $telemedicinaVinculados,
-            'planos' => SiprovPlanos::options(),
+            'planos' => Planos::options(),
             'tenantPlanos' => TenantPlano::where('tenant_id', $tenant->id)
                 ->get(['cod_plano', 'quantidade']),
             'planoUso' => (object) $planoCotaService->uso($tenant->id),
-            'planoRegistros' => $this->planoRegistros($tenant),
+            // Closure: no reload parcial dos filtros do histórico só ele é recalculado.
+            'planoRegistros' => fn () => $planoHistorico->listar($tenant->id, $this->filtrosHistorico($request)),
+            'planoRegistrosTotais' => fn () => $planoHistorico->totais($tenant->id, $this->filtrosHistorico($request), Planos::options()),
+            'planoRegistrosFiltros' => $this->filtrosHistorico($request),
+            'planoRegistrosLimite' => PlanoHistoricoService::LIMITE,
             'allTenants' => Tenant::whereNull('deleted_at')
                 ->with(['details', 'forms'])
                 ->orderBy('id')
@@ -146,39 +151,16 @@ class PaginaShowController extends Controller
     }
 
     /**
-     * Últimos registros de pacientes nos planos (auditoria registro_plano).
+     * Filtros do histórico de registros dos planos (query string ?hist_*).
      */
-    private function planoRegistros(Tenant $tenant): array
+    private function filtrosHistorico(Request $request): array
     {
-        $origens = [
-            'cadastro_paciente' => 'Cadastro manual',
-            'formulario_publico' => 'Formulário público',
+        return [
+            'busca' => (string) $request->query('hist_busca', ''),
+            'plano' => (string) $request->query('hist_plano', ''),
+            'de' => (string) $request->query('hist_de', ''),
+            'ate' => (string) $request->query('hist_ate', ''),
         ];
-
-        return Audit::where('event', 'registro_plano')
-            ->where('tags', 'tenant:'.$tenant->id)
-            ->latest('id')
-            ->limit(50)
-            ->get()
-            ->map(function (Audit $audit) use ($origens) {
-                $dados = $audit->new_values ?? [];
-                $plano = $dados['planos'][$dados['cod_plano'] ?? ''] ?? [];
-
-                return [
-                    'id' => $audit->id,
-                    'data' => $audit->created_at?->format('d/m/Y H:i'),
-                    'paciente' => $dados['paciente'] ?? (isset($dados['paciente_id']) ? "#{$dados['paciente_id']}" : '-'),
-                    'plano' => $dados['plano'] ?? '-',
-                    'origem' => $origens[$dados['origem'] ?? ''] ?? ($dados['origem'] ?? '-'),
-                    'usuario' => $dados['usuario'] ?? null,
-                    'ip' => $audit->ip_address,
-                    'dispositivo' => $audit->dispositivo,
-                    'user_agent' => $audit->user_agent,
-                    'saldo' => $plano['saldo'] ?? null,
-                    'quantidade' => $plano['quantidade'] ?? null,
-                ];
-            })
-            ->all();
     }
 
     private function resolveCartaoAsset(Tenant $tenant, ?TenantsDetail $detail, string $coluna, string $tipo): ?array
