@@ -41,7 +41,9 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => env('DB_CACHE_CONNECTION'),
+            // Banco central: em contexto de tenant a conexão padrão é a do tenant,
+            // que não tem a tabela de cache.
+            'connection' => env('DB_CACHE_CONNECTION', 'mysql'),
             'table' => env('DB_CACHE_TABLE', 'cache'),
             'lock_connection' => env('DB_CACHE_LOCK_CONNECTION'),
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),
