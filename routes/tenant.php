@@ -6,6 +6,7 @@ use App\Http\Controllers\PatientCartaoDinamicoController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\Tenant\Configuracao\ConfiguracaoController;
+use App\Http\Controllers\Tenant\DesempenhoController;
 use App\Http\Controllers\Tenant\Form\FormIndexController;
 use App\Http\Controllers\Tenant\Form\FormShowController;
 use App\Http\Controllers\Tenant\TenantAuthController;
@@ -63,6 +64,9 @@ Route::middleware([
         Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->name('patients.toggle-status');
 
         Route::prefix('admin/acl')->name('tenant.acl.')->group(base_path('routes/acl.php'));
+
+        // Metas de desempenho dos usuários (acesso: qualquer usuário logado).
+        Route::resource('desempenho', DesempenhoController::class)->parameters(['desempenho' => 'desempenho']);
 
         Route::prefix('meus-formularios')->name('meus-formularios.')->group(function () {
             Route::get('/', FormIndexController::class)->name('index');

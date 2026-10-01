@@ -2,6 +2,7 @@
 import { Link, useForm, usePage } from "@inertiajs/vue3";
 import {
     Users,
+    Target,
     UserCircle,
     LogOut,
     ChevronDown,
@@ -61,6 +62,7 @@ const aclLink = computed(() => {
 
 const navLinks = computed(() => [
     { label: "Beneficiários", routeName: "patients.index", icon: Users },
+    { label: "Desempenho", routeName: "desempenho.index", match: "desempenho.*", icon: Target },
     ...(aclLink.value ? [aclLink.value] : []),
     {
         label: "Meus Formulários",
