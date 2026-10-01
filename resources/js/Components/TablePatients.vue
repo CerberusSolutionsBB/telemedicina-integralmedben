@@ -131,11 +131,19 @@ const registroIcon = (registro) => {
     return map[registro] || '•';
 };
 
-const navigate = () => {
+// Filtros atuais da lista (também usados pelo Relatório Geral).
+const filtrosAtuais = () => {
     const params = {};
     if (search.value) params.search = search.value;
     if (statusFilter.value !== '' && statusFilter.value !== null) params.status = statusFilter.value;
     if (registroFilter.value) params.registro = registroFilter.value;
+    return params;
+};
+
+const relatorioParams = computed(filtrosAtuais);
+
+const navigate = () => {
+    const params = filtrosAtuais();
 
     router.visit(route('patients.index', params), {
         preserveState: true,
@@ -253,7 +261,7 @@ const confirmGerarCartaoDinamico = async () => {
                     {{ patients.total ?? patients.data?.length ?? 0 }} paciente(s) encontrado(s)
                 </p>
             </div>
-            <a :href="route('patients.report')" target="_blank"
+            <a :href="route('patients.report', relatorioParams)" target="_blank"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-lg hover:bg-cyan-700 transition-colors shadow-sm">
                 <Download class="w-4 h-4" />
                 Relatório Geral

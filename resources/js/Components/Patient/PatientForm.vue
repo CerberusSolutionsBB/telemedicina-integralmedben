@@ -23,10 +23,13 @@ const emit = defineEmits(["submit"]);
 
 const form = props.form;
 const isEdit = form.status !== undefined;
-// Plano obrigatório (exceto quem já tem vínculo); CPF e e-mail seguem o plano.
+// Plano obrigatório (exceto quem já tem vínculo); o CPF segue o plano.
 const exigePlano = !props.planoAtual;
 
 const { avisoCpf, avisoEmail } = useCamposPaciente(form);
+
+// Limite do campo de nascimento (não pode estar no futuro).
+const hoje = new Date().toISOString().slice(0, 10);
 const { buscandoCep, cepNaoEncontrado } = useCepPaciente(form);
 
 const card = "w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6";
@@ -73,8 +76,9 @@ const input = (erro) => [
                 </div>
 
                 <div class="md:col-span-3 xl:col-span-2">
-                    <label :class="label" for="data_nascimento">Data de nascimento</label>
-                    <input id="data_nascimento" v-model="form.data_nascimento" type="date" :class="input(form.errors.data_nascimento)" />
+                    <label :class="label" for="data_nascimento">Data de nascimento <span class="text-red-600">*</span></label>
+                    <input id="data_nascimento" v-model="form.data_nascimento" type="date" :max="hoje"
+                        :class="input(form.errors.data_nascimento)" required />
                     <p v-if="form.errors.data_nascimento" class="mt-1 text-sm text-red-600">{{ form.errors.data_nascimento }}</p>
                 </div>
 
@@ -89,9 +93,9 @@ const input = (erro) => [
                 </div>
 
                 <div class="md:col-span-3 xl:col-span-5">
-                    <label :class="label" for="email">E-mail <span v-if="exigePlano" class="text-red-600">*</span></label>
+                    <label :class="label" for="email">E-mail</label>
                     <input id="email" v-model="form.email" type="email" autocomplete="email" placeholder="nome@exemplo.com"
-                        :class="input(form.errors.email)" :required="exigePlano" />
+                        :class="input(form.errors.email)" />
                     <p v-if="form.errors.email || avisoEmail" class="mt-1 text-sm"
                         :class="form.errors.email ? 'text-red-600' : 'text-amber-700'">{{ form.errors.email || avisoEmail }}</p>
                 </div>

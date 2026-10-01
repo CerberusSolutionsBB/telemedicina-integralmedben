@@ -10,10 +10,12 @@ use App\Models\Patient;
 use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
 use App\Models\TenantPlano;
+use App\Models\TenantPlanoBeneficiario;
 use App\Models\User;
 use App\Services\Tenant\TenantPlanoCotaService;
 use App\Services\Tenant\PacientePlanoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Mockery\MockInterface;
@@ -140,6 +142,125 @@ class PacientePlanoServiceTest extends TestCase
         $this->assertSame(1, $audit->new_values['planos']['331385']['pacientes']);
     }
 
+    public function test_plano_interno_nao_chama_siprov_e_consome_vaga(): void
+    {
+        config(['audit.console' => true]);
+        $this->plano('beneficios', 2);
+        $this->mock(SiprovExternalService::class, fn (MockInterface $mock) => $mock->shouldNotReceive('registerPatient'));
+
+        $service = app(PacientePlanoService::class);
+        $this->assertFalse(collect($service->opcoes($this->tenant->id))->firstWhere('value', 'beneficios')['siprov']);
+
+        $this->assertNull($service->registrar($this->tenant->id, $this->patient(), 'beneficios'));
+
+        $vinculo = TenantPlanoBeneficiario::sole();
+        $this->assertSame(['beneficios', 42, '12345678909'], [$vinculo->cod_plano, $vinculo->patient_id, $vinculo->cpf]);
+        $this->assertSame(0, TelemedicinaTenant::count()); // fora da lista de telemedicina/SIPROV
+        $this->assertSame(1, TenantPlano::where('cod_plano', 'beneficios')->value('saldo'));
+        $this->assertSame(0, ExternalApiLog::count());
+
+        $audit = Audit::where('event', 'registro_plano')->sole();
+        $this->assertSame('tenant:'.$this->tenant->id, $audit->tags);
+        $this->assertSame('Plano de Benefícios', $audit->new_values['plano']);
+        $this->assertSame(1, $audit->new_values['planos']['beneficios']['pacientes']);
+
+        // Edit: plano só leitura; o mesmo CPF não pega outra vaga.
+        $this->assertSame('beneficios', $service->vinculoAtual($this->tenant->id, '123.456.789-09')['cod_plano']);
+        $this->assertValidationFails(fn () => $service->validar($this->tenant->id, 'beneficios', ['nome' => 'Fulano', 'cpf' => '12345678909']));
+    }
+
+    public function test_plano_interno_sem_saldo_bloqueia(): void
+    {
+        $this->plano('beneficios', 1);
+        $service = app(PacientePlanoService::class);
+        $service->registrarVinculoInterno($this->tenant->id, 'beneficios', 'Outro', '98765432100', 7, 'cadastro_paciente');
+
+        $this->assertValidationFails(fn () => $service->validar($this->tenant->id, 'beneficios', ['nome' => 'Novo', 'cpf' => '11122233344']));
+        $this->assertStringContainsString('Limite do plano Plano de Benefícios', $service->registrar($this->tenant->id, $this->patient(), 'beneficios'));
+        $this->assertSame(1, TenantPlanoBeneficiario::count());
+    }
+
+    public function test_detalhes_do_plano_e_do_cadastro(): void
+    {
+        config(['audit.console' => true]);
+        Carbon::setTestNow('2026-10-01 14:35:00');
+        $user = User::factory()->create(['name' => 'Atendente Ana']);
+        $this->actingAs($user);
+        $this->mock(SiprovExternalService::class, fn (MockInterface $mock) => $mock->shouldReceive('registerPatient')->andReturn([]));
+
+        $service = app(PacientePlanoService::class);
+        $patient = $this->patient();
+        $service->registrar($this->tenant->id, $patient, '331385');
+
+        $this->assertSame([
+            'plano' => 'Clínica Familiar',
+            'siprov' => true,
+            'origem' => 'Cadastro manual',
+            'origem_tipo' => 'cadastro_paciente',
+            'usuario' => 'Atendente Ana',
+            'data_hora' => '01/10/2026 11:35', // 14:35 UTC em Brasília
+        ], $service->detalhes($this->tenant->id, $patient)['plano']);
+
+        // Cadastro: auditoria "created" do paciente com a tag do tenant (outro tenant com o mesmo id é ignorado).
+        $this->auditoriaCadastro(42, 'outro-tenant', null, '2026-01-01 08:00:00');
+        $this->auditoriaCadastro(42, $this->tenant->id, $user->id, '2026-10-01 09:10:00');
+        $this->assertSame(
+            ['usuario' => 'Atendente Ana', 'data_hora' => '01/10/2026 06:10', 'auditado' => true],
+            $service->detalhes($this->tenant->id, $patient)['cadastro'],
+        );
+
+        Carbon::setTestNow();
+    }
+
+    public function test_detalhes_plano_interno_sem_plano_e_cadastro_sem_auditoria(): void
+    {
+        $this->plano('beneficios', 5);
+        $service = app(PacientePlanoService::class);
+        $service->registrarVinculoInterno($this->tenant->id, 'beneficios', 'Fulano', '12345678909', 42, 'cadastro_paciente');
+
+        $patient = $this->patient()->forceFill(['created_at' => '2026-05-20 10:00:00']);
+        $detalhes = $service->detalhes($this->tenant->id, $patient);
+        $this->assertSame(['Plano de Benefícios', false], [$detalhes['plano']['plano'], $detalhes['plano']['siprov']]);
+        $this->assertSame(['usuario' => null, 'data_hora' => '20/05/2026 07:00', 'auditado' => false], $detalhes['cadastro']);
+
+        $semPlano = $this->patient()->forceFill(['cpf' => '000.000.000-00']);
+        $this->assertNull($service->detalhes($this->tenant->id, $semPlano)['plano']);
+    }
+
+    public function test_cadastro_aceita_auditoria_antiga_sem_tag_so_no_mesmo_instante(): void
+    {
+        $user = User::factory()->create(['name' => 'Antes da tag']);
+        $service = app(PacientePlanoService::class);
+        $patient = $this->patient()->forceFill(['created_at' => '2026-09-30 22:00:00']);
+
+        // Sem tag, mas em outro instante (outro tenant com o mesmo id): ignorada.
+        Audit::create(['event' => 'created', 'auditable_type' => Patient::class, 'auditable_id' => 42,
+            'user_type' => User::class, 'user_id' => $user->id, 'old_values' => [], 'new_values' => []])
+            ->forceFill(['created_at' => '2026-09-30 10:00:00'])->save();
+        $this->assertFalse($service->detalhes($this->tenant->id, $patient)['cadastro']['auditado']);
+
+        // Sem tag e no mesmo instante da criação: aceita.
+        Audit::create(['event' => 'created', 'auditable_type' => Patient::class, 'auditable_id' => 42,
+            'user_type' => User::class, 'user_id' => $user->id, 'old_values' => [], 'new_values' => []])
+            ->forceFill(['created_at' => '2026-09-30 22:00:02'])->save();
+        $this->assertSame('Antes da tag', $service->detalhes($this->tenant->id, $patient)['cadastro']['usuario']);
+    }
+
+    private function auditoriaCadastro(int $patientId, string $tenant, ?int $userId, string $quando): void
+    {
+        $audit = Audit::create([
+            'event' => 'created',
+            'auditable_type' => Patient::class,
+            'auditable_id' => $patientId,
+            'user_type' => $userId ? User::class : null,
+            'user_id' => $userId,
+            'old_values' => [],
+            'new_values' => [],
+            'tags' => "tenant:{$tenant}",
+        ]);
+        $audit->forceFill(['created_at' => $quando])->save();
+    }
+
     private function assertValidationFails(callable $fn): void
     {
         try {
@@ -166,18 +287,23 @@ class PacientePlanoServiceTest extends TestCase
         ]);
     }
 
-    public function test_request_exige_plano_e_cpf_email_no_cadastro(): void
+    public function test_request_exige_plano_cpf_e_nascimento_mas_nao_email(): void
     {
         $semPlano = $this->validarRequest(['nome' => 'Fulano']);
         $this->assertArrayHasKey('cod_plano', $semPlano);
+        $this->assertArrayHasKey('data_nascimento', $semPlano);
 
         $comPlano = $this->validarRequest(['nome' => 'Fulano', 'cod_plano' => '331385']);
         $this->assertArrayNotHasKey('cod_plano', $comPlano);
         $this->assertArrayHasKey('cpf', $comPlano);
-        $this->assertArrayHasKey('email', $comPlano);
+        $this->assertArrayNotHasKey('email', $comPlano);
 
+        $futuro = $this->validarRequest(['nome' => 'Fulano', 'data_nascimento' => now()->addDay()->toDateString()]);
+        $this->assertSame(['A data de nascimento não pode estar no futuro.'], $futuro['data_nascimento']);
+
+        // Sem e-mail: válido.
         $valido = $this->validarRequest([
-            'nome' => 'Fulano', 'cod_plano' => '331385', 'cpf' => '12345678909', 'email' => 'f@example.com',
+            'nome' => 'Fulano', 'cod_plano' => '331385', 'cpf' => '12345678909', 'data_nascimento' => '1990-05-10',
         ]);
         $this->assertSame([], $valido);
     }

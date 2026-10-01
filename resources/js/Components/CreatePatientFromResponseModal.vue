@@ -197,9 +197,11 @@ const submit = () => {
                         <div>
                             <Label class="flex items-center gap-1 text-gray-700 pb-1 font-medium">
                                 <Calendar class="w-4 h-4 text-gray-400" />
-                                Data de Nascimento
+                                Data de Nascimento <span class="text-red-600">*</span>
                             </Label>
-                            <Input v-model="form.data_nascimento" type="date" />
+                            <Input v-model="form.data_nascimento" type="date" required
+                                :class="form.errors.data_nascimento ? 'border-red-500' : ''" />
+                            <p v-if="form.errors.data_nascimento" class="mt-1 text-sm text-red-600">{{ form.errors.data_nascimento }}</p>
                         </div>
                     </div>
 
@@ -219,7 +221,7 @@ const submit = () => {
                         <div>
                             <Label class="flex items-center gap-1 text-gray-700 pb-1 font-medium">
                                 <Mail class="w-4 h-4 text-gray-400" />
-                                E-mail <span class="text-red-500">*</span>
+                                E-mail
                             </Label>
                             <Input v-model="form.email" type="email" placeholder="paciente@exemplo.com"
                                 :class="form.errors.email ? 'border-red-500' : ''" />
