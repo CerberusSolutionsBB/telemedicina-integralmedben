@@ -7,11 +7,11 @@ on:
 jobs:
   deploy:
     name: Deploy via SSH
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: 📦 Checkout código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 🔐 Deploy no servidor
         uses: appleboy/ssh-action@v1
