@@ -4,18 +4,18 @@ namespace App\Http\Controllers\Pagina;
 
 use App\Enums\QuestionRoleEnum;
 use App\Http\Controllers\Controller;
-use App\Models\CentralPatient;
-use App\Models\CentralPatientAnswer;
 use App\Models\Form;
+use App\Models\Patient;
 use App\Models\Question;
 use App\Models\SmsTemplate;
 use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
-use App\Models\TenantsDetail;
 use App\Models\TenantForm;
 use App\Models\TenantPlano;
+use App\Models\TenantsDetail;
 use App\Services\Tenant\PlanoHistoricoService;
 use App\Services\Tenant\TenantPlanoCotaService;
+use App\Support\BeneficiarioPermissoes;
 use App\Support\Planos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -45,7 +45,7 @@ class PaginaShowController extends Controller
             ->get();
 
         $patients = $tenant->run(function () {
-            return \App\Models\Patient::orderByDesc('created_at')
+            return Patient::orderByDesc('created_at')
                 ->get()
                 ->map(fn ($p) => [
                     'id' => $p->id,
@@ -103,6 +103,7 @@ class PaginaShowController extends Controller
             'cartaoPacienteEnabled' => $cartaoPacienteEnabled,
             'cartaoDinamicoEnabled' => $cartaoDinamicoEnabled,
             'cartaoDinamico' => $cartaoDinamico,
+            'beneficiarioPermissoes' => BeneficiarioPermissoes::doTenant($tenant->id),
             'telemedicinaQuestions' => $telemedicinaQuestions,
             'telemedicinaVinculados' => $telemedicinaVinculados,
             'planos' => Planos::options(),

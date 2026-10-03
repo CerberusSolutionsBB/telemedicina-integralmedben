@@ -1,14 +1,15 @@
 <?php
 
+use App\Http\Controllers\Pagina\PaginaBeneficiarioController;
+use App\Http\Controllers\Pagina\PaginaCartaoDinamicoController;
 use App\Http\Controllers\Pagina\PaginaCreateController;
 use App\Http\Controllers\Pagina\PaginaDestroyController;
 use App\Http\Controllers\Pagina\PaginaIndexController;
-use App\Http\Controllers\Pagina\PaginaCartaoDinamicoController;
 use App\Http\Controllers\Pagina\PaginaLogoController;
 use App\Http\Controllers\Pagina\PaginaPlanoController;
 use App\Http\Controllers\Pagina\PaginaShowController;
-use App\Http\Controllers\Pagina\PaginaStoreController;
 use App\Http\Controllers\Pagina\PaginaStatusController;
+use App\Http\Controllers\Pagina\PaginaStoreController;
 use App\Http\Controllers\Pagina\PaginaUserController;
 use App\Http\Controllers\Tenant\Configuracao\ConfiguracaoController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,7 @@ Route::prefix('configuracao')->name('configuracao.')->group(function () {
     Route::put('/{tenant}/cartao-paciente', [ConfiguracaoController::class, 'toggleCartaoPaciente'])->name('cartao-paciente');
     Route::put('/{tenant}/telemedicina', [ConfiguracaoController::class, 'syncTelemedicina'])->name('telemedicina');
     Route::delete('/{tenant}/telemedicina/{telemedicinaTenant}', [ConfiguracaoController::class, 'unlinkTelemedicina'])->name('telemedicina.unlink');
+    Route::put('/{tenant}/beneficiario', [PaginaBeneficiarioController::class, 'update'])->middleware('auth')->name('beneficiario');
     Route::put('/{tenant}/planos', [PaginaPlanoController::class, 'sync'])->middleware('auth')->name('planos');
     Route::put('/{tenant}/planos/{codPlano}/zerar', [PaginaPlanoController::class, 'zerar'])->middleware('auth')->name('planos.zerar');
     Route::get('/siprov/search', [ConfiguracaoController::class, 'searchSiprov'])->name('telemedicina.searchSiprov');

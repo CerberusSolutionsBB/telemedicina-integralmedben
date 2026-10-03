@@ -47,22 +47,22 @@ Route::middleware([
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
         Route::get('/patients', [PatientController::class, 'index'])->name('patients.index');
-        Route::get('/patients/create', [PatientController::class, 'create'])->name('patients.create');
-        Route::post('/patients', [PatientController::class, 'store'])->name('patients.store');
+        Route::get('/patients/create', [PatientController::class, 'create'])->middleware('beneficiario:create')->name('patients.create');
+        Route::post('/patients', [PatientController::class, 'store'])->middleware('beneficiario:create')->name('patients.store');
         Route::get('/patients/report', [PatientController::class, 'reportPdf'])->name('patients.report');
         Route::get('/patients/export/{format}', [PatientController::class, 'export'])->name('patients.export')->where('format', 'csv|xlsx');
-        Route::get('/patients/template/{format}', [PatientController::class, 'template'])->name('patients.template')->where('format', 'csv|xlsx');
-        Route::post('/patients/import', [PatientController::class, 'import'])->name('patients.import');
-        Route::get('/patients/{patient}/edit', [PatientController::class, 'edit'])->name('patients.edit');
-        Route::put('/patients/{patient}', [PatientController::class, 'update'])->name('patients.update');
-        Route::delete('/patients/{patient}', [PatientController::class, 'destroy'])->name('patients.destroy');
+        Route::get('/patients/template/{format}', [PatientController::class, 'template'])->middleware('beneficiario:create')->name('patients.template')->where('format', 'csv|xlsx');
+        Route::post('/patients/import', [PatientController::class, 'import'])->middleware('beneficiario:create')->name('patients.import');
+        Route::get('/patients/{patient}/edit', [PatientController::class, 'edit'])->middleware('beneficiario:edit')->name('patients.edit');
+        Route::put('/patients/{patient}', [PatientController::class, 'update'])->middleware('beneficiario:edit')->name('patients.update');
+        Route::delete('/patients/{patient}', [PatientController::class, 'destroy'])->middleware('beneficiario:delete')->name('patients.destroy');
         Route::get('/patients/{patient}', [PatientController::class, 'show'])->name('patients.show');
         Route::get('/patients/{patient}/pdf', [PatientController::class, 'downloadPdf'])->name('patients.pdf');
         Route::get('/patients/{patient}/cartao', [PatientController::class, 'cartao'])->name('patients.cartao');
         Route::get('/patients/{patient}/cartao-dinamico', [PatientCartaoDinamicoController::class, 'gerar'])->name('patients.cartao-dinamico');
         Route::post('/patients/{patient}/resend-sms', [PatientController::class, 'resendSms'])->name('patients.resend-sms');
         Route::post('/patients/{patient}/sms-logs/{smsLog}/resend', [PatientController::class, 'resendSmsLog'])->name('patients.sms-logs.resend');
-        Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->name('patients.toggle-status');
+        Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->middleware('beneficiario:status')->name('patients.toggle-status');
 
         Route::prefix('admin/acl')->name('tenant.acl.')->group(base_path('routes/acl.php'));
 
