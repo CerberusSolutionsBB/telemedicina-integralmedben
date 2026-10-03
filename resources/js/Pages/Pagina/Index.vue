@@ -1,6 +1,7 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import { Head } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User, Power } from 'lucide-vue-next';
 import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
@@ -29,6 +30,11 @@ const props = defineProps({
     planos: {
         type: Array,
         default: () => []
+    },
+    // Cards: { contratos, total, ativos, inativos, planos: [{ value, label, parceiros, vagas, beneficiarios }] }
+    totais: {
+        type: Object,
+        default: null
     }
 });
 
@@ -50,6 +56,7 @@ const {
     hasSearch,
     hasActiveFilters,
     clearSearch,
+    filtrarPlano,
     openDeleteModal,
     closeDeleteModal,
     confirmDelete,
@@ -66,6 +73,18 @@ const {
     getInitials,
     navigateTo,
 } = usePaginaIndex(props);
+
+const cardsResumo = computed(() => [
+    { label: 'Planos contratados', total: props.totais?.contratos ?? 0, cor: 'text-cyan-700' },
+    { label: 'Beneficiários cadastrados', total: props.totais?.total ?? 0, cor: 'text-gray-900' },
+    { label: 'Ativos', total: props.totais?.ativos ?? 0, cor: 'text-green-700' },
+    { label: 'Inativos', total: props.totais?.inativos ?? 0, cor: 'text-red-700' },
+]);
+
+const cardPlano = (ativo) => [
+    'rounded-xl border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500',
+    ativo ? 'border-cyan-300 bg-cyan-50' : 'border-gray-200 bg-white hover:bg-gray-50',
+];
 
 const beneficiariosNoPlano = (item, codPlano) =>
     item.beneficiarios?.planos?.find(p => p.value === codPlano)?.total ?? 0;
@@ -96,6 +115,32 @@ const beneficiariosNoPlano = (item, codPlano) =>
                 {{ flashMessage }}
             </div>
             <div class="mx-auto  space-y-4">
+                <!-- Totalizadores (por plano: clique para filtrar) -->
+                <div v-if="props.totais" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div v-for="item in cardsResumo" :key="item.label"
+                            class="rounded-xl border border-gray-200 bg-white p-4">
+                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">{{ item.label }}</p>
+                            <p class="mt-1 text-2xl font-bold" :class="item.cor">{{ item.total }}</p>
+                        </div>
+                    </div>
+                    <div v-if="props.totais.planos.length">
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Beneficiários por plano</p>
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                            <button v-for="plano in props.totais.planos" :key="plano.value" type="button"
+                                :aria-pressed="planoFilter === plano.value" :class="cardPlano(planoFilter === plano.value)"
+                                @click="filtrarPlano(plano.value)">
+                                <p class="truncate text-xs font-medium uppercase tracking-wide text-gray-500" :title="plano.label">
+                                    {{ plano.label }}
+                                </p>
+                                <p class="mt-1 text-2xl font-bold text-cyan-700">{{ plano.beneficiarios }}</p>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {{ plano.parceiros }} parceiro(s) · {{ plano.vagas }} vaga(s)
+                                </p>
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div
                     class="flex flex-col lg:flex-row gap-3 justify-between items-start lg:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">

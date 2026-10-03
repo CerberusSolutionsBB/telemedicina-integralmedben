@@ -50,7 +50,7 @@ export function usePaginaIndex(props) {
                 preserveState: true,
                 preserveScroll: true,
                 replace: true,
-                only: ['tenants', 'filters'],
+                only: ['tenants', 'filters', 'totais'],
             })
         }, 300)
     }
@@ -62,6 +62,11 @@ export function usePaginaIndex(props) {
         planoFilter.value = ''
         searchInput.value?.focus()
         performSearch()
+    }
+
+    // Card de plano: clique filtra; clicar de novo limpa.
+    const filtrarPlano = (valor) => {
+        planoFilter.value = planoFilter.value === valor ? '' : valor
     }
 
     const openDeleteModal = (item) => {
@@ -208,6 +213,7 @@ export function usePaginaIndex(props) {
         hasSearch,
         hasActiveFilters,
         clearSearch,
+        filtrarPlano,
         openDeleteModal,
         closeDeleteModal,
         confirmDelete,

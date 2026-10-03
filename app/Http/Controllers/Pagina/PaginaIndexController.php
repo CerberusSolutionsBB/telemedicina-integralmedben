@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\TenantPlano;
 use App\Support\Planos;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,9 +26,13 @@ class PaginaIndexController extends Controller
             ->withQueryString();
 
         $labels = collect(Planos::options())->pluck('label', 'value');
-        $contratados = TenantPlano::whereIn('tenant_id', $tenants->pluck('id'))->get()->groupBy('tenant_id');
+        $contratos = TenantPlano::all();
+        $contratados = $contratos->groupBy('tenant_id');
 
-        $tenants->getCollection()->each(function (Tenant $tenant) use ($labels, $contratados) {
+        // Beneficiários de todos os parceiros (uma consulta por banco de tenant).
+        $beneficiarios = Tenant::all()->mapWithKeys(fn (Tenant $t) => [$t->id => $this->beneficiarios($t)]);
+
+        $tenants->getCollection()->each(function (Tenant $tenant) use ($labels, $contratados, $beneficiarios) {
             $tenant->setAttribute('planos_contratados', ($contratados[$tenant->id] ?? collect())
                 ->map(fn (TenantPlano $p) => [
                     'value' => (string) $p->cod_plano,
@@ -35,14 +40,56 @@ class PaginaIndexController extends Controller
                     'quantidade' => $p->quantidade,
                 ])
                 ->values());
-            $tenant->setAttribute('beneficiarios', $this->beneficiarios($tenant));
+            $tenant->setAttribute('beneficiarios', $beneficiarios[$tenant->id] ?? null);
         });
 
         return Inertia::render('Pagina/Index', [
             'tenants' => $tenants,
             'filters' => $request->only(['search', 'plano']),
             'planos' => collect(Planos::options())->map(fn ($p) => ['value' => $p['value'], 'label' => $p['label']])->all(),
+            'totais' => $this->totais($plano, $contratos, $beneficiarios),
         ]);
+    }
+
+    /**
+     * Cards: status dos beneficiários e contratos dos parceiros do filtro; por plano
+     * considera todos os parceiros (o card também é o filtro de plano).
+     *
+     * @return array{contratos: int, total: int, ativos: int, inativos: int, planos: array<int, array{value: string, label: string, parceiros: int, vagas: int, beneficiarios: int}>}
+     */
+    private function totais(string $plano, Collection $contratos, Collection $beneficiarios): array
+    {
+        $doFiltro = $plano === ''
+            ? $beneficiarios->keys()
+            : $contratos->where('cod_plano', $plano)->pluck('tenant_id')->unique();
+
+        $filtrados = $beneficiarios->only($doFiltro->all())->filter();
+
+        $planos = collect(Planos::options())
+            ->map(function (array $p) use ($contratos, $beneficiarios) {
+                $doPlano = $contratos->where('cod_plano', $p['value']);
+
+                return [
+                    'value' => $p['value'],
+                    'label' => $p['label'],
+                    'parceiros' => $doPlano->pluck('tenant_id')->unique()->count(),
+                    'vagas' => (int) $doPlano->sum('quantidade'),
+                    'beneficiarios' => $beneficiarios->filter()->sum(
+                        fn (array $b) => collect($b['planos'])->firstWhere('value', $p['value'])['total'] ?? 0
+                    ),
+                ];
+            })
+            ->filter(fn (array $p) => $p['parceiros'] > 0 || $p['beneficiarios'] > 0)
+            ->values()
+            ->all();
+
+        return [
+            'contratos' => $contratos->whereIn('tenant_id', $doFiltro)->count(),
+            'total' => $filtrados->sum('total'),
+            'ativos' => $filtrados->sum('ativos'),
+            'inativos' => $filtrados->sum('inativos'),
+            'planos' => $planos,
+        ];
     }
 
     /**
