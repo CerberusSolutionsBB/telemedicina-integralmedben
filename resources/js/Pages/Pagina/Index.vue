@@ -2,7 +2,7 @@
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User, Power } from 'lucide-vue-next';
+import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User, Power, PowerOff } from 'lucide-vue-next';
 import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import PomponeteLink from '@/Components/PomponeteLink.vue';
@@ -296,7 +296,7 @@ const beneficiariosNoPlano = (item, codPlano) =>
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
-                                        <div class="flex items-center justify-end gap-1">
+                                        <div class="flex justify-end gap-1">
                                             <button @click="navigateTo('pagina.show', item.id)"
                                                 class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                                                 title="Visualizar">
@@ -307,14 +307,14 @@ const beneficiariosNoPlano = (item, codPlano) =>
                                                 title="Editar">
                                                 <User class="w-4 h-4" />
                                             </button>
-                                            <button type="button" @click="openStatusModal(item)" :class="[
-                                                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
+                                            <button @click="openStatusModal(item)" :class="[
+                                                'p-2 rounded-lg transition-all',
                                                 item.status
-                                                    ? 'border-red-200 text-red-600 hover:bg-red-50'
-                                                    : 'border-green-200 text-green-700 hover:bg-green-50'
-                                            ]" :title="item.status ? 'Desativar parceiro' : 'Ativar parceiro'">
-                                                <Power class="w-4 h-4" />
-                                                {{ item.status ? 'Desativar' : 'Ativar' }}
+                                                    ? 'text-orange-600 hover:text-orange-800 hover:bg-orange-50'
+                                                    : 'text-green-600 hover:text-green-800 hover:bg-green-50'
+                                            ]" :title="item.status ? 'Desativar' : 'Ativar'">
+                                                <PowerOff v-if="item.status" class="w-4 h-4" />
+                                                <Power v-else class="w-4 h-4" />
                                             </button>
                                             <!-- <button v-if="can.edit" @click="navigateTo('pagina.edit', item.id)"
                                                 class="p-2 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
