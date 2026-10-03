@@ -8,7 +8,7 @@ const ENDERECO_VAZIO = { cep: '', logradouro: '', numero: '', complemento: '', b
  * Dados e persistência do beneficiário (Create/Edit). Sem `patient`, cria.
  * Também protege contra sair da página com alterações não salvas.
  */
-export function usePatientForm({ patient = null } = {}) {
+export function usePatientForm({ patient = null, familiares = [] } = {}) {
     const isEdit = Boolean(patient)
 
     const enderecos = patient?.enderecos && typeof patient.enderecos === 'object'
@@ -26,6 +26,7 @@ export function usePatientForm({ patient = null } = {}) {
         ...(isEdit ? { status: Boolean(patient.status) } : {}),
         enderecos,
         cod_plano: '',
+        familiares: familiares.map((f) => ({ ...f })),
     })
 
     const enviando = ref(false)

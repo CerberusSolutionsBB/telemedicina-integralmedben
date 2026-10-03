@@ -12,9 +12,11 @@ const props = defineProps({
     patient: { type: Object, required: true },
     planos: { type: Array, default: () => [] },
     planoAtual: { type: Object, default: null },
+    familiares: { type: Array, default: () => [] },
+    tiposFamiliares: { type: Array, default: () => [] },
 });
 
-const { form, salvar } = usePatientForm({ patient: props.patient });
+const { form, salvar } = usePatientForm({ patient: props.patient, familiares: props.familiares });
 
 // Mesmo padrão do Controle de Acesso: "Início" › seção › registro atual.
 const breadcrumbItems = computed(() => [
@@ -37,6 +39,7 @@ const nome = computed(() => props.patient.nome || `beneficiário #${props.patien
         </div>
 
         <PatientForm :form="form" :planos="planos" :plano-atual="planoAtual"
+            :tipos-familiares="tiposFamiliares"
             :cancelar-href="route('patients.index')" rotulo-salvar="Salvar alterações" @submit="salvar" />
     </TenantAdminLayout>
 </template>

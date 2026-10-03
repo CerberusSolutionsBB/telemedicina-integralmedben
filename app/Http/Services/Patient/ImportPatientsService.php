@@ -42,7 +42,20 @@ class ImportPatientsService
         $errors = [];
 
         foreach ($rows as $index => $row) {
-            $data = array_combine($header, $row);
+            $primeira = trim((string) ($row[0] ?? ''));
+
+            // Resumo ao final do arquivo exportado (ExportPatientsService::comResumo): fim dos dados.
+            if (str_starts_with($primeira, ExportPatientsService::PREFIXO_RESUMO)) {
+                break;
+            }
+
+            // Linha em branco (XLSX completa as células vazias com null).
+            if (collect($row)->every(fn ($valor) => trim((string) $valor) === '')) {
+                continue;
+            }
+
+            // array_combine lança erro no PHP 8 quando as contagens diferem.
+            $data = count($row) === count($header) ? array_combine($header, $row) : false;
             if ($data === false) {
                 $errors[] = 'Linha '.($index + 2).': número de colunas não corresponde ao cabeçalho.';
 

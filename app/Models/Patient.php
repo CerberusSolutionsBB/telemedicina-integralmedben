@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PatientSexoEnum;
+use App\Enums\StatusRegistroEnum;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,7 +33,7 @@ class Patient extends Model implements Auditable
     protected $casts = [
         'data_nascimento' => 'date:Y-m-d',
         'status' => 'boolean',
-        'status_registro' => \App\Enums\StatusRegistroEnum::class,
+        'status_registro' => StatusRegistroEnum::class,
         'enderecos' => 'array',
         'sexo' => PatientSexoEnum::class,
     ];
@@ -71,5 +72,10 @@ class Patient extends Model implements Auditable
     public function answers(): HasMany
     {
         return $this->hasMany(PatientAnswer::class);
+    }
+
+    public function familiares(): HasMany
+    {
+        return $this->hasMany(PacienteVinculoFamiliar::class, 'paciente_id');
     }
 }

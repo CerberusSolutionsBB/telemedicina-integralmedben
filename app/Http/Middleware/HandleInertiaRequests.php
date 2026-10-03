@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\BeneficiarioPermissoes;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -31,6 +32,10 @@ class HandleInertiaRequests extends Middleware
                     'is_admin' => $user->hasRole('Admin'),
                 ] : null,
             ],
+            // Ações do CRUD de beneficiários habilitadas para o parceiro (só no tenant).
+            'beneficiarioPermissoes' => fn () => tenancy()->initialized
+                ? BeneficiarioPermissoes::doTenant(tenant('id'))
+                : null,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

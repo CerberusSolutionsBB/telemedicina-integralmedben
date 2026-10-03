@@ -13,6 +13,7 @@ import FormLinkedCard from '@/Components/Cards/FormLinkedCard.vue'
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue'
 import SmsTemplateModal from '@/Components/SmsTemplateModal.vue'
 import EbaLogo from '@/Components/Ebas/EbaLogo.vue'
+import EbaBeneficiario from '@/Components/Ebas/EbaBeneficiario.vue'
 import ImageUpload from '@/Components/ImageUpload.vue'
 import SearchInput from '@/Components/SearchInput.vue'
 import { formatDateTime } from '@/Composables/Pagina/helpers'
@@ -66,7 +67,8 @@ import {
     QrCode,
     Layers,
     Minus,
-    RotateCcw
+    RotateCcw,
+    UserCog
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -105,6 +107,11 @@ const props = defineProps({
     cartaoDinamico: {
         type: Object,
         default: () => ({}),
+    },
+    // Ações do CRUD de beneficiários habilitadas: { create, edit, delete, status }
+    beneficiarioPermissoes: {
+        type: Object,
+        default: () => ({ create: true, edit: false, delete: false, status: false }),
     },
     telemedicinaQuestions: {
         type: Array,
@@ -319,6 +326,7 @@ const tabs = computed(() => [
     { key: 'telemedicina', label: 'Telemedicina', icon: HeartPulse, badge: props.telemedicinaVinculados.length || null },
     { key: 'planos', label: 'Planos', icon: Layers, badge: props.tenantPlanos.length || null },
     { key: 'patients', label: 'Pacientes', icon: Users, badge: props.patients.length || null },
+    { key: 'beneficiario', label: 'Beneficiário', icon: UserCog },
     { key: 'logo', label: 'Logos', icon: ImagesIcon, badge: null },
     { key: 'cartao-dinamico', label: 'Cartão Dinâmico', icon: Sparkles },
     { key: 'config', label: 'Configuração', icon: Settings },
@@ -1387,6 +1395,9 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                     </div>
 
                     <!-- Logo -->
+                    <EbaBeneficiario v-if="activeTab === 'beneficiario'" :tenant-id="tenant.id"
+                        :permissoes="beneficiarioPermissoes" />
+
                     <EbaLogo v-if="activeTab === 'logo'" :tenant-id="tenant.id" :upload-url="route('pagina.configuracao.logo.store', tenant.id)" :delete-url="route('pagina.configuracao.logo.destroy', tenant.id)" v-model:list="arquivosLocal" />
 
                     <!-- Cartão Dinâmico -->

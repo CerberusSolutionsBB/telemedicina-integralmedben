@@ -6,14 +6,18 @@ use App\Http\Requests\ImportPatientRequest;
 use App\Http\Requests\StorePatientRequest;
 use App\Http\Services\Patient\FichaBeneficiarioPdfService;
 use App\Http\Services\Patient\PatientCardPdfService;
+use App\Http\Services\Patient\PatientFiltros;
 use App\Http\Services\Patient\PatientService;
 use App\Http\Services\Patient\PatientsReportPdfService;
 use App\Http\Services\Sms\ResendSmsService;
-use App\Services\Tenant\PacientePlanoService;
 use App\Models\Patient;
 use App\Models\SmsLogs;
 use App\Models\Tenant;
 use App\Models\TenantsDetail;
+use App\Models\TipoVinculoFamiliar;
+use App\Services\Tenant\PacienteFamiliaresService;
+use App\Services\Tenant\PacientePlanoService;
+use App\Support\BeneficiarioPermissoes;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Inertia\Inertia;
@@ -26,15 +30,18 @@ class PatientController extends Controller
         private PatientsReportPdfService $patientsReportPdfService,
         private PatientCardPdfService $patientCardPdfService,
         private PacientePlanoService $pacientePlanoService,
+        private PacienteFamiliaresService $pacienteFamiliaresService,
     ) {}
 
     public function index(Request $request)
     {
-        $patients = $this->patientService->getPatients(
-            search: $request->search,
-            status: $request->status,
-            registro: $request->registro,
+        $patients = $this->patientService->getPatients($request->only(PatientFiltros::CHAVES));
+        // Plano de cada beneficiário da página (uma consulta para todos).
+        $planos = $this->pacientePlanoService->planosPorCpf(tenant('id'), $patients->pluck('cpf')->all());
+        $patients->getCollection()->each(
+            fn (Patient $p) => $p->setAttribute('plano', $planos[preg_replace('/\D/', '', (string) $p->cpf)] ?? null)
         );
+
         $tenant = Tenant::find(tenant('id'));
 
         $detail = TenantsDetail::where('tenant_id', tenant('id'))->first();
@@ -47,6 +54,8 @@ class PatientController extends Controller
             'tenantPhoto' => $tenant->photo_url,
             'cartaoPacienteEnabled' => $cartaoPacienteEnabled,
             'cartaoDinamicoEnabled' => $cartaoDinamicoEnabled,
+            'filtrosOpcoes' => PatientFiltros::opcoes(tenant('id')),
+            'totais' => PatientFiltros::totais(tenant('id'), $request->only(PatientFiltros::CHAVES)),
         ]);
     }
 
@@ -58,6 +67,7 @@ class PatientController extends Controller
             'tenantName' => $tenant->name,
             'tenantPhoto' => $tenant->photo_url,
             'planos' => $this->pacientePlanoService->opcoes(tenant('id')),
+            'tiposFamiliares' => TipoVinculoFamiliar::options(),
             'breadcrumbs' => [
                 ['label' => 'Beneficiários', 'href' => route('patients.index')],
                 ['label' => 'Novo beneficiário', 'href' => null],
@@ -76,6 +86,7 @@ class PatientController extends Controller
         }
 
         $patient = $this->patientService->store($data);
+        $this->salvarFamiliares($patient, $codPlano, $data);
 
         return $this->redirectAfterPlano($patient, $codPlano, 'Paciente cadastrado com sucesso.');
     }
@@ -86,6 +97,8 @@ class PatientController extends Controller
             'patient' => $patient,
             'planos' => $this->pacientePlanoService->opcoes(tenant('id')),
             'planoAtual' => $this->pacientePlanoService->vinculoAtual(tenant('id'), $patient->cpf),
+            'familiares' => $this->pacienteFamiliaresService->doPaciente($patient),
+            'tiposFamiliares' => TipoVinculoFamiliar::options(),
             'breadcrumbs' => [
                 ['label' => 'Beneficiários', 'href' => route('patients.index')],
                 ['label' => $patient->nome ?: "Beneficiário #{$patient->id}", 'href' => null],
@@ -106,12 +119,18 @@ class PatientController extends Controller
             'patient' => $patient,
             'smsLogs' => $smsLogs,
             'registro' => $this->pacientePlanoService->detalhes(tenant('id'), $patient),
+            'familiares' => $this->pacienteFamiliaresService->paraExibicao($patient),
         ]);
     }
 
     public function update(Patient $patient, StorePatientRequest $request)
     {
         $data = $request->validated();
+
+        // Status só muda quando o parceiro habilitou "Alterar status".
+        if (! BeneficiarioPermissoes::permite(tenant('id'), 'status')) {
+            unset($data['status']);
+        }
         $codPlano = $data['cod_plano'] ?? null;
 
         // No Edit o plano só pode ser adicionado; validar() recusa CPF que já tem vínculo.
@@ -120,8 +139,21 @@ class PatientController extends Controller
         }
 
         $this->patientService->update($patient, $data);
+        $this->salvarFamiliares($patient, $codPlano, $data);
 
         return $this->redirectAfterPlano($patient->refresh(), $codPlano, 'Paciente atualizado com sucesso.');
+    }
+
+    /**
+     * Membros da família: gravados só quando o plano (escolhido ou já vinculado) é o familiar.
+     */
+    private function salvarFamiliares(Patient $patient, ?string $codPlano, array $data): void
+    {
+        $planoId = $this->pacienteFamiliaresService->planoFamiliar(tenant('id'), $codPlano, $patient->cpf);
+
+        if ($planoId) {
+            $this->pacienteFamiliaresService->sincronizar($patient, $planoId, $data['familiares'] ?? []);
+        }
     }
 
     /**
@@ -158,9 +190,10 @@ class PatientController extends Controller
             ->with('success', 'Paciente excluído com sucesso!');
     }
 
-    public function export(string $format)
+    public function export(Request $request, string $format)
     {
-        return $this->patientService->export($format);
+        // Mesmos filtros da lista de beneficiários.
+        return $this->patientService->export($format, $request->only(PatientFiltros::CHAVES));
     }
 
     public function template(string $format)
@@ -216,7 +249,7 @@ class PatientController extends Controller
     public function reportPdf(Request $request)
     {
         // Mesmos filtros da lista de beneficiários (busca, status e origem).
-        $pdf = $this->patientsReportPdfService->generate(tenant('id'), $request->only(['search', 'status', 'registro']));
+        $pdf = $this->patientsReportPdfService->generate(tenant('id'), $request->only(PatientFiltros::CHAVES));
 
         return new Response($pdf, 200, [
             'Content-Type' => 'application/pdf',

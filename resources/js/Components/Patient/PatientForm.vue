@@ -5,7 +5,9 @@ import PatientPlanoSelect from "@/Components/PatientPlanoSelect.vue";
 import UfCidadeSelect from "@/Components/UfCidadeSelect.vue";
 import { useCamposPaciente } from "@/Composables/Patient/useCamposPaciente";
 import { useCepPaciente } from "@/Composables/Patient/useCepPaciente";
-import { Loader2 } from "lucide-vue-next";
+import { usePermissoesBeneficiario } from "@/Composables/Patient/usePermissoesBeneficiario";
+import { MAX_FAMILIARES, useFamiliaresPaciente } from "@/Composables/Patient/useFamiliaresPaciente";
+import { Loader2, Plus, Trash2 } from "lucide-vue-next";
 
 /**
  * Formulário de beneficiário (Create/Edit). A lógica fica nos composables de Patient.
@@ -15,6 +17,8 @@ const props = defineProps({
     planos: { type: Array, default: () => [] },
     // Vínculo de telemedicina existente (Edit): plano só leitura e não obrigatório.
     planoAtual: { type: Object, default: null },
+    // Tipos de membro da família (MAE, PAI...) do plano familiar.
+    tiposFamiliares: { type: Array, default: () => [] },
     cancelarHref: { type: String, required: true },
     rotuloSalvar: { type: String, default: "Salvar" },
 });
@@ -23,6 +27,7 @@ const emit = defineEmits(["submit"]);
 
 const form = props.form;
 const isEdit = form.status !== undefined;
+const { podeAlterarStatus } = usePermissoesBeneficiario();
 // Plano obrigatório (exceto quem já tem vínculo); o CPF segue o plano.
 const exigePlano = !props.planoAtual;
 
@@ -31,6 +36,10 @@ const { avisoCpf, avisoEmail } = useCamposPaciente(form);
 // Limite do campo de nascimento (não pode estar no futuro).
 const hoje = new Date().toISOString().slice(0, 10);
 const { buscandoCep, cepNaoEncontrado } = useCepPaciente(form);
+const { planoFamiliar, podeAdicionar, adicionarFamiliar, removerFamiliar, erroFamiliar, avisoCpfFamiliar } = useFamiliaresPaciente(form, {
+    planos: props.planos,
+    planoAtual: props.planoAtual,
+});
 
 const card = "w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6";
 const titulo = "text-base font-semibold text-gray-900";
@@ -47,7 +56,7 @@ const input = (erro) => [
         <section :class="card">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h2 :class="titulo">Dados do beneficiário</h2>
-                <label v-if="isEdit" class="flex items-center gap-2 text-sm font-medium"
+                <label v-if="isEdit && podeAlterarStatus" class="flex items-center gap-2 text-sm font-medium"
                     :class="form.status ? 'text-green-700' : 'text-red-700'">
                     <AppSwitch v-model="form.status" />
                     {{ form.status ? "Ativo" : "Inativo" }}
@@ -161,6 +170,72 @@ const input = (erro) => [
                 <h2 :class="[titulo, 'mb-4']">Plano / Telemedicina <span v-if="exigePlano" class="text-red-600">*</span></h2>
                 <PatientPlanoSelect v-model="form.cod_plano" :planos="planos" :plano-atual="planoAtual"
                     :error="form.errors.cod_plano" :required="exigePlano" bare />
+            </div>
+        </section>
+
+        <!-- Membros da família (plano familiar) -->
+        <section v-if="planoFamiliar" :class="card">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <h2 :class="titulo">Membros da família</h2>
+                    <p class="text-sm text-gray-500">
+                        Até {{ MAX_FAMILIARES }} familiares vinculados ao plano familiar do beneficiário
+                        ({{ form.familiares.length }}/{{ MAX_FAMILIARES }}).
+                    </p>
+                </div>
+                <button type="button" :disabled="!podeAdicionar" @click="adicionarFamiliar"
+                    class="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-300 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">
+                    <Plus class="h-4 w-4" />
+                    Adicionar familiar
+                </button>
+            </div>
+
+            <p v-if="form.errors.familiares" class="mb-2 text-sm text-red-600">{{ form.errors.familiares }}</p>
+            <p v-if="!form.familiares.length" class="text-sm text-gray-500">Nenhum familiar adicionado.</p>
+
+            <div v-for="(familiar, i) in form.familiares" :key="familiar.id ?? `novo-${i}`"
+                class="grid grid-cols-1 gap-4 border-t border-gray-100 py-4 first-of-type:border-t-0 first-of-type:pt-0 md:grid-cols-6 xl:grid-cols-12">
+                <div class="md:col-span-6 xl:col-span-4">
+                    <label :class="label" :for="`familiar_nome_${i}`">Nome <span class="text-red-600">*</span></label>
+                    <input :id="`familiar_nome_${i}`" v-model="familiar.nome" type="text" autocomplete="off"
+                        :class="input(erroFamiliar(i, 'nome'))" required />
+                    <p v-if="erroFamiliar(i, 'nome')" class="mt-1 text-sm text-red-600">{{ erroFamiliar(i, 'nome') }}</p>
+                </div>
+
+                <div class="md:col-span-3 xl:col-span-3">
+                    <label :class="label" :for="`familiar_tipo_${i}`">Vínculo <span class="text-red-600">*</span></label>
+                    <select :id="`familiar_tipo_${i}`" v-model="familiar.tipo" :class="input(erroFamiliar(i, 'tipo'))" required>
+                        <option value="" disabled>Selecione</option>
+                        <option v-for="tipo in tiposFamiliares" :key="tipo.value" :value="tipo.value">{{ tipo.label }}</option>
+                    </select>
+                    <p v-if="erroFamiliar(i, 'tipo')" class="mt-1 text-sm text-red-600">{{ erroFamiliar(i, 'tipo') }}</p>
+                </div>
+
+                <div class="md:col-span-3 xl:col-span-2">
+                    <label :class="label" :for="`familiar_cpf_${i}`">CPF</label>
+                    <input :id="`familiar_cpf_${i}`" v-model="familiar.cpf" type="text" inputmode="numeric" maxlength="14"
+                        placeholder="000.000.000-00" autocomplete="off"
+                        :class="input(erroFamiliar(i, 'cpf') || avisoCpfFamiliar(i))" />
+                    <p v-if="erroFamiliar(i, 'cpf') || avisoCpfFamiliar(i)" class="mt-1 text-sm text-red-600">
+                        {{ erroFamiliar(i, 'cpf') || avisoCpfFamiliar(i) }}
+                    </p>
+                </div>
+
+                <div class="md:col-span-4 xl:col-span-2">
+                    <label :class="label" :for="`familiar_nascimento_${i}`">Data de nascimento</label>
+                    <input :id="`familiar_nascimento_${i}`" v-model="familiar.data_nascimento" type="date" :max="hoje"
+                        :class="input(erroFamiliar(i, 'data_nascimento'))" />
+                    <p v-if="erroFamiliar(i, 'data_nascimento')" class="mt-1 text-sm text-red-600">
+                        {{ erroFamiliar(i, 'data_nascimento') }}
+                    </p>
+                </div>
+
+                <div class="flex items-end md:col-span-2 xl:col-span-1">
+                    <button type="button" :aria-label="`Remover familiar ${i + 1}`" @click="removerFamiliar(i)"
+                        class="inline-flex h-10 w-full items-center justify-center rounded-lg text-red-600 hover:bg-red-50">
+                        <Trash2 class="h-4 w-4" />
+                    </button>
+                </div>
             </div>
         </section>
 
