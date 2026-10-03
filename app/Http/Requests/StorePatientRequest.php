@@ -11,6 +11,9 @@ use Illuminate\Validation\Rule;
 
 class StorePatientRequest extends FormRequest
 {
+    /** Membros da família permitidos no plano familiar. */
+    public const MAX_FAMILIARES = 3;
+
     public function authorize(): bool
     {
         return true;
@@ -42,6 +45,39 @@ class StorePatientRequest extends FormRequest
                 'string',
                 Rule::in(Planos::codigos()),
             ],
+            // Membros da família: só gravados quando o plano é o familiar.
+            'familiares' => ['nullable', 'array', 'max:'.self::MAX_FAMILIARES],
+            'familiares.*.id' => 'nullable|integer',
+            'familiares.*.nome' => 'required|string|max:255',
+            // CPF do familiar: diferente do beneficiário e dos outros familiares.
+            'familiares.*.cpf' => [
+                'nullable',
+                'string',
+                'max:14',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    $cpf = self::digitos($value);
+
+                    if ($cpf === '') {
+                        return;
+                    }
+
+                    if ($cpf === self::digitos($this->input('cpf'))) {
+                        $fail('O CPF do familiar deve ser diferente do CPF do beneficiário.');
+
+                        return;
+                    }
+
+                    $repetidos = collect($this->input('familiares', []))
+                        ->filter(fn ($f) => self::digitos($f['cpf'] ?? null) === $cpf)
+                        ->count();
+
+                    if ($repetidos > 1) {
+                        $fail('Este CPF já foi informado para outro familiar.');
+                    }
+                },
+            ],
+            'familiares.*.data_nascimento' => ['nullable', 'date', 'before_or_equal:today'],
+            'familiares.*.tipo' => ['required', 'string', Rule::exists('tipos_vinculo_familiar', 'codigo')],
         ];
     }
 
@@ -57,7 +93,18 @@ class StorePatientRequest extends FormRequest
             'data_nascimento.before_or_equal' => 'A data de nascimento não pode estar no futuro.',
             'cod_plano.required' => 'Selecione o plano / telemedicina.',
             'cod_plano.in' => 'Plano inválido.',
+            'familiares.max' => 'O plano familiar permite no máximo '.self::MAX_FAMILIARES.' membros da família.',
+            'familiares.*.nome.required' => 'Informe o nome do familiar.',
+            'familiares.*.tipo.required' => 'Selecione o vínculo do familiar.',
+            'familiares.*.tipo.exists' => 'Vínculo familiar inválido.',
+            'familiares.*.data_nascimento.date' => 'Informe uma data de nascimento válida.',
+            'familiares.*.data_nascimento.before_or_equal' => 'A data de nascimento não pode estar no futuro.',
         ];
+    }
+
+    private static function digitos(mixed $valor): string
+    {
+        return preg_replace('/\D/', '', (string) $valor);
     }
 
     /**

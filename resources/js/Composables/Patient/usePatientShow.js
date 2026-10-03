@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { showToast } from '@/Utils/toast'
-import { formatarEndereco } from './formatadores'
+import { formatarCpf, formatarEndereco } from './formatadores'
 import { toastDaVisita } from './useFlashToast'
 
 /**
@@ -10,6 +10,8 @@ import { toastDaVisita } from './useFlashToast'
 export function usePatientShow(props) {
     const isActive = computed(() => Boolean(props.patient.status))
     const enderecoFormatado = computed(() => formatarEndereco(props.patient.enderecos))
+    const cpfFormatado = computed(() => (props.patient.cpf ? formatarCpf(props.patient.cpf) : null))
+    const sexoLabel = computed(() => ({ masculino: 'Masculino', feminino: 'Feminino' })[props.patient.sexo] ?? null)
 
     // Quem registrou o plano: usuário, ou o motivo de não haver um.
     const registradoPor = computed(() => {
@@ -55,6 +57,8 @@ export function usePatientShow(props) {
     return {
         isActive,
         enderecoFormatado,
+        cpfFormatado,
+        sexoLabel,
         registradoPor,
         criadoPor,
         logToResend,

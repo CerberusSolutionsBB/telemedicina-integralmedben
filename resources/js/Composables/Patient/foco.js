@@ -24,4 +24,11 @@ const CAMPO_DO_ERRO = {
     'enderecos.estado': 'uf',
 }
 
-export const campoDoErro = (chave) => CAMPO_DO_ERRO[chave] ?? chave
+// "familiares.0.nome" → "familiar_nome_0" (data_nascimento → familiar_nascimento_0).
+const campoDoFamiliar = (chave) => {
+    const [, indice, campo] = chave.match(/^familiares\.(\d+)\.(\w+)$/) ?? []
+    if (!campo) return null
+    return `familiar_${campo === 'data_nascimento' ? 'nascimento' : campo}_${indice}`
+}
+
+export const campoDoErro = (chave) => CAMPO_DO_ERRO[chave] ?? campoDoFamiliar(chave) ?? chave

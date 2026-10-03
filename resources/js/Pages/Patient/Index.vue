@@ -5,8 +5,9 @@ import PatientsTable from "@/Components/TablePatients.vue";
 import PatientImportDialog from "@/Components/PatientImportDialog.vue";
 import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal.vue";
 import { Button } from "@/Components/ui/button";
-import { Plus, Download, Upload, FileDown } from "lucide-vue-next";
+import { Plus, Upload, FileDown } from "lucide-vue-next";
 import { usePatientIndex } from "@/Composables/Patient/usePatientIndex";
+import { usePermissoesBeneficiario } from "@/Composables/Patient/usePermissoesBeneficiario";
 
 const props = defineProps({
     patients: {
@@ -24,6 +25,16 @@ const props = defineProps({
     tenantName: {
         type: String,
         default: "",
+    },
+    // Opções dos filtros: { planos: [{ value, label }], usuarios: [{ value, label }] }
+    filtrosOpcoes: {
+        type: Object,
+        default: () => ({ planos: [], usuarios: [] }),
+    },
+    // Totalizadores: { total, ativos, inativos, planos: [{ value, label, total }] }
+    totais: {
+        type: Object,
+        default: null,
     },
     tenantPhoto: {
         type: String,
@@ -50,6 +61,8 @@ const {
     cancelDelete,
     confirmDeletePatient,
 } = usePatientIndex(props);
+
+const { podeCriar } = usePermissoesBeneficiario();
 </script>
 
 <template>
@@ -68,35 +81,25 @@ const {
 
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
-                    <Button size="sm" @click="novoPaciente">
+                    <Button v-if="podeCriar" size="sm" @click="novoPaciente">
                         <Plus class="w-4 h-4 mr-1" />
                         Novo
                     </Button>
-                    <Button size="sm" variant="outline" @click="openImportDialog = true">
+                    <Button v-if="podeCriar" size="sm" variant="outline" @click="openImportDialog = true">
                         <Upload class="w-4 h-4 mr-1" />
                         Importar
                     </Button>
                 </div>
                 <div class="flex items-center gap-2">
-                    <a :href="route('patients.template', 'csv')"
+                    <a v-if="podeCriar" :href="route('patients.template', 'csv')"
                         class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
                         <FileDown class="w-4 h-4" />
                         Template CSV
                     </a>
-                    <a :href="route('patients.template', 'xlsx')"
+                    <a v-if="podeCriar" :href="route('patients.template', 'xlsx')"
                         class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
                         <FileDown class="w-4 h-4" />
                         Template XLSX
-                    </a>
-                    <a :href="route('patients.export', 'csv')"
-                        class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                        <Download class="w-4 h-4" />
-                        CSV
-                    </a>
-                    <a :href="route('patients.export', 'xlsx')"
-                        class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                        <Download class="w-4 h-4" />
-                        XLSX
                     </a>
                 </div>
             </div>
@@ -131,7 +134,7 @@ const {
                 </div>
 
                 <div v-show="activeTab === 'current'" class="p-4">
-                    <PatientsTable :patients="patients" :cartao-paciente-enabled="cartaoPacienteEnabled"
+                    <PatientsTable :patients="patients" :filtros-opcoes="filtrosOpcoes" :totais="totais" :cartao-paciente-enabled="cartaoPacienteEnabled"
                         :cartao-dinamico-enabled="cartaoDinamicoEnabled" @delete-patient="confirmDelete" />
                 </div>
 

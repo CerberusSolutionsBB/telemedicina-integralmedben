@@ -17,9 +17,9 @@ class PatientService
         private ImportPatientsService $importPatientsService,
     ) {}
 
-    public function getPatients(?string $search = null, ?string $status = null, ?string $registro = null)
+    public function getPatients(array $filtros = [])
     {
-        return $this->getPatientsService->execute($search, $status, $registro);
+        return $this->getPatientsService->execute($filtros);
     }
 
     public function getPatientDetails(Patient $patient)
@@ -49,9 +49,9 @@ class PatientService
         $this->deletePatientService->execute($patient);
     }
 
-    public function export(string $format = 'csv'): StreamedResponse
+    public function export(string $format = 'csv', array $filtros = []): StreamedResponse
     {
-        return $this->exportPatientsService->execute($format);
+        return $this->exportPatientsService->execute($format, $filtros);
     }
 
     public function template($questions, string $format = 'csv'): StreamedResponse

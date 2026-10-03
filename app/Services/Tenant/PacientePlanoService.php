@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use OwenIt\Auditing\Contracts\Auditable;
 use OwenIt\Auditing\Events\AuditCustom;
 use Throwable;
 
@@ -36,7 +37,7 @@ class PacientePlanoService
      * Planos habilitados para o tenant com as vagas disponíveis (saldo gravado).
      * Plano com saldo 0 vem como `esgotado` e não pode ser escolhido.
      *
-     * @return array<int, array{value: string, label: string, quantidade: int, emUso: int, disponivel: int, esgotado: bool, siprov: bool}>
+     * @return array<int, array{value: string, label: string, quantidade: int, emUso: int, disponivel: int, esgotado: bool, siprov: bool, familiar: bool}>
      */
     public function opcoes(string $tenantId): array
     {
@@ -55,6 +56,7 @@ class PacientePlanoService
                     'disponivel' => $disponivel,
                     'esgotado' => $disponivel < 1,
                     'siprov' => Planos::integraSiprov($plano->cod_plano),
+                    'familiar' => Planos::familiar($plano->cod_plano),
                 ];
             })
             ->values()
@@ -64,7 +66,7 @@ class PacientePlanoService
     /**
      * Vínculo de telemedicina já existente para o CPF (manual ou via SIPROV).
      *
-     * @return array{cod_plano: ?string, plano_label: string}|null
+     * @return array{cod_plano: ?string, plano_label: string, familiar: bool}|null
      */
     public function vinculoAtual(string $tenantId, ?string $cpf): ?array
     {
@@ -82,7 +84,54 @@ class PacientePlanoService
             'plano_label' => $codigos
                 ? collect($codigos)->map(fn ($c) => $labels[$c] ?? "Plano {$c}")->implode(', ')
                 : ($vinculo->data['plano_label'] ?? 'Plano não identificado'),
+            'familiar' => collect($codigos)->contains(fn ($c) => Planos::familiar($c)),
         ];
+    }
+
+    /**
+     * Nome do plano de vários CPFs de uma vez (listagem de beneficiários), com a
+     * mesma prioridade do vinculoAtual(): plano interno, depois telemedicina.
+     *
+     * @param  array<int, ?string>  $cpfs
+     * @return array<string, string> CPF (só dígitos) => nome do plano
+     */
+    public function planosPorCpf(string $tenantId, array $cpfs): array
+    {
+        $digitos = collect($cpfs)->map(fn ($cpf) => preg_replace('/\D/', '', (string) $cpf))->filter()->unique()->values();
+
+        if ($digitos->isEmpty()) {
+            return [];
+        }
+
+        $labels = collect(Planos::options())->pluck('label', 'value');
+        $nome = fn (array $codigos, ?string $padrao = null) => $codigos
+            ? collect($codigos)->map(fn ($c) => $labels[$c] ?? "Plano {$c}")->implode(', ')
+            : ($padrao ?: 'Plano não identificado');
+
+        $planos = [];
+
+        // Telemedicina (SIPROV): CPF gravado com ou sem máscara; o mais recente vence.
+        $formatos = $digitos->flatMap(fn ($c) => [$c, preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $c)])->all();
+
+        TelemedicinaTenant::where('tenant_id', $tenantId)
+            ->whereIn('data->cpf_cnpj', $formatos)
+            ->orderBy('created_at')
+            ->get()
+            ->each(function (TelemedicinaTenant $vinculo) use (&$planos, $nome) {
+                $cpf = preg_replace('/\D/', '', (string) ($vinculo->data['cpf_cnpj'] ?? ''));
+                $planos[$cpf] = $nome(TenantPlanoCotaService::codigosDoVinculo($vinculo->data ?? []), $vinculo->data['plano_label'] ?? null);
+            });
+
+        // Plano interno tem prioridade (sobrescreve a telemedicina).
+        TenantPlanoBeneficiario::where('tenant_id', $tenantId)
+            ->whereIn('cpf', $digitos)
+            ->orderBy('id')
+            ->get(['cpf', 'cod_plano'])
+            ->each(function (TenantPlanoBeneficiario $vinculo) use (&$planos, $nome) {
+                $planos[$vinculo->cpf] = $nome([(string) $vinculo->cod_plano]);
+            });
+
+        return $planos;
     }
 
     /**
@@ -341,7 +390,7 @@ class PacientePlanoService
      * além de usuário, IP e dispositivo (resolvers), guarda o saldo de cada plano
      * do tenant e o total de pacientes por plano naquele momento.
      */
-    private function auditarRegistro(Model&\OwenIt\Auditing\Contracts\Auditable $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem): void
+    private function auditarRegistro(Model&Auditable $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem): void
     {
         $vinculo->auditEvent = 'registro_plano';
         $vinculo->isCustomEvent = true;

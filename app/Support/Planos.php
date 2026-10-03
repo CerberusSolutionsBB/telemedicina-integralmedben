@@ -47,6 +47,14 @@ class Planos
         return in_array((string) $codigo, array_map('strval', array_values(config('siprov.planos', []))), true);
     }
 
+    /**
+     * Plano familiar? Nele o beneficiário informa os membros da família.
+     */
+    public static function familiar(?string $codigo): bool
+    {
+        return (string) $codigo !== '' && (string) $codigo === (string) config('siprov.planos.clinica_familiar');
+    }
+
     private static function labelSiprov(string $key): string
     {
         return match ($key) {

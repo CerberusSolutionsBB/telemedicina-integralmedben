@@ -37,7 +37,7 @@ class PatientsReportPdfService
     ];
 
     /**
-     * @param  array{search?: ?string, status?: ?string, registro?: ?string}  $filtros
+     * @param  array{search?: ?string, status?: ?string, registro?: ?string, plano?: ?string, criado_por?: ?string}  $filtros
      */
     public function generate(string $tenantId, array $filtros = []): string
     {
@@ -64,7 +64,7 @@ class PatientsReportPdfService
      */
     public function dados(string $tenantId, array $filtros = []): array
     {
-        $pacientes = $this->pacientes($filtros);
+        $pacientes = $this->pacientes($tenantId, $filtros);
         $planoPorCpf = $this->planoPorCpf($tenantId);
         $labels = collect(Planos::options())->pluck('label', 'value');
 
@@ -96,7 +96,7 @@ class PatientsReportPdfService
             'linhas' => $linhas->all(),
             'paginas' => $this->paginar($linhas->all()),
             'resumo' => $this->resumo($tenantId, $linhas, $labels),
-            'filtros' => $this->descreverFiltros($filtros),
+            'filtros' => $this->descreverFiltros($tenantId, $filtros),
             'gerado_por' => auth()->user()?->name,
             'gerado_em' => Formatar::dataHora(now()),
         ];
@@ -122,19 +122,9 @@ class PatientsReportPdfService
      *
      * @return Collection<int, Patient>
      */
-    private function pacientes(array $filtros): Collection
+    private function pacientes(string $tenantId, array $filtros): Collection
     {
-        $search = trim((string) ($filtros['search'] ?? ''));
-        $status = $filtros['status'] ?? null;
-        $registro = $filtros['registro'] ?? null;
-
-        return Patient::query()
-            ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q
-                ->where('nome', 'like', "%{$search}%")
-                ->orWhere('cpf', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")))
-            ->when($status !== null && $status !== '', fn ($query) => $query->where('status', $status))
-            ->when($registro !== null && $registro !== '', fn ($query) => $query->where('status_registro', $registro))
+        return PatientFiltros::aplicar(Patient::query(), $tenantId, $filtros)
             ->orderBy('nome')
             ->get();
     }
@@ -193,7 +183,7 @@ class PatientsReportPdfService
     /**
      * @return array<int, string>
      */
-    private function descreverFiltros(array $filtros): array
+    private function descreverFiltros(string $tenantId, array $filtros): array
     {
         $descricao = [];
 
@@ -205,6 +195,18 @@ class PatientsReportPdfService
         }
         if (filled($filtros['registro'] ?? null)) {
             $descricao[] = 'Origem: '.(self::ORIGENS[$filtros['registro']] ?? $filtros['registro']);
+        }
+
+        if (filled($filtros['plano'] ?? null) || filled($filtros['criado_por'] ?? null)) {
+            $opcoes = PatientFiltros::opcoes($tenantId);
+            $rotulo = fn (string $lista, string $valor) => collect($opcoes[$lista])->firstWhere('value', $valor)['label'] ?? $valor;
+
+            if (filled($filtros['plano'] ?? null)) {
+                $descricao[] = 'Plano: '.$rotulo('planos', (string) $filtros['plano']);
+            }
+            if (filled($filtros['criado_por'] ?? null)) {
+                $descricao[] = 'Criado por: '.$rotulo('usuarios', (string) $filtros['criado_por']);
+            }
         }
 
         return $descricao;

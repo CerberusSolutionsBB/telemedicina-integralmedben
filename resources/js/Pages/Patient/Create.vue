@@ -12,6 +12,7 @@ const props = defineProps({
     tenantName: { type: String, default: "" },
     tenantPhoto: { type: String, default: null },
     planos: { type: Array, default: () => [] },
+    tiposFamiliares: { type: Array, default: () => [] },
 });
 
 const { form, salvar } = usePatientForm();
@@ -34,7 +35,7 @@ const breadcrumbItems = computed(() => [
             <p class="mt-1 text-sm text-gray-500">Cadastre o beneficiário e vincule um plano de telemedicina.</p>
         </div>
 
-        <PatientForm :form="form" :planos="planos" :cancelar-href="route('patients.index')"
+        <PatientForm :form="form" :planos="planos" :tipos-familiares="tiposFamiliares" :cancelar-href="route('patients.index')"
             rotulo-salvar="Cadastrar beneficiário" @submit="salvar" />
     </TenantAdminLayout>
 </template>
