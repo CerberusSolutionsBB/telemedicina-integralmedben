@@ -20,9 +20,17 @@ class PaginaIndexController extends Controller
     {
         $plano = (string) $request->input('plano', '');
         $tenantId = (string) $request->input('tenant', '');
+        $search = trim((string) $request->input('search', ''));
 
         $tenants = Tenant::with('details')
             ->when($tenantId !== '', fn ($q) => $q->whereKey($tenantId))
+            // Busca por ID, domínio ou nome/código da página.
+            ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q
+                ->where('id', 'like', "%{$search}%")
+                ->orWhereHas('domains', fn ($d) => $d->where('domain', 'like', "%{$search}%"))
+                ->orWhereHas('details', fn ($d) => $d
+                    ->where('descricao', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%"))))
             ->when($plano !== '', fn ($q) => $q->whereIn('id', TenantPlano::where('cod_plano', $plano)->select('tenant_id')))
             ->paginate(10)
             ->withQueryString();

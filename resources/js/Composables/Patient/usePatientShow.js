@@ -2,7 +2,6 @@ import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { showToast } from '@/Utils/toast'
 import { formatarCpf, formatarEndereco } from './formatadores'
-import { toastDaVisita } from './useFlashToast'
 
 /**
  * Detalhes do beneficiário: status, endereço e reenvio de SMS.
@@ -41,7 +40,6 @@ export function usePatientShow(props) {
         if (!logToResend.value) return
         router.post(route('patients.sms-logs.resend', [props.patient.id, logToResend.value.id]), {}, {
             preserveScroll: true,
-            onSuccess: toastDaVisita,
             onError: () => showToast('Erro ao reenviar SMS.', 'error'),
         })
     }
@@ -50,7 +48,6 @@ export function usePatientShow(props) {
         router.patch(route('patients.toggle-status', props.patient.id), {}, {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: toastDaVisita,
         })
     }
 

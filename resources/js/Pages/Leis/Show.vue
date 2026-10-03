@@ -16,7 +16,6 @@ import {
     Clock,
     CheckCircle2,
     XCircle,
-    AlertCircle,
     Trash2,
     ArchiveRestore,
     Copy,
@@ -28,7 +27,6 @@ import {
 
 const props = defineProps({
     lei: Object,
-    flash: Object,
 });
 
 const breadcrumbs = computed(() => [
@@ -120,39 +118,6 @@ const copyToClipboard = (text) => {
 
     <Head :title="lei.title" />
     <CentralAdminLayout>
-        <!-- Flash Messages Animados -->
-        <Transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 -translate-y-2"
-            enter-to-class="opacity-100 translate-y-0" leave-active-class="transition ease-in duration-200"
-            leave-from-class="opacity-100" leave-to-class="opacity-0 -translate-y-2">
-            <div v-if="flash?.success" class="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 shadow-sm">
-                <div class="flex items-start gap-3">
-                    <div class="p-1 bg-green-100 rounded-full">
-                        <CheckCircle2 class="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                        <h3 class="font-semibold text-green-900">Sucesso!</h3>
-                        <p class="text-sm text-green-800">{{ flash.success }}</p>
-                    </div>
-                </div>
-            </div>
-        </Transition>
-
-        <Transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 -translate-y-2"
-            enter-to-class="opacity-100 translate-y-0" leave-active-class="transition ease-in duration-200"
-            leave-from-class="opacity-100" leave-to-class="opacity-0 -translate-y-2">
-            <div v-if="flash?.error" class="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm">
-                <div class="flex items-start gap-3">
-                    <div class="p-1 bg-red-100 rounded-full">
-                        <AlertCircle class="w-5 h-5 text-red-600" />
-                    </div>
-                    <div>
-                        <h3 class="font-semibold text-red-900">Erro</h3>
-                        <p class="text-sm text-red-800">{{ flash.error }}</p>
-                    </div>
-                </div>
-            </div>
-        </Transition>
-
         <!-- Header Moderno -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div class="space-y-1">

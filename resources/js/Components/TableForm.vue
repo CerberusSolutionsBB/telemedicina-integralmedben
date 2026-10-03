@@ -265,14 +265,13 @@ const confirmDelete = () => {
         onSuccess: () => {
             // O backend pode bloquear a exclusão (ex.: formulário com respostas)
             // retornando back()->with('error', ...), que o Inertia trata como
-            // navegação bem-sucedida. Por isso a flash precisa ser checada aqui.
+            // navegação bem-sucedida. A mensagem (flash) é exibida pelo layout.
             const flash = usePage().props.flash;
             if (flash?.error) {
-                showToast(flash.error, 'error');
                 deleteModal.value.isProcessing = false;
                 return;
             }
-            showToast(flash?.success || 'Formulário excluído com sucesso!', 'success');
+            if (!flash?.success) showToast('Formulário excluído com sucesso!', 'success');
             closeDeleteModal();
         },
         onError: (errors) => {

@@ -12,7 +12,7 @@ const props = defineProps({
 });
 
 const page = usePage();
-const successMessage = ref(page.props.flash?.success);
+const successMessage = ref(null);
 
 const form = useForm({
     logo: null,
