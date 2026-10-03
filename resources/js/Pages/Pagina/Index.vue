@@ -224,14 +224,6 @@ const beneficiariosNoPlano = (item, codPlano) =>
                                 <tr>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
-                                        ID
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
-                                        Autor
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Tenant
                                     </th>
                                     <th
@@ -263,27 +255,6 @@ const beneficiariosNoPlano = (item, codPlano) =>
                             <tbody class="divide-y divide-gray-200 bg-white">
                                 <tr v-for="item in tenantList" :key="item.id"
                                     class="hover:bg-gray-50 transition-colors group">
-                                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900 font-mono">
-                                        <div v-if="item.details.length > 0">
-                                            <div v-for="detail in item.details" :key="detail.id"
-                                                class="text-xs text-gray-500">
-                                                {{ detail.code }}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900 font-mono">
-                                        <div v-if="item.details.length > 0">
-                                            <div v-for="detail in item.details" :key="detail.id"
-                                                class="text-xs text-gray-500">
-                                                <div v-if="detail.user">
-                                                    {{ detail.user.name }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div v-else>
-                                            - - -
-                                        </div>
-                                    </td>
                                     <td class="px-6 py-4 text-sm">
                                         <DetailCard v-for="detail in item.details" :key="detail.id" :detail="detail" />
                                     </td>

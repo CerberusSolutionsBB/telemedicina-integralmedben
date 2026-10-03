@@ -21,7 +21,7 @@ class PaginaIndexController extends Controller
         $plano = (string) $request->input('plano', '');
         $tenantId = (string) $request->input('tenant', '');
 
-        $tenants = Tenant::with(['details', 'details.user'])
+        $tenants = Tenant::with('details')
             ->when($tenantId !== '', fn ($q) => $q->whereKey($tenantId))
             ->when($plano !== '', fn ($q) => $q->whereIn('id', TenantPlano::where('cod_plano', $plano)->select('tenant_id')))
             ->paginate(10)
