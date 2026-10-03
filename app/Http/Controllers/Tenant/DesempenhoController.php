@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DesempenhoRequest;
 use App\Models\Desempenho;
 use App\Services\Tenant\DesempenhoService;
+use App\Services\Tenant\ProducaoUsuariosService;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,6 +16,7 @@ class DesempenhoController extends Controller
 {
     public function __construct(
         private readonly DesempenhoService $desempenhoService,
+        private readonly ProducaoUsuariosService $producao,
     ) {}
 
     public function index(): Response
@@ -30,6 +32,7 @@ class DesempenhoController extends Controller
         return Inertia::render('Desempenho/Index', [
             'desempenhos' => $desempenhos,
             'statusLabels' => DesempenhoService::STATUS,
+            'relatorioOpcoes' => $this->producao->opcoes(tenant('id')),
         ]);
     }
 
@@ -37,7 +40,7 @@ class DesempenhoController extends Controller
     {
         return Inertia::render('Desempenho/Create', [
             'breadcrumbs' => [
-                ['label' => 'Desempenho', 'href' => route('desempenho.index')],
+                ['label' => 'Relatório', 'href' => route('desempenho.index')],
                 ['label' => 'Nova meta', 'href' => null],
             ],
             ...$this->opcoes(),
@@ -62,7 +65,7 @@ class DesempenhoController extends Controller
 
         return Inertia::render('Desempenho/Show', [
             'breadcrumbs' => [
-                ['label' => 'Desempenho', 'href' => route('desempenho.index')],
+                ['label' => 'Relatório', 'href' => route('desempenho.index')],
                 ['label' => $desempenho->titulo, 'href' => null],
             ],
             'desempenho' => [...$this->resumo($desempenho), 'criador' => $desempenho->criador?->name],
@@ -77,7 +80,7 @@ class DesempenhoController extends Controller
 
         return Inertia::render('Desempenho/Edit', [
             'breadcrumbs' => [
-                ['label' => 'Desempenho', 'href' => route('desempenho.index')],
+                ['label' => 'Relatório', 'href' => route('desempenho.index')],
                 ['label' => $desempenho->titulo, 'href' => route('desempenho.show', $desempenho)],
                 ['label' => 'Editar', 'href' => null],
             ],

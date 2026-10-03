@@ -9,6 +9,7 @@ use App\Http\Controllers\Tenant\Configuracao\ConfiguracaoController;
 use App\Http\Controllers\Tenant\DesempenhoController;
 use App\Http\Controllers\Tenant\Form\FormIndexController;
 use App\Http\Controllers\Tenant\Form\FormShowController;
+use App\Http\Controllers\Tenant\Relatorio\RelatorioProducaoController;
 use App\Http\Controllers\Tenant\TenantAuthController;
 use App\Http\Controllers\Tenant\UserController;
 use Illuminate\Support\Facades\Auth;
@@ -67,6 +68,11 @@ Route::middleware([
 
         // Metas de desempenho dos usuários (acesso: qualquer usuário logado).
         Route::resource('desempenho', DesempenhoController::class)->parameters(['desempenho' => 'desempenho']);
+
+        // Relatórios da tela Relatório (produção por usuário).
+        Route::get('/relatorios/producao/{formato}', RelatorioProducaoController::class)
+            ->whereIn('formato', ['pdf', 'xlsx'])
+            ->name('relatorios.producao');
 
         Route::prefix('meus-formularios')->name('meus-formularios.')->group(function () {
             Route::get('/', FormIndexController::class)->name('index');
