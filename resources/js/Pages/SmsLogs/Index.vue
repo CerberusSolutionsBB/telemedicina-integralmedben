@@ -76,12 +76,6 @@ const resendLog = () => {
   router.post(route("admin.sms-logs.resend", logToResend.value.id), {}, {
     preserveScroll: true,
     preserveState: true,
-    onSuccess: (visitedPage) => {
-      const successMsg = visitedPage.props.flash?.success;
-      const errorMsg = visitedPage.props.flash?.error;
-      if (successMsg) showToast(successMsg, "success");
-      else if (errorMsg) showToast(errorMsg, "error");
-    },
     onError: () => showToast("Erro ao reenviar SMS.", "error"),
   });
 };

@@ -262,14 +262,11 @@ const deleteForm = async () => {
         await router.delete(route('forms.destroy', props.form.id), {
             preserveScroll: true,
             onSuccess: () => {
-                // back()->with('error', ...) do backend é uma navegação bem-sucedida
-                // para o Inertia, então a flash precisa ser checada aqui.
+                // Sucesso/erro do backend (flash) são exibidos pelo layout.
                 const flash = usePage().props.flash;
-                if (flash?.error) {
-                    showToast(flash.error, 'error');
-                    return;
+                if (!flash?.success && !flash?.error) {
+                    showToast('Formulário excluído com sucesso!', 'success');
                 }
-                showToast(flash?.success || 'Formulário excluído com sucesso!', 'success');
             },
             onError: (errors) => {
                 const message = errors?.message || 'Erro ao excluir formulário. Tente novamente.';

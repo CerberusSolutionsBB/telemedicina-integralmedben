@@ -1,11 +1,10 @@
 <script setup>
-import { computed, watch } from "vue";
-import { Head, Link, usePage } from "@inertiajs/vue3";
+import { computed } from "vue";
+import { Head, Link } from "@inertiajs/vue3";
 import { Home, KeyRound, ShieldCheck, Users } from "lucide-vue-next";
 import Breadcrumb from "@/Components/Breadcrumb.vue";
 import CentralAdminLayout from "@/Layouts/CentralAdminLayout.vue";
 import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
-import { showToast } from "@/Utils/toast";
 import { useAcl } from "./useAcl";
 
 const props = defineProps({
@@ -15,7 +14,6 @@ const props = defineProps({
     breadcrumbs: { type: Array, default: () => [] },
 });
 
-const page = usePage();
 const { acl, aclRoute, can } = useAcl();
 
 const isTenant = computed(() => acl.value.context === "tenant");
@@ -42,16 +40,6 @@ const breadcrumbItems = computed(() => [
 ]);
 
 const isActive = (tab) => route().current(`${acl.value.routePrefix}${tab.match}`);
-
-// Mensagens de retorno do backend (with('success') / with('error'))
-watch(
-    () => page.props.flash,
-    (flash) => {
-        if (flash?.success) showToast(flash.success, "success");
-        if (flash?.error) showToast(flash.error, "error");
-    },
-    { immediate: true }
-);
 </script>
 
 <template>

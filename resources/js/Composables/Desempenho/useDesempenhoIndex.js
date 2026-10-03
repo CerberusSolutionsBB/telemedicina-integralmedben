@@ -1,6 +1,5 @@
 import { computed, reactive, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { useFlashToast } from '@/Composables/Patient/useFlashToast'
 
 const normalizar = (texto) => String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
@@ -11,8 +10,6 @@ const ABAS = ['todas', 'em_andamento', 'atingida', 'nao_iniciada', 'encerrada']
  * Listagem de metas: abas por status, busca/filtros e exclusão com confirmação.
  */
 export function useDesempenhoIndex(props) {
-    useFlashToast()
-
     const aba = ref('todas')
     const filtros = reactive({ busca: '', tipo: '', plano: '' })
 

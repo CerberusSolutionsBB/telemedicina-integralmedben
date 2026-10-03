@@ -1,14 +1,11 @@
 import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { showToast } from '@/Utils/toast'
-import { useFlashToast } from './useFlashToast'
 
 /**
  * Listagem de beneficiários: abas, importação e exclusão com confirmação.
  */
 export function usePatientIndex(props) {
-    useFlashToast()
-
     const activeTab = ref('current')
     const openImportDialog = ref(false)
 

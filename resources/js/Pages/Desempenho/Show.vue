@@ -3,7 +3,6 @@ import { computed } from "vue";
 import { Head, Link } from "@inertiajs/vue3";
 import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import Breadcrumb from "@/Components/Breadcrumb.vue";
-import { useFlashToast } from "@/Composables/Patient/useFlashToast";
 import { BARRA_CLASSES, STATUS_CLASSES } from "@/Composables/Desempenho/status";
 import { Check, Home, Pencil } from "lucide-vue-next";
 
@@ -13,8 +12,6 @@ const props = defineProps({
     progresso: { type: Object, required: true },
     statusLabels: { type: Object, default: () => ({}) },
 });
-
-useFlashToast();
 
 const coletiva = computed(() => props.desempenho.tipo_meta === "coletiva");
 
