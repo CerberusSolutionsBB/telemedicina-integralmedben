@@ -296,24 +296,25 @@ const beneficiariosNoPlano = (item, codPlano) =>
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
-                                        <div class="flex justify-end gap-1">
+                                        <div class="flex items-center justify-end gap-1">
                                             <button @click="navigateTo('pagina.show', item.id)"
                                                 class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                                                 title="Visualizar">
                                                 <Building2 class="w-4 h-4" />
                                             </button>
-                                            <butto @click="navigateTo('pagina.users.index', item.id)"
+                                            <button @click="navigateTo('pagina.users.index', item.id)"
                                                 class="p-2 cursor-pointer text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
                                                 title="Editar">
                                                 <User class="w-4 h-4" />
-                                            </butto>
-                                            <button @click="openStatusModal(item)" :class="[
-                                                'p-2 rounded-lg transition-all',
+                                            </button>
+                                            <button type="button" @click="openStatusModal(item)" :class="[
+                                                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
                                                 item.status
-                                                    ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
-                                                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                                            ]" :title="item.status ? 'Desativar' : 'Ativar'">
+                                                    ? 'border-red-200 text-red-600 hover:bg-red-50'
+                                                    : 'border-green-200 text-green-700 hover:bg-green-50'
+                                            ]" :title="item.status ? 'Desativar parceiro' : 'Ativar parceiro'">
                                                 <Power class="w-4 h-4" />
+                                                {{ item.status ? 'Desativar' : 'Ativar' }}
                                             </button>
                                             <!-- <button v-if="can.edit" @click="navigateTo('pagina.edit', item.id)"
                                                 class="p-2 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
