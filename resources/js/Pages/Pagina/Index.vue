@@ -1,7 +1,8 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User, Power } from 'lucide-vue-next';
+import { computed } from 'vue';
+import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User, Power, PowerOff } from 'lucide-vue-next';
 import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import PomponeteLink from '@/Components/PomponeteLink.vue';
@@ -23,7 +24,22 @@ const props = defineProps({
     },
     filters: {
         type: Object,
-        default: () => ({ search: '' })
+        default: () => ({ search: '', plano: '' })
+    },
+    // Catálogo de planos para o filtro: [{ value, label }]
+    planos: {
+        type: Array,
+        default: () => []
+    },
+    // Parceiros para o filtro: [{ value, label }]
+    tenantsOpcoes: {
+        type: Array,
+        default: () => []
+    },
+    // Cards: { contratos, total, ativos, inativos, planos: [{ value, label, parceiros, vagas, beneficiarios }] }
+    totais: {
+        type: Object,
+        default: null
     }
 });
 
@@ -34,6 +50,8 @@ const {
     flashMessage,
     flashType,
     search,
+    planoFilter,
+    tenantFilter,
     searchInput,
     deleteModal,
     statusModal,
@@ -44,6 +62,7 @@ const {
     hasSearch,
     hasActiveFilters,
     clearSearch,
+    filtrarPlano,
     openDeleteModal,
     closeDeleteModal,
     confirmDelete,
@@ -60,6 +79,21 @@ const {
     getInitials,
     navigateTo,
 } = usePaginaIndex(props);
+
+const cardsResumo = computed(() => [
+    { label: 'Planos contratados', total: props.totais?.contratos ?? 0, cor: 'text-cyan-700' },
+    { label: 'Beneficiários cadastrados', total: props.totais?.total ?? 0, cor: 'text-gray-900' },
+    { label: 'Ativos', total: props.totais?.ativos ?? 0, cor: 'text-green-700' },
+    { label: 'Inativos', total: props.totais?.inativos ?? 0, cor: 'text-red-700' },
+]);
+
+const cardPlano = (ativo) => [
+    'rounded-xl border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500',
+    ativo ? 'border-cyan-300 bg-cyan-50' : 'border-gray-200 bg-white hover:bg-gray-50',
+];
+
+const beneficiariosNoPlano = (item, codPlano) =>
+    item.beneficiarios?.planos?.find(p => p.value === codPlano)?.total ?? 0;
 </script>
 <template>
     <CentralAdminLayout>
@@ -67,11 +101,8 @@ const {
 
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 uppercase tracking-wide">
-                    Página de Parceiros
+                    Página de Parceiros ({{ props.tenantsOpcoes.length }})
                 </h2>
-                <p class="text-sm text-gray-500 mt-1">
-                    {{ hasTenants ? `${props.tenants.total} tenant(s) cadastrado(s)` : 'Nenhum tenant cadastrado' }}
-                </p>
             </div>
             <div v-if="canManage"
                 class="flex items-center gap-2 text-xs text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full">
@@ -87,6 +118,32 @@ const {
                 {{ flashMessage }}
             </div>
             <div class="mx-auto  space-y-4">
+                <!-- Totalizadores (por plano: clique para filtrar) -->
+                <div v-if="props.totais" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div v-for="item in cardsResumo" :key="item.label"
+                            class="rounded-xl border border-gray-200 bg-white p-4">
+                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">{{ item.label }}</p>
+                            <p class="mt-1 text-2xl font-bold" :class="item.cor">{{ item.total }}</p>
+                        </div>
+                    </div>
+                    <div v-if="props.totais.planos.length">
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Beneficiários por plano</p>
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                            <button v-for="plano in props.totais.planos" :key="plano.value" type="button"
+                                :aria-pressed="planoFilter === plano.value" :class="cardPlano(planoFilter === plano.value)"
+                                @click="filtrarPlano(plano.value)">
+                                <p class="truncate text-xs font-medium uppercase tracking-wide text-gray-500" :title="plano.label">
+                                    {{ plano.label }}
+                                </p>
+                                <p class="mt-1 text-2xl font-bold text-cyan-700">{{ plano.beneficiarios }}</p>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {{ plano.parceiros }} parceiro(s) · {{ plano.vagas }} vaga(s)
+                                </p>
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div
                     class="flex flex-col lg:flex-row gap-3 justify-between items-start lg:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
@@ -104,6 +161,20 @@ const {
                                 <X class="h-4 w-4" />
                             </button>
                         </div>
+                        <select v-model="tenantFilter" aria-label="Filtrar por parceiro"
+                            class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
+                            <option value="">Todos os parceiros</option>
+                            <option v-for="tenant in props.tenantsOpcoes" :key="tenant.value" :value="tenant.value">
+                                {{ tenant.label }}
+                            </option>
+                        </select>
+                        <select v-model="planoFilter" aria-label="Filtrar por plano contratado"
+                            class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
+                            <option value="">Todos os planos</option>
+                            <option v-for="plano in props.planos" :key="plano.value" :value="plano.value">
+                                {{ plano.label }}
+                            </option>
+                        </select>
                         <!-- <button v-if="hasActiveFilters" @click="clearSearch"
                             class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-cyan-700 bg-cyan-100 rounded-full hover:bg-cyan-200 transition-colors">
                             <X class="w-3 h-3" />
@@ -150,14 +221,6 @@ const {
                                 <tr>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
-                                        ID
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
-                                        Autor
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Tenant
                                     </th>
                                     <th
@@ -167,6 +230,14 @@ const {
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Criado em
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Planos contratados
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Beneficiários
                                     </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
@@ -181,27 +252,6 @@ const {
                             <tbody class="divide-y divide-gray-200 bg-white">
                                 <tr v-for="item in tenantList" :key="item.id"
                                     class="hover:bg-gray-50 transition-colors group">
-                                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900 font-mono">
-                                        <div v-if="item.details.length > 0">
-                                            <div v-for="detail in item.details" :key="detail.id"
-                                                class="text-xs text-gray-500">
-                                                {{ detail.code }}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900 font-mono">
-                                        <div v-if="item.details.length > 0">
-                                            <div v-for="detail in item.details" :key="detail.id"
-                                                class="text-xs text-gray-500">
-                                                <div v-if="detail.user">
-                                                    {{ detail.user.name }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div v-else>
-                                            - - -
-                                        </div>
-                                    </td>
                                     <td class="px-6 py-4 text-sm">
                                         <DetailCard v-for="detail in item.details" :key="detail.id" :detail="detail" />
                                     </td>
@@ -214,6 +264,27 @@ const {
                                         <time :title="formatDateTime(item.created_at)">
                                             {{ formatDate(item.created_at) }}
                                         </time>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        <div v-if="item.planos_contratados?.length" class="space-y-1">
+                                            <div v-for="plano in item.planos_contratados" :key="plano.value"
+                                                class="flex items-center justify-between gap-3 text-xs">
+                                                <span class="text-gray-700">{{ plano.label }}</span>
+                                                <span class="text-gray-500 whitespace-nowrap"
+                                                    title="Beneficiários no plano / contratados">
+                                                    {{ beneficiariosNoPlano(item, plano.value) }} / {{ plano.quantidade }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span v-else class="text-xs text-gray-400">Nenhum plano</span>
+                                    </td>
+                                    <td class="whitespace-nowrap px-6 py-4 text-xs">
+                                        <div v-if="item.beneficiarios" class="space-y-0.5">
+                                            <div class="text-gray-900 font-semibold">{{ item.beneficiarios.total }} cadastrados</div>
+                                            <div class="text-green-700">{{ item.beneficiarios.ativos }} ativos</div>
+                                            <div class="text-red-700">{{ item.beneficiarios.inativos }} inativos</div>
+                                        </div>
+                                        <span v-else class="text-gray-400">Indisponível</span>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-sm">
                                         <span
@@ -228,18 +299,19 @@ const {
                                                 title="Visualizar">
                                                 <Building2 class="w-4 h-4" />
                                             </button>
-                                            <butto @click="navigateTo('pagina.users.index', item.id)"
+                                            <button @click="navigateTo('pagina.users.index', item.id)"
                                                 class="p-2 cursor-pointer text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"
                                                 title="Editar">
                                                 <User class="w-4 h-4" />
-                                            </butto>
+                                            </button>
                                             <button @click="openStatusModal(item)" :class="[
                                                 'p-2 rounded-lg transition-all',
                                                 item.status
-                                                    ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
-                                                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                                                    ? 'text-orange-600 hover:text-orange-800 hover:bg-orange-50'
+                                                    : 'text-green-600 hover:text-green-800 hover:bg-green-50'
                                             ]" :title="item.status ? 'Desativar' : 'Ativar'">
-                                                <Power class="w-4 h-4" />
+                                                <PowerOff v-if="item.status" class="w-4 h-4" />
+                                                <Power v-else class="w-4 h-4" />
                                             </button>
                                             <!-- <button v-if="can.edit" @click="navigateTo('pagina.edit', item.id)"
                                                 class="p-2 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-all"

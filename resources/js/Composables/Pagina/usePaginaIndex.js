@@ -21,6 +21,8 @@ export function usePaginaIndex(props) {
     })
 
     const search = ref(props.filters.search || '')
+    const planoFilter = ref(props.filters.plano || '')
+    const tenantFilter = ref(props.filters.tenant || '')
     const searchInput = ref(null)
     let searchTimer = null
 
@@ -37,30 +39,37 @@ export function usePaginaIndex(props) {
     )
     const hasTenants = computed(() => tenantList.value.length > 0)
     const hasSearch = computed(() => search.value.length > 0)
-    const hasActiveFilters = computed(() => hasSearch.value)
+    const hasActiveFilters = computed(() => hasSearch.value || planoFilter.value !== '' || tenantFilter.value !== '')
 
     const performSearch = () => {
         clearTimeout(searchTimer)
         searchTimer = setTimeout(() => {
             const params = {}
             if (search.value.trim()) params.search = search.value.trim()
+            if (planoFilter.value) params.plano = planoFilter.value
+            if (tenantFilter.value) params.tenant = tenantFilter.value
             router.get(route('pagina.index'), params, {
                 preserveState: true,
                 preserveScroll: true,
                 replace: true,
-                only: ['tenants', 'filters'],
+                only: ['tenants', 'filters', 'totais'],
             })
         }, 300)
     }
 
-    watch(search, (newVal, oldVal) => {
-        if (newVal !== oldVal) performSearch()
-    })
+    watch([search, planoFilter, tenantFilter], () => performSearch())
 
     const clearSearch = () => {
         search.value = ''
+        planoFilter.value = ''
+        tenantFilter.value = ''
         searchInput.value?.focus()
         performSearch()
+    }
+
+    // Card de plano: clique filtra; clicar de novo limpa.
+    const filtrarPlano = (valor) => {
+        planoFilter.value = planoFilter.value === valor ? '' : valor
     }
 
     const openDeleteModal = (item) => {
@@ -196,6 +205,8 @@ export function usePaginaIndex(props) {
         flashMessage,
         flashType,
         search,
+        planoFilter,
+        tenantFilter,
         searchInput,
         deleteModal,
         statusModal,
@@ -206,6 +217,7 @@ export function usePaginaIndex(props) {
         hasSearch,
         hasActiveFilters,
         clearSearch,
+        filtrarPlano,
         openDeleteModal,
         closeDeleteModal,
         confirmDelete,
