@@ -23,7 +23,12 @@ const props = defineProps({
     },
     filters: {
         type: Object,
-        default: () => ({ search: '' })
+        default: () => ({ search: '', plano: '' })
+    },
+    // Catálogo de planos para o filtro: [{ value, label }]
+    planos: {
+        type: Array,
+        default: () => []
     }
 });
 
@@ -34,6 +39,7 @@ const {
     flashMessage,
     flashType,
     search,
+    planoFilter,
     searchInput,
     deleteModal,
     statusModal,
@@ -60,6 +66,9 @@ const {
     getInitials,
     navigateTo,
 } = usePaginaIndex(props);
+
+const beneficiariosNoPlano = (item, codPlano) =>
+    item.beneficiarios?.planos?.find(p => p.value === codPlano)?.total ?? 0;
 </script>
 <template>
     <CentralAdminLayout>
@@ -104,6 +113,13 @@ const {
                                 <X class="h-4 w-4" />
                             </button>
                         </div>
+                        <select v-model="planoFilter" aria-label="Filtrar por plano contratado"
+                            class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
+                            <option value="">Todos os planos</option>
+                            <option v-for="plano in props.planos" :key="plano.value" :value="plano.value">
+                                {{ plano.label }}
+                            </option>
+                        </select>
                         <!-- <button v-if="hasActiveFilters" @click="clearSearch"
                             class="flex items-center gap-1 px-3 py-1 text-xs font-medium text-cyan-700 bg-cyan-100 rounded-full hover:bg-cyan-200 transition-colors">
                             <X class="w-3 h-3" />
@@ -170,6 +186,14 @@ const {
                                     </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Planos contratados
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
+                                        Beneficiários
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500 tracking-wider">
                                         Status
                                     </th>
                                     <th
@@ -214,6 +238,27 @@ const {
                                         <time :title="formatDateTime(item.created_at)">
                                             {{ formatDate(item.created_at) }}
                                         </time>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        <div v-if="item.planos_contratados?.length" class="space-y-1">
+                                            <div v-for="plano in item.planos_contratados" :key="plano.value"
+                                                class="flex items-center justify-between gap-3 text-xs">
+                                                <span class="text-gray-700">{{ plano.label }}</span>
+                                                <span class="text-gray-500 whitespace-nowrap"
+                                                    title="Beneficiários no plano / contratados">
+                                                    {{ beneficiariosNoPlano(item, plano.value) }} / {{ plano.quantidade }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span v-else class="text-xs text-gray-400">Nenhum plano</span>
+                                    </td>
+                                    <td class="whitespace-nowrap px-6 py-4 text-xs">
+                                        <div v-if="item.beneficiarios" class="space-y-0.5">
+                                            <div class="text-gray-900 font-semibold">{{ item.beneficiarios.total }} cadastrados</div>
+                                            <div class="text-green-700">{{ item.beneficiarios.ativos }} ativos</div>
+                                            <div class="text-red-700">{{ item.beneficiarios.inativos }} inativos</div>
+                                        </div>
+                                        <span v-else class="text-gray-400">Indisponível</span>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-sm">
                                         <span
