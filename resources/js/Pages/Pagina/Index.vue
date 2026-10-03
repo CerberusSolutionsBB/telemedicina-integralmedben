@@ -31,6 +31,11 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    // Parceiros para o filtro: [{ value, label }]
+    tenantsOpcoes: {
+        type: Array,
+        default: () => []
+    },
     // Cards: { contratos, total, ativos, inativos, planos: [{ value, label, parceiros, vagas, beneficiarios }] }
     totais: {
         type: Object,
@@ -46,6 +51,7 @@ const {
     flashType,
     search,
     planoFilter,
+    tenantFilter,
     searchInput,
     deleteModal,
     statusModal,
@@ -158,6 +164,13 @@ const beneficiariosNoPlano = (item, codPlano) =>
                                 <X class="h-4 w-4" />
                             </button>
                         </div>
+                        <select v-model="tenantFilter" aria-label="Filtrar por parceiro"
+                            class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
+                            <option value="">Todos os parceiros</option>
+                            <option v-for="tenant in props.tenantsOpcoes" :key="tenant.value" :value="tenant.value">
+                                {{ tenant.label }}
+                            </option>
+                        </select>
                         <select v-model="planoFilter" aria-label="Filtrar por plano contratado"
                             class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
                             <option value="">Todos os planos</option>

@@ -19,8 +19,10 @@ class PaginaIndexController extends Controller
     public function __invoke(Request $request): Response
     {
         $plano = (string) $request->input('plano', '');
+        $tenantId = (string) $request->input('tenant', '');
 
         $tenants = Tenant::with(['details', 'details.user'])
+            ->when($tenantId !== '', fn ($q) => $q->whereKey($tenantId))
             ->when($plano !== '', fn ($q) => $q->whereIn('id', TenantPlano::where('cod_plano', $plano)->select('tenant_id')))
             ->paginate(10)
             ->withQueryString();
@@ -30,7 +32,8 @@ class PaginaIndexController extends Controller
         $contratados = $contratos->groupBy('tenant_id');
 
         // Beneficiários de todos os parceiros (uma consulta por banco de tenant).
-        $beneficiarios = Tenant::all()->mapWithKeys(fn (Tenant $t) => [$t->id => $this->beneficiarios($t)]);
+        $todos = Tenant::with('details')->get();
+        $beneficiarios = $todos->mapWithKeys(fn (Tenant $t) => [$t->id => $this->beneficiarios($t)]);
 
         $tenants->getCollection()->each(function (Tenant $tenant) use ($labels, $contratados, $beneficiarios) {
             $tenant->setAttribute('planos_contratados', ($contratados[$tenant->id] ?? collect())
@@ -45,20 +48,30 @@ class PaginaIndexController extends Controller
 
         return Inertia::render('Pagina/Index', [
             'tenants' => $tenants,
-            'filters' => $request->only(['search', 'plano']),
+            'filters' => $request->only(['search', 'plano', 'tenant']),
+            'tenantsOpcoes' => $todos
+                ->map(fn (Tenant $t) => ['value' => $t->id, 'label' => $t->details->first()?->descricao ?: $t->details->first()?->sigla ?: $t->id])
+                ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values()
+                ->all(),
             'planos' => collect(Planos::options())->map(fn ($p) => ['value' => $p['value'], 'label' => $p['label']])->all(),
-            'totais' => $this->totais($plano, $contratos, $beneficiarios),
+            'totais' => $this->totais($tenantId, $plano, $contratos, $beneficiarios),
         ]);
     }
 
     /**
      * Cards: status dos beneficiários e contratos dos parceiros do filtro; por plano
-     * considera todos os parceiros (o card também é o filtro de plano).
+     * respeita só o filtro de parceiro (o card também é o filtro de plano).
      *
      * @return array{contratos: int, total: int, ativos: int, inativos: int, planos: array<int, array{value: string, label: string, parceiros: int, vagas: int, beneficiarios: int}>}
      */
-    private function totais(string $plano, Collection $contratos, Collection $beneficiarios): array
+    private function totais(string $tenantId, string $plano, Collection $contratos, Collection $beneficiarios): array
     {
+        if ($tenantId !== '') {
+            $contratos = $contratos->where('tenant_id', $tenantId);
+            $beneficiarios = $beneficiarios->only([$tenantId]);
+        }
+
         $doFiltro = $plano === ''
             ? $beneficiarios->keys()
             : $contratos->where('cod_plano', $plano)->pluck('tenant_id')->unique();
