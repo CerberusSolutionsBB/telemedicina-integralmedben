@@ -101,11 +101,8 @@ const beneficiariosNoPlano = (item, codPlano) =>
 
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 uppercase tracking-wide">
-                    Página de Parceiros
+                    Página de Parceiros ({{ props.tenantsOpcoes.length }})
                 </h2>
-                <p class="text-sm text-gray-500 mt-1">
-                    {{ hasTenants ? `${props.tenants.total} tenant(s) cadastrado(s)` : 'Nenhum tenant cadastrado' }}
-                </p>
             </div>
             <div v-if="canManage"
                 class="flex items-center gap-2 text-xs text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full">
