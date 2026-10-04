@@ -17,7 +17,8 @@ class AuthProfileController extends Controller
     public function edit(Request $request): Response
     {
         return Inertia::render('Auth/Profile', [
-            'status' => session('status'),
+            // Mesma página nos dois painéis: define o layout e as rotas de volta.
+            'isTenant' => tenancy()->initialized,
         ]);
     }
 

@@ -33,17 +33,14 @@ const page = usePage();
 const auth = computed(() => page.props.authUser);
 const user = computed(() => page.props.authUser?.user);
 const can = computed(() => page.props.authUser?.can);
-const isTenant = computed(() => {
-    const host = window.location.hostname;
-    return host !== 'localhost' && host !== '127.0.0.1';
+// Vem do servidor (tenancy inicializada): o domínio central em produção não é
+// localhost, então adivinhar pelo endereço abria o layout do parceiro no central.
+const props = defineProps({
+    isTenant: { type: Boolean, default: false },
 });
+const isTenant = computed(() => props.isTenant);
 
 const layout = computed(() => isTenant.value ? TenantAdminLayout : CentralAdminLayout);
-
-const tenantName = computed(() => {
-    if (!isTenant.value) return '';
-    return window.location.hostname.split('.')[0];
-});
 
 const homeRoute = computed(() => isTenant.value ? 'patients.index' : 'dashboard');
 
@@ -201,7 +198,7 @@ const goBack = () => {
 <template>
 
     <Head title="Meu Perfil" />
-    <component :is="layout" :tenant-name="tenantName">
+    <component :is="layout">
         <div class=" mx-auto space-y-6">
             <!-- ════════════════════════════════════════ -->
             <!-- CARD: INFORMAÇÕES DO USUÁRIO -->
