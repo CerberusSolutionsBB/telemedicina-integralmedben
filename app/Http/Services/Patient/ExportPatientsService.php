@@ -20,6 +20,7 @@ class ExportPatientsService
 
     public function __construct(
         private readonly PacientePlanoService $pacientePlanoService,
+        private readonly ModeloImportacaoPacientesService $modeloImportacao,
     ) {}
 
     /**
@@ -75,7 +76,7 @@ class ExportPatientsService
     public function generateTemplate($questions, string $format = 'csv'): StreamedResponse
     {
         if ($format === 'xlsx') {
-            return $this->templateXlsx($questions);
+            return $this->modeloImportacao->gerar($questions);
         }
 
         return $this->templateCsv($questions);
@@ -92,28 +93,8 @@ class ExportPatientsService
 
     private function templateRows($questions): array
     {
-        $headers = $this->headers();
-        $questionTitles = $questions->pluck('title')->toArray();
-        $headers = array_merge($headers, $questionTitles);
-
-        $example = [
-            'João Silva',
-            '123.456.789-00',
-            '12.345.678-9',
-            '1990-01-01',
-            'masculino',
-            'joao@exemplo.com',
-            '(11) 99999-0000',
-            '1',
-            '',
-            '',
-        ];
-
-        foreach ($questions as $question) {
-            $example[] = '';
-        }
-
-        return [$headers, $example];
+        // Só o cabeçalho: uma linha de exemplo seria importada como beneficiário.
+        return [array_merge($this->headers(), $questions->pluck('title')->toArray())];
     }
 
     /**
@@ -224,13 +205,6 @@ class ExportPatientsService
         $response->headers->set('Content-Disposition', 'attachment; filename="modelo-importacao-pacientes.csv"');
 
         return $response;
-    }
-
-    private function templateXlsx($questions): StreamedResponse
-    {
-        $rows = $this->templateRows($questions);
-
-        return $this->writeXlsx($rows, 'modelo-importacao-pacientes.xlsx');
     }
 
     /**
