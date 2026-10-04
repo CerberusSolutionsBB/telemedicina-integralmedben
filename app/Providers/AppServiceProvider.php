@@ -71,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
                         'name' => $user->name,
                         'email' => $user->email,
                         'email_verified_at' => $user->email_verified_at,
-                        'avatar' => $user->avatar ?? null,
+                        'avatar' => $user->avatar_url,
                         'created_at' => $user->created_at?->format('d/m/Y H:i'),
 
                         // Roles e Permissions brutas
