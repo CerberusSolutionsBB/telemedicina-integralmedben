@@ -32,6 +32,7 @@ class SiprovIndexController extends Controller
 
             return Inertia::render('Siprov/Index', [
                 'associados' => $this->associadosTenantService->AssociadosTenant($itens),
+                'codPlanoFamiliar' => (string) config('siprov.planos.clinica_familiar'),
                 'siprovError' => null,
             ]);
         } catch (SiprovException $e) {
