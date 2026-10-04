@@ -36,10 +36,11 @@ class PacienteFamiliaresService
      * novos e remove os que saíram da lista.
      *
      * @param  array<int, array{id?: ?int, nome: string, cpf?: ?string, data_nascimento?: ?string, tipo: string}>  $familiares
+     * @return array<int, int> codDependente SIPROV dos familiares removidos (para inativar lá)
      */
-    public function sincronizar(Patient $patient, string $planoId, array $familiares): void
+    public function sincronizar(Patient $patient, string $planoId, array $familiares): array
     {
-        DB::transaction(function () use ($patient, $planoId, $familiares) {
+        return DB::transaction(function () use ($patient, $planoId, $familiares) {
             $mantidos = [];
 
             foreach ($familiares as $familiar) {
@@ -64,7 +65,11 @@ class PacienteFamiliaresService
                 $mantidos[] = $registro->id;
             }
 
-            $patient->familiares()->whereNotIn('id', $mantidos)->delete();
+            $removidos = $patient->familiares()->whereNotIn('id', $mantidos);
+            $codigos = (clone $removidos)->whereNotNull('siprov_cod_dependente')->pluck('siprov_cod_dependente')->map(fn ($c) => (int) $c)->all();
+            $removidos->delete();
+
+            return $codigos;
         });
     }
 

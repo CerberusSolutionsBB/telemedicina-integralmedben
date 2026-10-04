@@ -225,6 +225,24 @@ class PacientePlanoService
     }
 
     /**
+     * codBeneficio da SIPROV do titular quando o vínculo é do plano familiar
+     * (é nele que os dependentes são gravados). Null sem vínculo SIPROV familiar.
+     */
+    public function codBeneficioFamiliar(string $tenantId, ?string $cpf): ?int
+    {
+        $vinculo = $this->vinculo($tenantId, $cpf);
+
+        if (! $vinculo instanceof TelemedicinaTenant) {
+            return null;
+        }
+
+        $familiar = collect($this->codigos($vinculo))->contains(fn ($codigo) => Planos::familiar($codigo));
+        $codBeneficio = (int) ($vinculo->data['codBeneficio'] ?? 0);
+
+        return $familiar && $codBeneficio > 0 ? $codBeneficio : null;
+    }
+
+    /**
      * @return array<int, string>
      */
     private function codigos(TenantPlanoBeneficiario|TelemedicinaTenant $vinculo): array

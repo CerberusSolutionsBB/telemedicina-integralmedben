@@ -103,8 +103,17 @@ class SiprovDependenteService
             'telefone'             => $dependente['telefone'] ?? null,
         ], fn ($value) => $value !== null && $value !== '');
 
+        return $this->salvar($payload);
+    }
+
+    /**
+     * Cria (sem codDependente) ou atualiza (com codDependente) o dependente
+     * vinculado ao benefício. Devolve {codDependente, numeroCartaoDesconto}.
+     */
+    public function salvar(array $payload): array
+    {
         try {
-            Log::info('SIPROV | Alterando situação do dependente', [
+            Log::info('SIPROV | Gravando dependente', [
                 'endpoint' => '/ext/beneficio/dependente',
                 'payload'  => $payload,
             ]);
@@ -112,7 +121,7 @@ class SiprovDependenteService
             $response = $this->send('post', '/ext/beneficio/dependente', $payload);
 
             if ($response->failed()) {
-                Log::error('SIPROV | Erro ao alterar situação do dependente', [
+                Log::error('SIPROV | Erro ao gravar dependente', [
                     'status'   => $response->status(),
                     'response' => $response->body(),
                     'payload'  => $payload,
@@ -121,11 +130,11 @@ class SiprovDependenteService
                 throw SiprovException::dependenteFailed($response->body());
             }
 
-            Log::info('SIPROV | Situação do dependente alterada com sucesso', [
+            Log::info('SIPROV | Dependente gravado com sucesso', [
                 'status'         => $response->status(),
-                'cod_beneficio'  => $codBeneficio,
-                'cod_dependente' => $payload['codDependente'],
-                'ativo'          => $ativo,
+                'cod_beneficio'  => $payload['codBeneficio'] ?? null,
+                'cod_dependente' => $response->json('codDependente') ?? $payload['codDependente'] ?? null,
+                'ativo'          => $payload['ativo'] ?? null,
             ]);
 
             return $response->json() ?? [];
@@ -133,7 +142,7 @@ class SiprovDependenteService
         } catch (SiprovException $e) {
             throw $e;
         } catch (Throwable $e) {
-            Log::critical('SIPROV | Exception ao alterar situação do dependente', [
+            Log::critical('SIPROV | Exception ao gravar dependente', [
                 'message' => $e->getMessage(),
                 'payload' => $payload,
             ]);

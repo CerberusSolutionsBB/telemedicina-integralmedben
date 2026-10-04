@@ -19,6 +19,7 @@ class PacienteVinculoFamiliar extends Model
         'cpf',
         'data_nascimento',
         'tipo',
+        'siprov_cod_dependente',
     ];
 
     protected $casts = [
