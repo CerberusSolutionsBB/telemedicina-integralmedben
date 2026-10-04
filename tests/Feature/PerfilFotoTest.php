@@ -51,6 +51,14 @@ class PerfilFotoTest extends TestCase
         $this->assertNull($user->fresh()->avatar_path);
     }
 
+    public function test_perfil_no_dominio_central_usa_layout_central(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->get(route('perfil.edit'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Auth/Profile')->where('isTenant', false));
+    }
+
     public function test_exige_autenticacao(): void
     {
         $this->get(route('perfil.foto.show'))->assertRedirect(route('login'));
