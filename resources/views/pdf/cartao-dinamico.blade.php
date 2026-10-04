@@ -98,7 +98,6 @@
             font-size: 10pt;
             font-weight: bold;
             padding-bottom: 2pt;
-            border-bottom: 0.8pt solid {{ $cor_texto }};
             white-space: nowrap;
         }
 

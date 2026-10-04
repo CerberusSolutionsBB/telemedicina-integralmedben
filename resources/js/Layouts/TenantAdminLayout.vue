@@ -7,9 +7,11 @@ import {
     Shield,
     Settings,
     UserPlus,
+    LayoutDashboard,
 } from "lucide-vue-next";
 import { computed } from "vue";
 import AdminShell from "@/Components/Layout/AdminShell.vue";
+import { useLogoRecortado } from "@/Composables/Layout/useLogoRecortado";
 
 const props = defineProps({
     tenantName: {
@@ -25,6 +27,8 @@ const props = defineProps({
 const page = usePage();
 
 const tenantPublic = computed(() => page.props.tenant_public);
+// Logo sem as margens vazias do arquivo, para ocupar a largura da sidebar.
+const logo = useLogoRecortado(computed(() => tenantPublic.value?.logo));
 
 // Controle de Acesso aponta para a primeira seção que o usuário pode ver
 const userPermissions = computed(() => page.props.auth?.user?.permissions ?? []);
@@ -41,6 +45,7 @@ const aclLink = computed(() => {
 });
 
 const navLinks = computed(() => [
+    { grupo: "Visão geral", label: "Dashboard", routeName: "tenant.dashboard", icon: LayoutDashboard },
     { grupo: "Beneficiários", label: "Beneficiários", routeName: "patients.index", icon: Users },
     { grupo: "Beneficiários", label: "Relatório", routeName: "desempenho.index", match: "desempenho.*", icon: Target },
     { grupo: "Beneficiários", label: "Meus Formulários", routeName: "meus-formularios.index", icon: ClipboardList },
@@ -67,9 +72,10 @@ const tenantInitial = computed(() => {
     <AdminShell :menu="navLinks" logout-route="tenant.logout"
         :busca="{ rota: 'patients.index', placeholder: 'Buscar beneficiários por nome, CPF ou e-mail…' }">
         <template #marca>
-            <Link :href="route('patients.index')" class="flex min-w-0 items-center gap-3 px-1">
-                <img v-if="tenantPublic?.logo" :src="tenantPublic.logo" :alt="displayName"
-                    class="h-12 max-w-[180px] object-contain" />
+            <Link :href="route('patients.index')" class="flex min-w-0 flex-1 items-center gap-3 px-1">
+                <!-- Logo ocupa a largura da sidebar; a altura máxima evita logos muito altos. -->
+                <img v-if="logo" :src="logo" :alt="displayName"
+                    class="block h-auto w-full max-h-20 sm:max-h-24 object-contain object-left" />
                 <template v-else>
                     <span class="grid w-10 h-10 shrink-0 place-items-center rounded-xl bg-cyan-600 text-base font-bold text-white">
                         {{ tenantInitial }}

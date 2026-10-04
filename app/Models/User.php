@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'avatar_path',
     ];
 
     /**
@@ -46,6 +47,16 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * URL da foto de perfil; o ?v= muda a cada troca para furar o cache do navegador.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar_path
+            ? route('perfil.foto.show', ['v' => $this->updated_at?->timestamp])
+            : null;
     }
 
     public function isAdmin(): bool

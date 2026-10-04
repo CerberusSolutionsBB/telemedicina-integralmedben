@@ -19,11 +19,13 @@ class TenantPlano extends Model implements Auditable
         'cod_plano',
         'quantidade',
         'saldo',
+        'valor',
     ];
 
     protected $casts = [
         'quantidade' => 'integer',
         'saldo' => 'integer',
+        'valor' => 'decimal:2',
     ];
 
     public function tenant()

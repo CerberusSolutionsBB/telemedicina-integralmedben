@@ -180,7 +180,9 @@ const itemClasse = (selecionado) => [
                     <button type="button" @click="showUserMenu = !showUserMenu" :aria-expanded="showUserMenu"
                         aria-haspopup="menu" aria-label="Menu do usuário"
                         class="flex items-center gap-3 rounded-lg p-1.5 sm:px-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
-                        <span
+                        <img v-if="authUser?.avatar" :src="authUser.avatar" alt=""
+                            class="w-9 h-9 shrink-0 rounded-full object-cover" />
+                        <span v-else
                             class="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 text-xs font-bold text-white">
                             {{ iniciais }}
                         </span>

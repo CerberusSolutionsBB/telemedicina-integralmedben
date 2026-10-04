@@ -305,6 +305,8 @@ const {
     planosHasUnsavedChanges,
     isQuantidadeInvalida,
     hasQuantidadeInvalida,
+    isValorInvalido,
+    hasValorInvalido,
     planoVagas,
     errosCotaSiprov,
     zerarModal,
@@ -968,7 +970,7 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                     Planos
                                 </h2>
                                 <p class="text-sm text-gray-500 mt-1">
-                                    Escolha quais planos este tenant oferece e quantos beneficiários cada um comporta.
+                                    Escolha quais planos este tenant oferece, o valor de cada um e quantos beneficiários cada um comporta.
                                 </p>
                             </div>
 
@@ -983,7 +985,7 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                 </Button>
 
                                 <Button variant="primary"
-                                    :disabled="isSavingPlanos || !planosHasUnsavedChanges || hasQuantidadeInvalida"
+                                    :disabled="isSavingPlanos || !planosHasUnsavedChanges || hasQuantidadeInvalida || hasValorInvalido"
                                     @click="salvarPlanos">
                                     <Loader2 v-if="isSavingPlanos" class="w-4 h-4 mr-1 animate-spin" />
                                     <Check v-else class="w-4 h-4 mr-1" />
@@ -1043,6 +1045,17 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                     <RotateCcw class="w-4 h-4 mr-1" />
                                     Zerar contagem
                                 </Button>
+
+                                <div class="flex items-center gap-2" :class="{ 'opacity-40': !row.selecionado }">
+                                    <span class="text-sm text-gray-600">Valor</span>
+                                    <div class="relative">
+                                        <span class="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-gray-500">R$</span>
+                                        <input v-model="row.valor" type="number" min="0" step="0.01" placeholder="0,00"
+                                            :disabled="!row.selecionado" :aria-label="`Valor do plano ${row.label}`"
+                                            class="w-32 pl-9 pr-2 py-1.5 text-right rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            :class="isValorInvalido(row) ? 'border-red-300 bg-red-50' : 'border-gray-300'" />
+                                    </div>
+                                </div>
 
                                 <div class="flex items-center gap-2" :class="{ 'opacity-40': !row.selecionado }">
                                     <span class="text-sm text-gray-600">Quantidade</span>

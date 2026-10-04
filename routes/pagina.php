@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Pagina\PaginaBeneficiarioController;
 use App\Http\Controllers\Pagina\PaginaCartaoDinamicoController;
+use App\Http\Controllers\Pagina\PaginaCorController;
 use App\Http\Controllers\Pagina\PaginaCreateController;
 use App\Http\Controllers\Pagina\PaginaDestroyController;
 use App\Http\Controllers\Pagina\PaginaIndexController;
@@ -21,6 +22,7 @@ Route::put('/bulk/disable', [PaginaStatusController::class, 'bulkDisable'])->nam
 Route::get('/{tenant}', PaginaShowController::class)->name('show');
 Route::delete('/{tenant}', PaginaDestroyController::class)->name('destroy');
 Route::put('/{tenant}/status', PaginaStatusController::class)->name('status');
+Route::put('/{tenant}/cor', PaginaCorController::class)->middleware('auth')->name('cor');
 Route::prefix('users')->name('users.')->group(function () {
     Route::get('/{tenant}', [PaginaUserController::class, 'index'])->name('index');
     Route::get('/{tenant}/create', [PaginaUserController::class, 'create'])->name('create');

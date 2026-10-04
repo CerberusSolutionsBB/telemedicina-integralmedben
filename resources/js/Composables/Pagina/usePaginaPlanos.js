@@ -6,7 +6,7 @@ import { firstError } from './helpers'
 // Estado editável: uma linha por plano disponível, marcada ou não, com a quantidade
 // e as vagas já ocupadas por associados vinculados.
 const buildRows = (planos, tenantPlanos, planoUso) => {
-    const salvos = new Map(tenantPlanos.map(p => [String(p.cod_plano), p.quantidade]))
+    const salvos = new Map(tenantPlanos.map(p => [String(p.cod_plano), p]))
 
     return planos.map(plano => {
         const emUso = Number(planoUso?.[plano.value] ?? 0)
@@ -17,13 +17,17 @@ const buildRows = (planos, tenantPlanos, planoUso) => {
             siprov: plano.siprov !== false,
             emUso,
             selecionado: salvos.has(plano.value),
-            quantidade: salvos.get(plano.value) ?? Math.max(1, emUso),
+            quantidade: salvos.get(plano.value)?.quantidade ?? Math.max(1, emUso),
+            valor: salvos.get(plano.value)?.valor ?? '',
         }
     })
 }
 
+// Valor vazio vira null (plano sem preço definido).
+const valorOuNull = (valor) => (valor === '' || valor === null || valor === undefined ? null : Number(valor))
+
 const serialize = (rows) =>
-    JSON.stringify(rows.filter(r => r.selecionado).map(r => [r.cod_plano, Number(r.quantidade)]))
+    JSON.stringify(rows.filter(r => r.selecionado).map(r => [r.cod_plano, Number(r.quantidade), valorOuNull(r.valor)]))
 
 // Um plano em uso não pode ser desmarcado nem ficar abaixo das vagas ocupadas.
 export const quantidadeMinima = (row) => Math.max(1, row.emUso)
@@ -63,7 +67,14 @@ export function usePaginaPlanos(props) {
         return !Number.isInteger(quantidade) || quantidade < quantidadeMinima(row)
     }
 
+    const isValorInvalido = (row) => {
+        if (!row.selecionado) return false
+        const valor = valorOuNull(row.valor)
+        return valor !== null && (!Number.isFinite(valor) || valor < 0)
+    }
+
     const hasQuantidadeInvalida = computed(() => planoRows.value.some(isQuantidadeInvalida))
+    const hasValorInvalido = computed(() => planoRows.value.some(isValorInvalido))
 
     // Vagas conforme o que está salvo (não o rascunho da aba), usadas no vínculo SIPROV.
     const planoVagas = computed(() => {
@@ -169,6 +180,11 @@ export function usePaginaPlanos(props) {
             return
         }
 
+        if (hasValorInvalido.value) {
+            showToast('O valor de cada plano deve ser um número maior ou igual a zero.', 'warning')
+            return
+        }
+
         isSavingPlanos.value = true
 
         router.put(
@@ -177,6 +193,7 @@ export function usePaginaPlanos(props) {
                 planos: planosSelecionados.value.map(r => ({
                     cod_plano: r.cod_plano,
                     quantidade: Number(r.quantidade),
+                    valor: valorOuNull(r.valor),
                 })),
             },
             {
@@ -204,6 +221,8 @@ export function usePaginaPlanos(props) {
         planosHasUnsavedChanges,
         isQuantidadeInvalida,
         hasQuantidadeInvalida,
+        isValorInvalido,
+        hasValorInvalido,
         planoVagas,
         errosCotaSiprov,
         zerarModal,

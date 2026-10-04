@@ -16,4 +16,14 @@ Route::middleware([InitializeTenancyByDomain::class])->group(function () {
 
     Route::delete('/', [AuthProfileController::class, 'destroy'])
         ->name('destroy');
+
+    Route::get('/foto', [AuthProfileController::class, 'showFoto'])
+        ->name('foto.show');
+
+    // POST: upload de arquivo pelo Inertia não funciona com PUT/PATCH.
+    Route::post('/foto', [AuthProfileController::class, 'updateFoto'])
+        ->name('foto.update');
+
+    Route::delete('/foto', [AuthProfileController::class, 'destroyFoto'])
+        ->name('foto.destroy');
 });
