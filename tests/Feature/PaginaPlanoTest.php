@@ -47,6 +47,34 @@ class PaginaPlanoTest extends TestCase
         $this->assertSame(['331384' => 3, '331385' => 10], collect($planos)->sortKeys()->all());
     }
 
+    public function test_salva_valor_de_cada_plano(): void
+    {
+        $this->plano('331385', 2);
+
+        $this->actingAs($this->user)
+            ->put(route('pagina.configuracao.planos', $this->tenant->id), [
+                'planos' => [
+                    ['cod_plano' => '331385', 'quantidade' => 2, 'valor' => 49.9],
+                    ['cod_plano' => '331384', 'quantidade' => 1, 'valor' => null],
+                ],
+            ])
+            ->assertRedirect(route('pagina.show', $this->tenant->id));
+
+        $valores = TenantPlano::where('tenant_id', $this->tenant->id)->pluck('valor', 'cod_plano')->all();
+
+        $this->assertSame('49.90', $valores['331385']);
+        $this->assertNull($valores['331384']);
+    }
+
+    public function test_rejeita_valor_negativo(): void
+    {
+        $this->actingAs($this->user)
+            ->put(route('pagina.configuracao.planos', $this->tenant->id), [
+                'planos' => [['cod_plano' => '331385', 'quantidade' => 1, 'valor' => -1]],
+            ])
+            ->assertSessionHasErrors(['planos.0.valor']);
+    }
+
     public function test_lista_vazia_remove_todos_os_planos(): void
     {
         $this->plano('331385', 2);

@@ -23,12 +23,16 @@ class PaginaPlanoController extends Controller
             'planos' => ['present', 'array'],
             'planos.*.cod_plano' => ['required', 'string', 'distinct', Rule::in(Planos::codigos())],
             'planos.*.quantidade' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'planos.*.valor' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
         ], [
             'planos.*.cod_plano.in' => 'Plano inválido.',
             'planos.*.cod_plano.distinct' => 'Plano repetido.',
             'planos.*.quantidade.required' => 'Informe a quantidade.',
             'planos.*.quantidade.min' => 'A quantidade deve ser no mínimo 1.',
             'planos.*.quantidade.max' => 'A quantidade deve ser no máximo 1.000.000.',
+            'planos.*.valor.numeric' => 'Informe um valor válido.',
+            'planos.*.valor.min' => 'O valor não pode ser negativo.',
+            'planos.*.valor.max' => 'O valor é muito alto.',
         ]);
 
         $planos = collect($validated['planos']);
@@ -44,6 +48,12 @@ class PaginaPlanoController extends Controller
 
             foreach ($planos as $plano) {
                 $planoCotaService->ajustarQuantidade($tenant->id, $plano['cod_plano'], (int) $plano['quantidade']);
+
+                // Via model para a alteração do valor ser auditada.
+                TenantPlano::where('tenant_id', $tenant->id)
+                    ->where('cod_plano', $plano['cod_plano'])
+                    ->first()
+                    ?->update(['valor' => $plano['valor'] ?? null]);
             }
         });
 
