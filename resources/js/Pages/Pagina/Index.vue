@@ -1,13 +1,14 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { computed } from 'vue';
-import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User, Power, PowerOff } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import { Pencil, Trash2, Plus, Search, X, Building2, ShieldAlert, Globe, Database, User, Power, PowerOff, Palette } from 'lucide-vue-next';
 import Button from '@/Components/ui/button/Button.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import PomponeteLink from '@/Components/PomponeteLink.vue';
 import DetailCard from '@/Components/DetailCard.vue';
 import PaginationSimple from '@/Components/PaginationSimple.vue'
+import CorParceiroModal from '@/Components/CorParceiroModal.vue';
 import { formatDate, formatDateTime } from '@/Composables/Pagina/helpers';
 import { usePaginaIndex } from '@/Composables/Pagina/usePaginaIndex';
 
@@ -94,6 +95,15 @@ const cardPlano = (ativo) => [
 
 const beneficiariosNoPlano = (item, codPlano) =>
     item.beneficiarios?.planos?.find(p => p.value === codPlano)?.total ?? 0;
+
+// Cor indicativa do parceiro (usada nos gráficos do dashboard).
+const corModal = ref({ show: false, tenant: null });
+const abrirCorModal = (item) => {
+    corModal.value = {
+        show: true,
+        tenant: { id: item.id, indicativo_cor: item.indicativo_cor, nome: item.details?.[0]?.descricao },
+    };
+};
 </script>
 <template>
     <CentralAdminLayout>
@@ -304,6 +314,14 @@ const beneficiariosNoPlano = (item, codPlano) =>
                                                 title="Editar">
                                                 <User class="w-4 h-4" />
                                             </button>
+                                            <button @click="abrirCorModal(item)"
+                                                class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                                                :title="item.indicativo_cor ? `Cor do parceiro: ${item.indicativo_cor}` : 'Cor do parceiro: padrão do sistema'">
+                                                <Palette class="w-4 h-4" />
+                                                <span class="absolute bottom-1 right-1 h-2 w-2 rounded-full ring-2 ring-white"
+                                                    :class="item.indicativo_cor ? '' : 'bg-gray-300'"
+                                                    :style="item.indicativo_cor ? { background: item.indicativo_cor } : {}" />
+                                            </button>
                                             <button @click="openStatusModal(item)" :class="[
                                                 'p-2 rounded-lg transition-all',
                                                 item.status
@@ -382,5 +400,7 @@ const beneficiariosNoPlano = (item, codPlano) =>
             warning-message="Apenas páginas ativas serão afetadas. Esta ação pode ser revertida manualmente."
             confirm-text="Sim, Desativar todas" cancel-text="Cancelar" :is-processing="bulkDisableModal.isProcessing"
             variant="danger" @close="closeBulkDisableModal" @confirm="confirmBulkDisable" />
+
+        <CorParceiroModal :show="corModal.show" :tenant="corModal.tenant" @close="corModal.show = false" />
     </CentralAdminLayout>
 </template>
