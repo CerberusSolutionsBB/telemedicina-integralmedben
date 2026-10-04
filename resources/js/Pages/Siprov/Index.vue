@@ -22,7 +22,7 @@ import {
     ExternalLink,
     UserX,
     UserCheck,
-    Users,
+    Eye,
     Loader2,
 } from 'lucide-vue-next';
 
@@ -38,6 +38,11 @@ const props = defineProps({
     siprovError: {
         type: String,
         default: null,
+    },
+    // Código SIPROV do plano Clínica Familiar: só ele tem dependentes.
+    codPlanoFamiliar: {
+        type: String,
+        default: '',
     },
 });
 
@@ -423,6 +428,9 @@ const confirmAlterarSituacao = async () => {
 };
 
 // ═══ Dependentes (ativar / inativar = regravar com ativo: true/false) ═══
+const isFamiliar = (item) => !!props.codPlanoFamiliar
+    && (item?.planos || []).some((p) => String(p.codPlano) === props.codPlanoFamiliar);
+
 const dependentesModal = ref({
     show: false,
     item: null,
@@ -747,10 +755,10 @@ const alterarSituacaoDependente = async (dependente) => {
                                 Gerar Cartão
                             </button>
 
-                            <button @click.stop="openDependentesModal(item)"
+                            <button v-if="isFamiliar(item)" @click.stop="openDependentesModal(item)"
                                 class="flex items-center gap-2 w-full justify-center px-4 py-3 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 transition-colors min-h-[44px]">
-                                <Users class="w-4 h-4" />
-                                Dependentes
+                                <Eye class="w-4 h-4" />
+                                Visualizar dependentes
                             </button>
 
                             <button v-if="podeAlterarSituacao(item)" @click.stop="openSituacaoModal(item)" :class="[
@@ -919,10 +927,10 @@ const alterarSituacaoDependente = async (dependente) => {
                                         title="Gerar Cartão">
                                         <CreditCard class="w-5 h-5" />
                                     </button>
-                                    <button @click="openDependentesModal(item)"
+                                    <button v-if="isFamiliar(item)" @click="openDependentesModal(item)"
                                         class="p-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                                        title="Dependentes">
-                                        <Users class="w-5 h-5" />
+                                        title="Visualizar dependentes" aria-label="Visualizar dependentes">
+                                        <Eye class="w-5 h-5" />
                                     </button>
                                     <button v-if="podeAlterarSituacao(item)" @click="openSituacaoModal(item)" :class="[
                                         'p-2.5 rounded-lg transition-all',
@@ -1021,8 +1029,12 @@ const alterarSituacaoDependente = async (dependente) => {
             <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
                 <div class="flex items-start justify-between gap-4 p-6 pb-4 border-b border-gray-100">
                     <div class="min-w-0">
-                        <h3 class="text-lg font-semibold text-gray-900">Dependentes</h3>
-                        <p class="text-sm text-gray-500 truncate">{{ dependentesModal.item?.nomePessoa }}</p>
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            Dependentes
+                            <span v-if="!dependentesModal.loading && dependentesModal.dependentes.length"
+                                class="ml-1 text-sm font-normal text-gray-500">({{ dependentesModal.dependentes.length }})</span>
+                        </h3>
+                        <p class="text-sm text-gray-500 truncate">Titular: {{ dependentesModal.item?.nomePessoa }}</p>
                     </div>
                     <button @click="closeDependentesModal" class="p-1 text-gray-400 hover:text-gray-600">
                         <X class="w-5 h-5" />
@@ -1049,6 +1061,13 @@ const alterarSituacaoDependente = async (dependente) => {
                                 <p class="font-medium text-gray-900 truncate">{{ dep.nome }}</p>
                                 <p class="text-xs text-gray-500 tabular-nums">
                                     {{ dep.parentesco || '—' }} · {{ formatCpf(dep.cpf) }}
+                                </p>
+                                <p v-if="dep.dataNascimento || dep.numeroCartaoDesconto" class="text-xs text-gray-400 tabular-nums">
+                                    <template v-if="dep.dataNascimento">
+                                        Nascimento {{ dep.dataNascimento }}<template v-if="dep.idade != null"> ({{ dep.idade }} anos)</template>
+                                    </template>
+                                    <template v-if="dep.dataNascimento && dep.numeroCartaoDesconto"> · </template>
+                                    <template v-if="dep.numeroCartaoDesconto">Cartão {{ dep.numeroCartaoDesconto }}</template>
                                 </p>
                             </div>
 

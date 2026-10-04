@@ -15,6 +15,7 @@ use App\Models\SmsLogs;
 use App\Models\Tenant;
 use App\Models\TenantsDetail;
 use App\Models\TipoVinculoFamiliar;
+use App\Services\Tenant\PacienteDependentesSiprovService;
 use App\Services\Tenant\PacienteFamiliaresService;
 use App\Services\Tenant\PacientePlanoService;
 use App\Support\BeneficiarioPermissoes;
@@ -31,6 +32,7 @@ class PatientController extends Controller
         private PatientCardPdfService $patientCardPdfService,
         private PacientePlanoService $pacientePlanoService,
         private PacienteFamiliaresService $pacienteFamiliaresService,
+        private PacienteDependentesSiprovService $pacienteDependentesSiprovService,
     ) {}
 
     public function index(Request $request)
@@ -86,9 +88,9 @@ class PatientController extends Controller
         }
 
         $patient = $this->patientService->store($data);
-        $this->salvarFamiliares($patient, $codPlano, $data);
+        $removidos = $this->salvarFamiliares($patient, $codPlano, $data);
 
-        return $this->redirectAfterPlano($patient, $codPlano, 'Paciente cadastrado com sucesso.');
+        return $this->redirectAfterPlano($patient, $codPlano, 'Paciente cadastrado com sucesso.', $removidos);
     }
 
     public function edit(Patient $patient)
@@ -139,40 +141,46 @@ class PatientController extends Controller
         }
 
         $this->patientService->update($patient, $data);
-        $this->salvarFamiliares($patient, $codPlano, $data);
+        $removidos = $this->salvarFamiliares($patient, $codPlano, $data);
 
-        return $this->redirectAfterPlano($patient->refresh(), $codPlano, 'Paciente atualizado com sucesso.');
+        return $this->redirectAfterPlano($patient->refresh(), $codPlano, 'Paciente atualizado com sucesso.', $removidos);
     }
 
     /**
      * Membros da família: gravados só quando o plano (escolhido ou já vinculado) é o familiar.
+     *
+     * @return array<int, int>|null codDependente SIPROV dos removidos; null quando o plano não é familiar
      */
-    private function salvarFamiliares(Patient $patient, ?string $codPlano, array $data): void
+    private function salvarFamiliares(Patient $patient, ?string $codPlano, array $data): ?array
     {
         $planoId = $this->pacienteFamiliaresService->planoFamiliar(tenant('id'), $codPlano, $patient->cpf);
 
-        if ($planoId) {
-            $this->pacienteFamiliaresService->sincronizar($patient, $planoId, $data['familiares'] ?? []);
-        }
+        return $planoId
+            ? $this->pacienteFamiliaresService->sincronizar($patient, $planoId, $data['familiares'] ?? [])
+            : null;
     }
 
     /**
-     * Registra o plano (SIPROV + telemedicina) e redireciona. Se a SIPROV falhar,
-     * o paciente continua salvo e o erro é exibido junto da mensagem de sucesso.
+     * Registra o plano (SIPROV + telemedicina), envia os dependentes do plano
+     * familiar e redireciona. Se a SIPROV falhar, o paciente continua salvo e o
+     * erro é exibido junto da mensagem de sucesso.
+     *
+     * @param  array<int, int>|null  $removidos  null quando o plano não é familiar
      */
-    private function redirectAfterPlano(Patient $patient, ?string $codPlano, string $success)
+    private function redirectAfterPlano(Patient $patient, ?string $codPlano, string $success, ?array $removidos = null)
     {
         $redirect = redirect()->route('patients.index')->with('success', $success);
 
-        if (! $codPlano) {
-            return $redirect;
+        if ($codPlano && $erro = $this->pacientePlanoService->registrar(tenant('id'), $patient, $codPlano)) {
+            return $redirect->with('error', 'Não foi possível registrar o plano na SIPROV; o paciente foi salvo sem vínculo de telemedicina. Detalhe: '.$erro);
         }
 
-        $erro = $this->pacientePlanoService->registrar(tenant('id'), $patient, $codPlano);
+        // Dependentes vão para o benefício do titular, então só depois do registro do plano.
+        if ($removidos !== null && $erro = $this->pacienteDependentesSiprovService->enviar(tenant('id'), $patient, $removidos)) {
+            return $redirect->with('error', 'Os dependentes foram salvos, mas não foram enviados à SIPROV. Detalhe: '.$erro);
+        }
 
-        return $erro
-            ? $redirect->with('error', 'Não foi possível registrar o plano na SIPROV; o paciente foi salvo sem vínculo de telemedicina. Detalhe: '.$erro)
-            : $redirect;
+        return $redirect;
     }
 
     public function toggleStatus(Patient $patient)
