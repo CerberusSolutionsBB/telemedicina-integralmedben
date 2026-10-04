@@ -10,7 +10,7 @@ import {
 } from "@/Components/ui/dialog";
 import { Button } from "@/Components/ui/button";
 import { Label } from "@/Components/ui/label";
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-vue-next";
+import { Upload, FileSpreadsheet, AlertCircle, Download, Loader2 } from "lucide-vue-next";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -26,13 +26,7 @@ const dragOver = ref(false);
 const filePreview = ref(null);
 const fileError = ref(null);
 
-const allowedExtensions = [".csv", ".txt", ".xlsx", ".xls"];
-const allowedMimes = [
-  "text/csv",
-  "text/plain",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-excel",
-];
+const allowedExtensions = [".xlsx", ".xls"];
 
 watch(
   () => props.open,
@@ -62,7 +56,7 @@ const validateAndSet = (file) => {
 
   const ext = "." + file.name.split(".").pop().toLowerCase();
   if (!allowedExtensions.includes(ext)) {
-    fileError.value = "Formato inválido. Use CSV, XLSX ou XLS.";
+    fileError.value = "Envie a planilha em Excel (.xlsx ou .xls).";
     return;
   }
 
@@ -87,22 +81,42 @@ const submit = () => {
     },
   });
 };
-
-const formatHint = `ID,Data de Cadastro,Pergunta 1,Pergunta 2,...`;
 </script>
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-[520px]">
+    <DialogContent class="sm:max-w-[560px]">
       <DialogHeader>
         <DialogTitle>Importar Pacientes</DialogTitle>
         <DialogDescription>
-          Envie um arquivo CSV ou XLSX com as respostas dos pacientes.
-          A primeira linha deve conter os títulos das perguntas como cabeçalho.
+          Baixe o modelo em Excel, preencha um beneficiário por linha e envie a planilha.
         </DialogDescription>
       </DialogHeader>
 
       <form @submit.prevent="submit" class="space-y-4">
+        <!-- Passo 1: modelo -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border border-cyan-200 bg-cyan-50/60 p-4">
+          <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-cyan-600 text-xs font-bold text-white">1</span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-gray-900">Baixe o modelo em Excel</p>
+            <p class="text-xs text-gray-600">
+              Colunas já configuradas: datas, listas de Sexo e Status e as perguntas do seu formulário.
+              Nome e Data de Nascimento são obrigatórios.
+            </p>
+          </div>
+          <a :href="route('patients.template', 'xlsx')" download
+            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2">
+            <Download class="w-4 h-4" />
+            Baixar modelo
+          </a>
+        </div>
+
+        <!-- Passo 2: envio -->
+        <div class="flex items-center gap-3">
+          <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-cyan-600 text-xs font-bold text-white">2</span>
+          <p class="text-sm font-semibold text-gray-900">Envie a planilha preenchida</p>
+        </div>
+
         <div
           @drop.prevent="onDrop"
           @dragover.prevent="dragOver = true"
@@ -120,7 +134,7 @@ const formatHint = `ID,Data de Cadastro,Pergunta 1,Pergunta 2,...`;
           <input
             ref="fileInput"
             type="file"
-            accept=".csv,.txt,.xlsx,.xls"
+            accept=".xlsx,.xls"
             class="hidden"
             @change="onFileSelect"
           />
@@ -131,7 +145,7 @@ const formatHint = `ID,Data de Cadastro,Pergunta 1,Pergunta 2,...`;
               <span class="font-semibold text-cyan-600">Clique para selecionar</span>
               ou arraste o arquivo aqui
             </p>
-            <p class="text-xs text-gray-400">CSV, XLSX ou XLS até 10MB</p>
+            <p class="text-xs text-gray-400">Excel (.xlsx ou .xls) até 10MB</p>
           </div>
 
           <div v-else class="space-y-2">
@@ -141,27 +155,22 @@ const formatHint = `ID,Data de Cadastro,Pergunta 1,Pergunta 2,...`;
           </div>
         </div>
 
-        <div v-if="fileError" class="flex items-start gap-2 text-sm text-red-600 bg-red-50 rounded-lg p-3">
+        <div v-if="fileError || form.errors.file" class="flex items-start gap-2 text-sm text-red-600 bg-red-50 rounded-lg p-3">
           <AlertCircle class="w-4 h-4 mt-0.5 shrink-0" />
-          <span>{{ fileError }}</span>
+          <span>{{ fileError || form.errors.file }}</span>
         </div>
 
-        <div class="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 space-y-1">
-          <p class="font-medium text-gray-700">Formato esperado:</p>
-          <code class="block text-xs bg-white p-2 rounded border break-all">
-            {{ formatHint }}
-          </code>
-          <p class="mt-1">
-            As colunas devem corresponder exatamente aos títulos das perguntas cadastradas.
-          </p>
-        </div>
+        <p class="text-xs text-gray-500">
+          Linhas com erro (sem nome, data inválida, CPF já cadastrado…) são ignoradas e listadas
+          ao final; as demais são importadas.
+        </p>
 
         <div class="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" @click="emit('update:open', false)">
             Cancelar
           </Button>
           <Button type="submit" :disabled="form.processing || !form.file">
-            <CheckCircle2 v-if="form.processing" class="w-4 h-4 mr-1 animate-spin" />
+            <Loader2 v-if="form.processing" class="w-4 h-4 mr-1 animate-spin" />
             {{ form.processing ? 'Importando...' : 'Importar' }}
           </Button>
         </div>

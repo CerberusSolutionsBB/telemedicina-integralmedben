@@ -14,7 +14,7 @@ class ImportPatientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => 'required|file|mimes:csv,txt,xlsx,xls|max:10240',
+            'file' => 'required|file|mimes:xlsx,xls|max:10240',
         ];
     }
 
@@ -23,7 +23,7 @@ class ImportPatientRequest extends FormRequest
         return [
             'file.required' => 'Nenhum arquivo enviado.',
             'file.file' => 'O arquivo enviado é inválido.',
-            'file.mimes' => 'O arquivo deve ser do tipo: csv, txt, xlsx ou xls.',
+            'file.mimes' => 'Envie a planilha em Excel (.xlsx ou .xls).',
             'file.max' => 'O arquivo não pode ser maior que 10MB.',
         ];
     }

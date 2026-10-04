@@ -91,15 +91,10 @@ const { podeCriar } = usePermissoesBeneficiario();
                     </Button>
                 </div>
                 <div class="flex items-center gap-2">
-                    <a v-if="podeCriar" :href="route('patients.template', 'csv')"
-                        class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                        <FileDown class="w-4 h-4" />
-                        Template CSV
-                    </a>
                     <a v-if="podeCriar" :href="route('patients.template', 'xlsx')"
                         class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
                         <FileDown class="w-4 h-4" />
-                        Template XLSX
+                        Modelo Excel
                     </a>
                 </div>
             </div>

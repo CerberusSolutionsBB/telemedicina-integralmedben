@@ -214,16 +214,21 @@ class PatientController extends Controller
             'questions' => $questions,
         ]);
 
-        $message = $result['imported'].' paciente(s) importado(s) com sucesso.';
-        if (! empty($result['errors'])) {
-            $message .= ' Erros: '.implode(' | ', $result['errors']);
+        $redirect = redirect()->route('patients.index');
+
+        if ($result['imported'] > 0) {
+            $redirect->with('success', $result['imported'].' beneficiário(s) importado(s) com sucesso.');
         }
 
-        return redirect()->route('patients.index')
-            ->with(
-                empty($result['errors']) ? 'success' : 'warning',
-                $message
-            );
+        if (! empty($result['errors'])) {
+            // Mostra as primeiras linhas com erro para não estourar o aviso.
+            $erros = array_slice($result['errors'], 0, 5);
+            $restantes = count($result['errors']) - count($erros);
+            $redirect->with('error', count($result['errors']).' linha(s) não importada(s): '.implode(' | ', $erros)
+                .($restantes > 0 ? " | e mais {$restantes}." : ''));
+        }
+
+        return $redirect;
     }
 
     public function resendSms(Patient $patient)
