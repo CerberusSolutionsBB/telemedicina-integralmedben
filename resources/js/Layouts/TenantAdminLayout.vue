@@ -7,6 +7,7 @@ import {
     Shield,
     Settings,
     UserPlus,
+    LayoutDashboard,
 } from "lucide-vue-next";
 import { computed } from "vue";
 import AdminShell from "@/Components/Layout/AdminShell.vue";
@@ -44,6 +45,7 @@ const aclLink = computed(() => {
 });
 
 const navLinks = computed(() => [
+    { grupo: "Visão geral", label: "Dashboard", routeName: "tenant.dashboard", icon: LayoutDashboard },
     { grupo: "Beneficiários", label: "Beneficiários", routeName: "patients.index", icon: Users },
     { grupo: "Beneficiários", label: "Relatório", routeName: "desempenho.index", match: "desempenho.*", icon: Target },
     { grupo: "Beneficiários", label: "Meus Formulários", routeName: "meus-formularios.index", icon: ClipboardList },

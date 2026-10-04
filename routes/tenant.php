@@ -6,6 +6,7 @@ use App\Http\Controllers\PatientCartaoDinamicoController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\Tenant\Configuracao\ConfiguracaoController;
+use App\Http\Controllers\Tenant\Dashboard\DashboardController;
 use App\Http\Controllers\Tenant\DesempenhoController;
 use App\Http\Controllers\Tenant\Form\FormIndexController;
 use App\Http\Controllers\Tenant\Form\FormShowController;
@@ -38,6 +39,9 @@ Route::middleware([
 
     Route::middleware('auth')->group(function () {
         Route::post('/admin/logout', [TenantAuthController::class, 'logout'])->name('tenant.logout');
+
+        // Dashboard do parceiro (/dashboard e o nome 'dashboard' são do painel central).
+        Route::get('/painel', DashboardController::class)->name('tenant.dashboard');
 
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
