@@ -123,6 +123,17 @@ class PatientFiltros
     }
 
     /**
+     * CPFs (com e sem máscara) de beneficiários vinculados a pelo menos um plano
+     * (telemedicina ou plano interno). Usado para contar só quem tem plano.
+     *
+     * @return array<int, string>
+     */
+    public static function cpfsComPlanoFormatos(string $tenantId): array
+    {
+        return self::formatosCpf(self::cpfsComPlano($tenantId, null));
+    }
+
+    /**
      * CPFs (só dígitos) com o plano informado; sem plano informado, com qualquer plano.
      *
      * @return array<int, string>

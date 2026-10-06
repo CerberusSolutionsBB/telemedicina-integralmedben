@@ -22,7 +22,7 @@ const max = computed(() => Math.max(...props.valores, 1));
       </div>
     </div>
     <div class="mt-2 flex gap-2 sm:gap-4">
-      <span v-for="l in labels" :key="l" class="flex-1 text-center text-[11px] text-gray-500">{{ l }}</span>
+      <span v-for="l in labels" :key="l" class="flex-1 text-center text-xs text-gray-500">{{ l }}</span>
     </div>
   </div>
 </template>

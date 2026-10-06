@@ -3,14 +3,16 @@
 namespace App\Http\Services\Dashboard;
 
 use App\Enums\SmsStatusEnum;
-use App\Models\CentralPatient;
-use App\Models\Question;
+use App\Http\Services\Patient\PatientFiltros;
+use App\Models\Patient;
 use App\Models\SmsLogs;
 use App\Models\Tenant;
 use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
 use App\Services\Tenant\TenantPlanoCotaService;
 use App\Support\Planos;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class DashboardService
 {
@@ -24,71 +26,51 @@ class DashboardService
         $selectedMonth = $monthParam ? (int) $monthParam : null;
         $currentMonth = now()->month;
 
-        $planQuestion = Question::where('role', 'plan')->first();
-        $planQuestionId = $planQuestion?->id;
+        $labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
         // KPIs
         $totalTenants = Tenant::count();
         $activeTenants = Tenant::whereNull('deleted_at')->where('status', true)->count();
-        $totalPatients = CentralPatient::count();
-        $patientsWithPlan = $planQuestionId
-            ? CentralPatient::whereHas('answers', fn ($q) => $q->where('question_id', $planQuestionId)->whereNotNull('answer')->where('answer', '!=', ''))->count()
-            : 0;
-        $newThisMonth = CentralPatient::whereYear('created_at', $year)
-            ->whereMonth('created_at', $currentMonth)
-            ->count();
 
-        // Gráfico mensal
-        $monthly = CentralPatient::selectRaw('MONTH(created_at) as month, COUNT(*) as total')
-            ->whereYear('created_at', $year)
-            ->groupBy('month')
-            ->pluck('total', 'month');
-
-        $labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        $monthlyGrowth = collect(range(1, 12))->map(fn ($m) => [
-            'label' => $labels[$m - 1],
-            'value' => (int) ($monthly[$m] ?? 0),
-        ])->toArray();
-
-        // Dados mensais por tenant (para filtro no gráfico)
-        $perTenantMonthly = CentralPatient::selectRaw('tenant_id, MONTH(created_at) as month, COUNT(*) as total')
-            ->whereYear('created_at', $year)
-            ->groupBy('tenant_id', 'month')
-            ->get()
-            ->groupBy('tenant_id');
-
+        // Páginas/parceiros + beneficiários (banco do tenant): total, ativos, inativos,
+        // sem plano e cadastros por mês. Base dos KPIs, gráficos e desempenho.
+        $pages = [];
         $tenantMonthlyGrowth = [];
-        foreach ($perTenantMonthly as $tenantId => $rows) {
-            $data = array_fill(0, 12, 0);
-            foreach ($rows as $row) {
-                $data[$row->month - 1] = $row->total;
+        $globalMonthly = array_fill(0, 12, 0);
+        $totalPatients = 0;
+        $patientsWithoutPlan = 0;
+
+        foreach (Tenant::whereNull('deleted_at')->with('details')->orderBy('id')->get() as $tenant) {
+            $beneficiarios = $this->beneficiariosDoTenant($tenant, $year);
+            $meses = $beneficiarios['meses'];
+
+            foreach ($meses as $mes => $total) {
+                $globalMonthly[$mes] += $total;
             }
-            $tenantMonthlyGrowth[$tenantId] = $data;
+
+            $tenantMonthlyGrowth[$tenant->id] = $meses;
+            $totalPatients += $beneficiarios['total'];
+            $patientsWithoutPlan += $beneficiarios['sem_plano'];
+
+            $pages[] = [
+                'id' => $tenant->id,
+                'name' => $tenant->details->first()?->descricao ?? ($tenant->tenant_domain ?? $tenant->id),
+                'subdomain' => $tenant->tenant_domain,
+                'url' => $tenant->url,
+                'patients' => $selectedMonth ? $meses[$selectedMonth - 1] : array_sum($meses),
+                'status' => $tenant->status,
+                'cor' => $tenant->indicativo_cor,
+                'ativos' => $beneficiarios['ativos'],
+                'inativos' => $beneficiarios['inativos'],
+            ];
         }
 
-        // Lista de páginas/tenants
-        $periodo = function ($q) use ($year, $selectedMonth) {
-            $q->whereYear('created_at', $year);
-            if ($selectedMonth) {
-                $q->whereMonth('created_at', $selectedMonth);
-            }
-        };
+        $monthlyGrowth = collect(range(1, 12))->map(fn ($m) => [
+            'label' => $labels[$m - 1],
+            'value' => $globalMonthly[$m - 1],
+        ])->toArray();
 
-        $pages = Tenant::whereNull('deleted_at')
-            ->withCount(['centralPatients' => $periodo])
-            ->with('details')
-            ->orderBy('id')
-            ->get()
-            ->map(fn ($t) => [
-                'id' => $t->id,
-                'name' => $t->details->first()?->descricao ?? ($t->tenant_domain ?? $t->id),
-                'subdomain' => $t->tenant_domain,
-                'url' => $t->url,
-                'patients' => $t->central_patients_count ?? 0,
-                'status' => $t->status,
-                'cor' => $t->indicativo_cor,
-            ])
-            ->toArray();
+        $newThisMonth = $globalMonthly[$currentMonth - 1];
 
         // Planos configurados nas Páginas de Parceiros: valor, cota e vidas em uso.
         $nomesPlanos = collect(Planos::options())->pluck('label', 'value');
@@ -163,7 +145,7 @@ class DashboardService
             'totalTenants' => $totalTenants,
             'activeTenants' => $activeTenants,
             'totalPatients' => $totalPatients,
-            'patientsWithPlan' => $patientsWithPlan,
+            'patientsWithoutPlan' => $patientsWithoutPlan,
             'newThisMonth' => $newThisMonth,
             'monthlyGrowth' => $monthlyGrowth,
             'currentYear' => $year,
@@ -178,5 +160,48 @@ class DashboardService
             'smsFailed' => SmsLogs::where('status', SmsStatusEnum::Failed)->whereYear('created_at', $year)->count(),
             'updatedAt' => now()->format('d/m/Y H:i'),
         ];
+    }
+
+    /**
+     * Panorama de beneficiários do parceiro (banco do próprio tenant): só conta
+     * quem tem plano vinculado — total, ativos, inativos e cadastros por mês do ano.
+     * Quem não tem plano entra em "sem_plano". Banco indisponível não derruba o dashboard.
+     *
+     * @return array{total: int, ativos: int, inativos: int, sem_plano: int, meses: array<int, int>}
+     */
+    private function beneficiariosDoTenant(Tenant $tenant, int $year): array
+    {
+        try {
+            return $tenant->run(function () use ($tenant, $year) {
+                $cpfs = PatientFiltros::cpfsComPlanoFormatos($tenant->id);
+                $comPlano = Patient::whereIn('cpf', $cpfs);
+
+                $total = (clone $comPlano)->count();
+                $ativos = (clone $comPlano)->where('status', true)->count();
+
+                $porMes = (clone $comPlano)
+                    ->whereYear('created_at', $year)
+                    ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')
+                    ->groupBy('month')
+                    ->pluck('total', 'month');
+
+                $meses = array_fill(0, 12, 0);
+                foreach ($porMes as $mes => $totalMes) {
+                    $meses[$mes - 1] = (int) $totalMes;
+                }
+
+                return [
+                    'total' => $total,
+                    'ativos' => $ativos,
+                    'inativos' => $total - $ativos,
+                    'sem_plano' => max(0, Patient::count() - $total),
+                    'meses' => $meses,
+                ];
+            });
+        } catch (Throwable $e) {
+            Log::warning("Beneficiários indisponíveis para o tenant {$tenant->id}: {$e->getMessage()}");
+
+            return ['total' => 0, 'ativos' => 0, 'inativos' => 0, 'sem_plano' => 0, 'meses' => array_fill(0, 12, 0)];
+        }
     }
 }
