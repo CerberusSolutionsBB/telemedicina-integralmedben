@@ -29,7 +29,7 @@ const ultimo = computed(() => props.valores.length - 1);
   <svg :viewBox="`0 0 ${LW} ${LH}`" class="w-full h-auto">
     <g v-for="t in ticks" :key="t">
       <line :x1="LPAD.l" :x2="LW - LPAD.r" :y1="y(t)" :y2="y(t)" stroke="#e5e7eb" stroke-width="0.6" />
-      <text :x="LPAD.l - 8" :y="y(t) + 3" text-anchor="end" font-size="8" fill="#6b7280">{{ Math.round(t) }}</text>
+      <text :x="LPAD.l - 8" :y="y(t) + 3" text-anchor="end" font-size="10" fill="#4b5563">{{ Math.round(t) }}</text>
     </g>
     <polygon :points="area" fill="#22b8cf" fill-opacity="0.18" />
     <polyline :points="pontos" fill="none" stroke="#22b8cf" stroke-width="2" stroke-linejoin="round" />
@@ -38,9 +38,9 @@ const ultimo = computed(() => props.valores.length - 1);
         <circle :cx="x(i)" :cy="y(v)" r="3.5"
           :fill="i === ultimo ? '#e11d2e' : '#fff'"
           :stroke="i === ultimo ? '#e11d2e' : '#22b8cf'" stroke-width="1.5" />
-        <text :x="x(i) - (i === ultimo ? 10 : 0)" :y="y(v) - 7" text-anchor="middle" font-size="9" font-weight="700" fill="#111827">{{ v }}</text>
+        <text :x="x(i) - (i === ultimo ? 10 : 0)" :y="y(v) - 7" text-anchor="middle" font-size="11" font-weight="700" fill="#111827">{{ v }}</text>
       </template>
     </g>
-    <text v-for="(_, i) in valores" :key="'l' + i" :x="x(i)" :y="LH - 8" text-anchor="middle" font-size="8" fill="#6b7280">{{ labels[i] }}</text>
+    <text v-for="(_, i) in valores" :key="'l' + i" :x="x(i)" :y="LH - 8" text-anchor="middle" font-size="10" fill="#4b5563">{{ labels[i] }}</text>
   </svg>
 </template>

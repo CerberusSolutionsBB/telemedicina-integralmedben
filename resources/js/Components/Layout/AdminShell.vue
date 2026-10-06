@@ -54,9 +54,9 @@ const alternarSubmenu = (key) => {
 
 const itemClasse = (selecionado) => [
     'flex items-center gap-3 w-full px-3 py-2.5 min-h-[44px] rounded-xl text-[15px] font-medium transition-colors',
-    'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500',
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#23BACF]',
     selecionado
-        ? 'bg-cyan-50 text-cyan-700 font-semibold dark:bg-cyan-500/10 dark:text-cyan-300'
+        ? 'bg-[#23BACF]/10 text-[#23BACF] font-semibold dark:bg-[#23BACF]/15 dark:text-[#23BACF]'
         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white',
 ];
 </script>
@@ -80,7 +80,7 @@ const itemClasse = (selecionado) => [
             <div class="flex items-start justify-between gap-2">
                 <slot name="marca" />
                 <button type="button" @click="closeSidebar"
-                    class="lg:hidden -mr-1 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                    class="lg:hidden -mr-1 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#23BACF]"
                     aria-label="Fechar menu">
                     <X class="w-5 h-5" />
                 </button>
@@ -88,7 +88,7 @@ const itemClasse = (selecionado) => [
 
             <!-- Card do painel -->
             <div
-                class="flex items-center gap-3 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 p-3 text-white shadow-md">
+                class="flex items-center gap-3 rounded-xl bg-[#23BACF] p-3 text-white shadow-md">
                 <span class="grid w-9 h-9 shrink-0 place-items-center rounded-lg bg-white/15">
                     <ShieldCheck class="w-5 h-5" />
                 </span>
@@ -127,9 +127,9 @@ const itemClasse = (selecionado) => [
                             <Link v-for="filho in item.children" :key="filho.routeName" :href="route(filho.routeName)"
                                 :aria-current="ativo(filho) ? 'page' : undefined" :class="[
                                     'flex items-center gap-3 px-3 py-2 min-h-[40px] rounded-lg text-sm transition-colors',
-                                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500',
+                                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#23BACF]',
                                     ativo(filho)
-                                        ? 'bg-cyan-50 text-cyan-800 font-medium dark:bg-cyan-500/10 dark:text-cyan-300'
+                                        ? 'bg-[#23BACF]/10 text-[#23BACF] font-medium dark:bg-[#23BACF]/15 dark:text-[#23BACF]'
                                         : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200',
                                 ]">
                                 <component :is="filho.icon" class="w-4 h-4 shrink-0" />
@@ -142,7 +142,7 @@ const itemClasse = (selecionado) => [
 
             <!-- Card de ação no rodapé -->
             <div v-if="$slots.acao"
-                class="rounded-xl border border-cyan-100 bg-cyan-50 p-4 dark:border-cyan-900 dark:bg-cyan-950/40">
+                class="rounded-xl border border-[#23BACF]/20 bg-[#23BACF]/5 p-4 dark:border-[#23BACF]/30 dark:bg-[#23BACF]/10">
                 <slot name="acao" />
             </div>
         </aside>
@@ -152,14 +152,14 @@ const itemClasse = (selecionado) => [
             <header
                 class="sticky top-0 z-30 flex items-center gap-2 sm:gap-3 border-b border-gray-200 bg-white/90 px-4 py-2.5 backdrop-blur lg:px-6 dark:border-gray-800 dark:bg-gray-900/90">
                 <button type="button" @click="openSidebar"
-                    class="lg:hidden -ml-2 p-2.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                    class="lg:hidden -ml-2 p-2.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#23BACF]"
                     aria-label="Abrir menu" aria-controls="admin-sidebar" :aria-expanded="sidebarOpen">
                     <Menu class="w-6 h-6" />
                 </button>
 
                 <form class="flex-1 min-w-0" role="search" @submit.prevent="buscar">
                     <label
-                        class="flex w-full max-w-xl items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-500 dark:border-gray-700 dark:bg-gray-800">
+                        class="flex w-full max-w-xl items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 focus-within:border-[#23BACF] focus-within:ring-2 focus-within:ring-[#23BACF] dark:border-gray-700 dark:bg-gray-800">
                         <Search class="w-4 h-4 shrink-0 text-gray-400" />
                         <input ref="campoBusca" v-model="termoBusca" type="search" :placeholder="props.busca.placeholder"
                             :aria-label="props.busca.placeholder"
@@ -179,11 +179,11 @@ const itemClasse = (selecionado) => [
                 <div ref="userMenuRef" class="relative shrink-0">
                     <button type="button" @click="showUserMenu = !showUserMenu" :aria-expanded="showUserMenu"
                         aria-haspopup="menu" aria-label="Menu do usuário"
-                        class="flex items-center gap-3 rounded-lg p-1.5 sm:px-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+                        class="flex items-center gap-3 rounded-lg p-1.5 sm:px-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#23BACF]">
                         <img v-if="authUser?.avatar" :src="authUser.avatar" alt=""
                             class="w-9 h-9 shrink-0 rounded-full object-cover" />
                         <span v-else
-                            class="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 text-xs font-bold text-white">
+                            class="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-[#23BACF] text-xs font-bold text-white">
                             {{ iniciais }}
                         </span>
                         <span class="hidden md:flex max-w-[180px] flex-col items-start leading-tight">

@@ -31,7 +31,7 @@ export default {
                     foreground: "hsl(var(--popover-foreground))",
                 },
                 primary: {
-                    DEFAULT: "#22d3ee", // cyan-400
+                    DEFAULT: "#22B9CE",
                     hover: "#06b6d4",
                     foreground: "hsl(var(--primary-foreground))",
                 },
