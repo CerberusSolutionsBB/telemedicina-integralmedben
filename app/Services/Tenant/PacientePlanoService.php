@@ -197,9 +197,10 @@ class PacientePlanoService
                 'cadastro_paciente' => 'Cadastro manual',
                 'formulario_publico' => 'Formulário público',
                 'sincronizacao_siprov' => 'Sincronização SIPROV',
+                'vinculo_siprov' => 'Vínculo pela SIPROV',
                 default => $vinculo instanceof TelemedicinaTenant ? 'Vínculo pela SIPROV' : 'Cadastro',
             },
-            // cadastro_paciente | formulario_publico | sincronizacao_siprov | null (vínculo pela SIPROV)
+            // cadastro_paciente | formulario_publico | sincronizacao_siprov | vinculo_siprov | null (vínculo antigo pela SIPROV)
             'origem_tipo' => $origem,
             'usuario' => $audit?->event === 'registro_plano' ? ($audit->new_values['usuario'] ?? null) : null,
             'data_hora' => Formatar::dataHora($audit?->created_at ?? $vinculo->created_at),
@@ -362,7 +363,7 @@ class PacientePlanoService
      * do tenant e consome a vaga do plano, juntos: sem saldo, nada é criado.
      *
      * @param  array  $result  retorno da integração SIPROV (associado/benefício)
-     * @param  string  $origem  cadastro_paciente | formulario_publico | sincronizacao_siprov
+     * @param  string  $origem  cadastro_paciente | formulario_publico | sincronizacao_siprov | vinculo_siprov
      *
      * @throws ValidationException quando o plano não tem saldo
      */

@@ -23,6 +23,7 @@ class PlanoHistoricoService
         'cadastro_paciente' => 'Cadastro manual',
         'formulario_publico' => 'Formulário público',
         'sincronizacao_siprov' => 'Sincronização SIPROV',
+        'vinculo_siprov' => 'Vínculo pela SIPROV',
     ];
 
     /**
@@ -82,6 +83,7 @@ class PlanoHistoricoService
             ->where('tags', 'tenant:'.$tenantId)
             ->when($de, fn ($q) => $q->where('created_at', '>=', $de))
             ->when($ate, fn ($q) => $q->where('created_at', '<=', $ate))
+            ->latest('created_at')
             ->latest('id')
             ->limit(self::VARREDURA)
             ->get()

@@ -25,7 +25,8 @@ use Illuminate\Validation\ValidationException;
  * histórico de registros; vínculos que já tinham plano mas não descontaram a vaga
  * (ex.: corrigidos antes do desconto existir) também são descontados.
  * Só desconta de quem é paciente do parceiro (tela Beneficiários); vaga descontada
- * por esta sincronização para quem não é paciente é devolvida.
+ * por esta sincronização para quem não é paciente é devolvida. Paciente que já ocupa
+ * a vaga sem registro no histórico de Planos (ex.: vínculo pelo modal) ganha o registro.
  */
 class SiprovPlanoVinculoService
 {
@@ -36,6 +37,8 @@ class SiprovPlanoVinculoService
     public const ACAO_VAGA_DESCONTADA = 'Vaga descontada';
 
     public const ACAO_VAGA_DEVOLVIDA = 'Vaga devolvida';
+
+    public const ACAO_HISTORICO_REGISTRADO = 'Histórico registrado';
 
     public const ORIGEM = 'sincronizacao_siprov';
 
@@ -59,11 +62,14 @@ class SiprovPlanoVinculoService
             ? [...$this->completarPlanos($porCpf, $simular), ...$this->criarVinculosFaltantes($porCpf, $simular)]
             : [];
 
-        return [
+        $linhas = [
             ...$devolvidas,
             ...$linhas,
             ...$this->descontarPendentes(array_filter(array_column($linhas, 'vinculo_id')), $simular),
         ];
+
+        // Na simulação os descontos acima não gravaram registro: não contam como faltantes.
+        return [...$linhas, ...$this->registrarHistoricoFaltante($simular ? array_filter(array_column($linhas, 'vinculo_id')) : [], $simular)];
     }
 
     /**
@@ -264,6 +270,114 @@ class SiprovPlanoVinculoService
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Pacientes do parceiro que ocupam vaga do plano mas não têm registro no histórico
+     * de Planos (vínculo pelo modal, ou já contados quando o plano foi habilitado):
+     * cria o registro com a data, o saldo e o valor do desconto, sem descontar de novo.
+     *
+     * @param  array<int, int>  $ignorar  vínculos já tratados nesta execução
+     */
+    private function registrarHistoricoFaltante(array $ignorar, bool $simular): array
+    {
+        $vinculos = TelemedicinaTenant::whereNotNull('data->siprov_id')
+            ->whereNotIn('id', $ignorar)
+            ->orderBy('id')
+            ->get();
+
+        if ($vinculos->isEmpty()) {
+            return [];
+        }
+
+        $registrados = Audit::where('event', 'registro_plano')
+            ->where('auditable_type', TelemedicinaTenant::class)
+            ->whereIn('auditable_id', $vinculos->pluck('id'))
+            ->distinct()
+            ->pluck('auditable_id')
+            ->flip();
+
+        $movimentos = TenantQuantidadeParceiro::whereIn('telemedicina_tenant_id', $vinculos->pluck('id'))
+            ->orderBy('id')
+            ->get()
+            ->groupBy('telemedicina_tenant_id');
+
+        $planos = TenantPlano::whereIn('tenant_id', $vinculos->pluck('tenant_id')->unique())
+            ->get()
+            ->keyBy(fn (TenantPlano $plano) => $plano->tenant_id.'|'.$plano->cod_plano);
+
+        $linhas = [];
+
+        foreach ($vinculos as $vinculo) {
+            $codigos = TenantPlanoCotaService::codigosDoVinculo($vinculo->data ?? []);
+            $movimentosDoVinculo = $movimentos[$vinculo->id] ?? collect();
+
+            if (isset($registrados[$vinculo->id])
+                || ! $codigos
+                || ! $this->pacientesDoParceiro->ehPaciente($vinculo->tenant_id, $vinculo->data['cpf_cnpj'] ?? null)) {
+                continue;
+            }
+
+            // Ocupa a vaga: consumo ainda não devolvido, ou (sem movimento) já existia
+            // quando o plano foi habilitado e entrou no saldo inicial.
+            $ocupando = collect($codigos)
+                ->map(fn (string $codigo) => $planos[$vinculo->tenant_id.'|'.$codigo] ?? null)
+                ->filter(fn (?TenantPlano $plano) => $plano && ($movimentosDoVinculo->isNotEmpty()
+                    ? $movimentosDoVinculo->where('cod_plano', $plano->cod_plano)->sum('variacao') < 0
+                    : $vinculo->updated_at <= $plano->created_at));
+
+            if ($ocupando->isEmpty()) {
+                continue;
+            }
+
+            if (! $simular) {
+                $ocupando->each(fn (TenantPlano $plano) => $this->criarRegistroHistorico(
+                    $vinculo,
+                    $plano,
+                    $movimentosDoVinculo->where('cod_plano', $plano->cod_plano)->firstWhere('tipo', TenantQuantidadeParceiro::TIPO_CONSUMO),
+                ));
+            }
+
+            $linha = $this->linhaSemDesconto(self::ACAO_HISTORICO_REGISTRADO, $vinculo);
+            $linha['vaga'] = $simular ? 'Seria registrado (vaga já ocupada)' : 'Registrado (vaga já ocupada)';
+            $linhas[] = $linha;
+        }
+
+        return $linhas;
+    }
+
+    /**
+     * Registro no histórico de Planos com os dados de quando a vaga foi ocupada.
+     */
+    private function criarRegistroHistorico(TelemedicinaTenant $vinculo, TenantPlano $plano, ?TenantQuantidadeParceiro $consumo): void
+    {
+        $data = $vinculo->data ?? [];
+
+        $audit = Audit::create([
+            'event' => 'registro_plano',
+            'auditable_type' => TelemedicinaTenant::class,
+            'auditable_id' => $vinculo->id,
+            'old_values' => [],
+            'new_values' => [
+                'tenant_id' => $vinculo->tenant_id,
+                'paciente_id' => $data['patient_id'] ?? null,
+                'paciente' => $data['title'] ?? '',
+                'usuario' => null,
+                'origem' => $data['origem'] ?? 'vinculo_siprov',
+                'cod_plano' => $plano->cod_plano,
+                'plano' => $this->label($plano->cod_plano),
+                'valor' => $consumo?->valor ?? $plano->valor,
+                // Saldo logo após a vaga ser ocupada; sem o movimento, não há como saber.
+                'planos' => $consumo ? [$plano->cod_plano => [
+                    'plano' => $this->label($plano->cod_plano),
+                    'quantidade' => $plano->quantidade,
+                    'saldo' => $consumo->quantidade,
+                ]] : [],
+            ],
+            'tags' => 'tenant:'.$vinculo->tenant_id,
+        ]);
+
+        $audit->forceFill(['created_at' => $consumo?->created_at ?? $vinculo->created_at])->save();
     }
 
     /**

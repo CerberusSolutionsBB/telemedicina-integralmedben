@@ -7,8 +7,8 @@ use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
 use App\Models\TenantPlano;
 use App\Models\TenantQuantidadeParceiro;
-use App\Services\Tenant\TenantPlanoCotaService;
 use App\Models\User;
+use App\Services\Tenant\TenantPlanoCotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -147,6 +147,11 @@ class PaginaPlanoTest extends TestCase
 
         $vinculo = TelemedicinaTenant::where('data->siprov_id', 10)->first();
         $this->assertSame(['331385', '331384'], $vinculo->data['cod_planos']);
+
+        // Um registro por plano no histórico de Planos.
+        $registros = Audit::where('event', 'registro_plano')->where('auditable_id', $vinculo->id)->get();
+        $this->assertEqualsCanonicalizing(['331385', '331384'], $registros->pluck('new_values.cod_plano')->all());
+        $this->assertSame(['vinculo_siprov'], $registros->pluck('new_values.origem')->unique()->values()->all());
 
         // Ambos os planos esgotados agora.
         $this->putSiprov([$this->associado(11, [331384])])->assertSessionHasErrors('siprov_items');
