@@ -3,6 +3,7 @@
 namespace App\Services\Siprov;
 
 use App\Enums\QuestionRoleEnum;
+use App\Models\Audit;
 use App\Models\CentralPatientAnswer;
 use App\Models\Question;
 use App\Models\TelemedicinaTenant;
@@ -10,6 +11,7 @@ use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
 use App\Models\TenantQuantidadeParceiro;
 use App\Services\Tenant\PacientePlanoService;
+use App\Services\Tenant\PacientesDoParceiroService;
 use App\Services\Tenant\TenantPlanoCotaService;
 use App\Support\Planos;
 use Illuminate\Support\Carbon;
@@ -22,6 +24,8 @@ use Illuminate\Validation\ValidationException;
  * Cada vínculo consome a vaga do plano (saldo -1, com o valor do plano) e entra no
  * histórico de registros; vínculos que já tinham plano mas não descontaram a vaga
  * (ex.: corrigidos antes do desconto existir) também são descontados.
+ * Só desconta de quem é paciente do parceiro (tela Beneficiários); vaga descontada
+ * por esta sincronização para quem não é paciente é devolvida.
  */
 class SiprovPlanoVinculoService
 {
@@ -31,11 +35,14 @@ class SiprovPlanoVinculoService
 
     public const ACAO_VAGA_DESCONTADA = 'Vaga descontada';
 
+    public const ACAO_VAGA_DEVOLVIDA = 'Vaga devolvida';
+
     public const ORIGEM = 'sincronizacao_siprov';
 
     public function __construct(
         private readonly TenantPlanoCotaService $planoCotaService,
         private readonly PacientePlanoService $pacientePlanoService,
+        private readonly PacientesDoParceiroService $pacientesDoParceiro,
     ) {}
 
     /**
@@ -46,12 +53,14 @@ class SiprovPlanoVinculoService
     public function sincronizar(array $associados, bool $simular = false): array
     {
         $porCpf = $this->associadosComPlanoPorCpf($associados);
+        $devolvidas = $this->devolverSemPaciente($simular);
 
         $linhas = $porCpf
             ? [...$this->completarPlanos($porCpf, $simular), ...$this->criarVinculosFaltantes($porCpf, $simular)]
             : [];
 
         return [
+            ...$devolvidas,
             ...$linhas,
             ...$this->descontarPendentes(array_filter(array_column($linhas, 'vinculo_id')), $simular),
         ];
@@ -124,7 +133,9 @@ class SiprovPlanoVinculoService
         $criados = [];
 
         foreach ($pacientes as $paciente) {
-            if (isset($vinculados[$paciente['tenant_id'].'|'.$paciente['cpf']])) {
+            // O espelho do central pode ter paciente já excluído do parceiro.
+            if (isset($vinculados[$paciente['tenant_id'].'|'.$paciente['cpf']])
+                || ! $this->pacientesDoParceiro->ehPaciente($paciente['tenant_id'], $paciente['cpf'])) {
                 continue;
             }
 
@@ -194,7 +205,11 @@ class SiprovPlanoVinculoService
             ->filter(function (TelemedicinaTenant $vinculo) use ($habilitadoEm, $zeradoEm) {
                 $codigos = TenantPlanoCotaService::codigosDoVinculo($vinculo->data ?? []);
 
-                return $codigos && collect($codigos)->every(function (string $codigo) use ($vinculo, $habilitadoEm, $zeradoEm) {
+                if (! $codigos || ! $this->pacientesDoParceiro->ehPaciente($vinculo->tenant_id, $vinculo->data['cpf_cnpj'] ?? null)) {
+                    return false;
+                }
+
+                return collect($codigos)->every(function (string $codigo) use ($vinculo, $habilitadoEm, $zeradoEm) {
                     $chave = $vinculo->tenant_id.'|'.$codigo;
 
                     return isset($habilitadoEm[$chave])
@@ -208,6 +223,50 @@ class SiprovPlanoVinculoService
     }
 
     /**
+     * Vínculos que esta sincronização descontou, mas cujo CPF não é paciente do
+     * parceiro: devolve a vaga (movimento de devolução, com valor) e remove o
+     * registro feito por engano do histórico de Planos.
+     */
+    private function devolverSemPaciente(bool $simular): array
+    {
+        $registros = Audit::where('event', 'registro_plano')
+            ->where('auditable_type', TelemedicinaTenant::class)
+            ->where('new_values', 'like', '%'.self::ORIGEM.'%')
+            ->get()
+            ->filter(fn (Audit $audit) => ($audit->new_values['origem'] ?? null) === self::ORIGEM)
+            ->groupBy('auditable_id');
+
+        if ($registros->isEmpty()) {
+            return [];
+        }
+
+        // Vínculos com vaga ainda descontada (consumo sem a devolução correspondente).
+        $descontados = TenantQuantidadeParceiro::whereIn('telemedicina_tenant_id', $registros->keys())
+            ->groupBy('telemedicina_tenant_id')
+            ->havingRaw('sum(variacao) < 0')
+            ->pluck('telemedicina_tenant_id')
+            ->all();
+
+        return TelemedicinaTenant::whereIn('id', $descontados)
+            ->orderBy('id')
+            ->get()
+            ->reject(fn (TelemedicinaTenant $vinculo) => $this->pacientesDoParceiro->ehPaciente($vinculo->tenant_id, $vinculo->data['cpf_cnpj'] ?? null))
+            ->map(function (TelemedicinaTenant $vinculo) use ($registros, $simular) {
+                if (! $simular) {
+                    $this->planoCotaService->devolver($vinculo);
+                    Audit::whereIn('id', $registros[$vinculo->id]->pluck('id'))->delete();
+                }
+
+                $linha = $this->linhaSemDesconto(self::ACAO_VAGA_DEVOLVIDA, $vinculo);
+                $linha['vaga'] = $simular ? 'Seria devolvida: não é paciente do parceiro' : 'Devolvida: não é paciente do parceiro';
+
+                return $linha;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Consome a vaga de cada plano do vínculo e registra no histórico de registros.
      * Sem vaga (ou plano não habilitado), o vínculo fica com o plano e nada é descontado.
      *
@@ -216,6 +275,10 @@ class SiprovPlanoVinculoService
     private function descontarVaga(TelemedicinaTenant $vinculo, bool $simular): string
     {
         $codigos = TenantPlanoCotaService::codigosDoVinculo($vinculo->data ?? []);
+
+        if (! $this->pacientesDoParceiro->ehPaciente($vinculo->tenant_id, $vinculo->data['cpf_cnpj'] ?? null)) {
+            return 'Não descontada: não é paciente do parceiro';
+        }
 
         if ($simular) {
             $planos = TenantPlano::where('tenant_id', $vinculo->tenant_id)->whereIn('cod_plano', $codigos)->get()->keyBy('cod_plano');
@@ -303,6 +366,14 @@ class SiprovPlanoVinculoService
      */
     private function linha(string $acao, TelemedicinaTenant $vinculo, bool $simular): array
     {
+        return [...$this->linhaSemDesconto($acao, $vinculo), 'vaga' => $this->descontarVaga($vinculo, $simular)];
+    }
+
+    /**
+     * @return array{acao: string, tenant_id: string, nome: string, cpf: string, plano: string, vaga: string, vinculo_id: ?int}
+     */
+    private function linhaSemDesconto(string $acao, TelemedicinaTenant $vinculo): array
+    {
         $data = $vinculo->data ?? [];
 
         return [
@@ -311,7 +382,7 @@ class SiprovPlanoVinculoService
             'nome' => (string) ($data['title'] ?? ''),
             'cpf' => preg_replace('/\D/', '', (string) ($data['cpf_cnpj'] ?? '')),
             'plano' => (string) ($data['plano_label'] ?? ''),
-            'vaga' => $this->descontarVaga($vinculo, $simular),
+            'vaga' => '',
             'vinculo_id' => $vinculo->id,
         ];
     }
