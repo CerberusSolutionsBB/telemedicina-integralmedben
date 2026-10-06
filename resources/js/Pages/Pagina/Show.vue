@@ -1172,6 +1172,7 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                             <th class="px-4 py-3">Usuário</th>
                                             <th class="px-4 py-3">IP</th>
                                             <th class="px-4 py-3">Dispositivo</th>
+                                            <th class="px-4 py-3 text-right">Valor</th>
                                             <th class="px-4 py-3 text-right">Saldo após</th>
                                         </tr>
                                     </thead>
@@ -1189,6 +1190,7 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                                 </template>
                                                 <template v-else>—</template>
                                             </td>
+                                            <td class="whitespace-nowrap px-4 py-3 text-right text-gray-900">{{ registro.valor || '—' }}</td>
                                             <td class="whitespace-nowrap px-4 py-3 text-right">
                                                 <span v-if="registro.saldo !== null" :class="registro.saldo < 1 ? 'font-semibold text-amber-700' : 'text-gray-900'">
                                                     {{ registro.saldo }} de {{ registro.quantidade }}

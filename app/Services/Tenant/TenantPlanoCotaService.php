@@ -7,6 +7,7 @@ use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
 use App\Models\TenantQuantidadeParceiro;
 use App\Support\Planos;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -281,7 +282,7 @@ class TenantPlanoCotaService
     }
 
     /**
-     * @return \Illuminate\Support\Collection<string, TenantPlano>
+     * @return Collection<string, TenantPlano>
      */
     private function travarPlanos(string $tenantId, array $codigos)
     {
@@ -306,11 +307,15 @@ class TenantPlanoCotaService
         TenantQuantidadeParceiro::create([
             'tenant_id' => $plano->tenant_id,
             'cod_plano' => $plano->cod_plano,
+            'plano_id' => $plano->id,
+            'user_id' => auth()->id(),
             'parceiro_id' => $parceiroId,
             'telemedicina_tenant_id' => $vinculoId,
             'tipo' => $tipo,
             'variacao' => $variacao,
             'quantidade' => $plano->saldo,
+            // Consumo e devolução são de um beneficiário: guardam o valor do plano naquele momento.
+            'valor' => in_array($tipo, [TenantQuantidadeParceiro::TIPO_CONSUMO, TenantQuantidadeParceiro::TIPO_DEVOLUCAO], true) ? $plano->valor : null,
         ]);
     }
 

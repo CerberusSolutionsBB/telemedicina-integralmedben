@@ -196,9 +196,10 @@ class PacientePlanoService
             'origem' => match ($origem) {
                 'cadastro_paciente' => 'Cadastro manual',
                 'formulario_publico' => 'Formulário público',
+                'sincronizacao_siprov' => 'Sincronização SIPROV',
                 default => $vinculo instanceof TelemedicinaTenant ? 'Vínculo pela SIPROV' : 'Cadastro',
             },
-            // cadastro_paciente | formulario_publico | null (vínculo pela SIPROV)
+            // cadastro_paciente | formulario_publico | sincronizacao_siprov | null (vínculo pela SIPROV)
             'origem_tipo' => $origem,
             'usuario' => $audit?->event === 'registro_plano' ? ($audit->new_values['usuario'] ?? null) : null,
             'data_hora' => Formatar::dataHora($audit?->created_at ?? $vinculo->created_at),
@@ -361,7 +362,7 @@ class PacientePlanoService
      * do tenant e consome a vaga do plano, juntos: sem saldo, nada é criado.
      *
      * @param  array  $result  retorno da integração SIPROV (associado/benefício)
-     * @param  string  $origem  cadastro_paciente | formulario_publico
+     * @param  string  $origem  cadastro_paciente | formulario_publico | sincronizacao_siprov
      *
      * @throws ValidationException quando o plano não tem saldo
      */
@@ -432,7 +433,7 @@ class PacientePlanoService
      * além de usuário, IP e dispositivo (resolvers), guarda o saldo de cada plano
      * do tenant e o total de pacientes por plano naquele momento.
      */
-    private function auditarRegistro(Model&Auditable $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem): void
+    public function auditarRegistro(Model&Auditable $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem): void
     {
         $vinculo->auditEvent = 'registro_plano';
         $vinculo->isCustomEvent = true;
@@ -447,6 +448,7 @@ class PacientePlanoService
             'origem' => $origem,
             'cod_plano' => $codPlano,
             'plano' => $label,
+            'valor' => TenantPlano::where('tenant_id', $tenantId)->where('cod_plano', $codPlano)->value('valor'),
             'planos' => $this->planoCotaService->resumo($tenantId),
         ];
 
