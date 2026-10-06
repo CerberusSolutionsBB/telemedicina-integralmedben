@@ -6,6 +6,7 @@ use App\Http\Services\ExternalApi\SiprovExternalService;
 use App\Models\Audit;
 use App\Models\ExternalApiLog;
 use App\Models\Patient;
+use App\Models\Siprov;
 use App\Models\TelemedicinaTenant;
 use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
@@ -130,6 +131,29 @@ class PacientePlanoService
             ->each(function (TenantPlanoBeneficiario $vinculo) use (&$planos, $nome) {
                 $planos[$vinculo->cpf] = $nome([(string) $vinculo->cod_plano]);
             });
+
+        // Sem vínculo no parceiro: usa o plano do associado registrado na SIPROV
+        // (tela Telemedicina), casando pelo CPF.
+        $faltantes = $digitos->reject(fn ($cpf) => isset($planos[$cpf]));
+
+        if ($faltantes->isNotEmpty()) {
+            $formatosFaltantes = $faltantes->flatMap(fn ($c) => [$c, preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $c)])->all();
+
+            Siprov::whereIn('cpf_cnpj', $formatosFaltantes)
+                ->orderBy('integrated_at')
+                ->orderBy('id')
+                ->get(['cpf_cnpj', 'cod_plano'])
+                ->each(function (Siprov $siprov) use (&$planos, $nome) {
+                    $cpf = preg_replace('/\D/', '', (string) $siprov->cpf_cnpj);
+                    $codigo = (string) ($siprov->cod_plano ?? '');
+
+                    if ($cpf === '' || $codigo === '') {
+                        return;
+                    }
+
+                    $planos[$cpf] = $nome([$codigo]);
+                });
+        }
 
         return $planos;
     }

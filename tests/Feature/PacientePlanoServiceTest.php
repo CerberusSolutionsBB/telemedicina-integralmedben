@@ -7,13 +7,14 @@ use App\Http\Services\ExternalApi\SiprovExternalService;
 use App\Models\Audit;
 use App\Models\ExternalApiLog;
 use App\Models\Patient;
+use App\Models\Siprov;
 use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
 use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
 use App\Models\User;
-use App\Services\Tenant\TenantPlanoCotaService;
 use App\Services\Tenant\PacientePlanoService;
+use App\Services\Tenant\TenantPlanoCotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
@@ -306,6 +307,43 @@ class PacientePlanoServiceTest extends TestCase
             'nome' => 'Fulano', 'cod_plano' => '331385', 'cpf' => '12345678909', 'data_nascimento' => '1990-05-10',
         ]);
         $this->assertSame([], $valido);
+    }
+
+    public function test_beneficiario_sem_vinculo_usa_o_plano_do_registro_da_siprov(): void
+    {
+        Siprov::create([
+            'codigo_integracao' => 'USR-12345678909',
+            'nome_pessoa' => 'Fulano',
+            'cpf_cnpj' => '123.456.789-09',
+            'cod_plano' => '331386',
+            'status' => Siprov::STATUS_SUCCESS,
+            'integrated_at' => now(),
+        ]);
+
+        $planos = app(PacientePlanoService::class)->planosPorCpf($this->tenant->id, ['12345678909']);
+
+        $this->assertSame('Saúde Mental', $planos['12345678909']);
+    }
+
+    public function test_vinculo_do_parceiro_tem_prioridade_sobre_o_registro_da_siprov(): void
+    {
+        TelemedicinaTenant::create([
+            'tenant_id' => $this->tenant->id,
+            'data' => ['cpf_cnpj' => '12345678909', 'cod_planos' => ['331385'], 'plano_label' => 'Clínica Familiar'],
+        ]);
+
+        Siprov::create([
+            'codigo_integracao' => 'USR-12345678909',
+            'nome_pessoa' => 'Fulano',
+            'cpf_cnpj' => '12345678909',
+            'cod_plano' => '331386',
+            'status' => Siprov::STATUS_SUCCESS,
+            'integrated_at' => now(),
+        ]);
+
+        $planos = app(PacientePlanoService::class)->planosPorCpf($this->tenant->id, ['12345678909']);
+
+        $this->assertSame('Clínica Familiar', $planos['12345678909']);
     }
 
     private function validarRequest(array $data): array
