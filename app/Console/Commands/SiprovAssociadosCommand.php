@@ -12,9 +12,9 @@ class SiprovAssociadosCommand extends Command
 {
     protected $signature = 'siprov:associados
                             {--situacao=Todos : Situação do benefício na SIPROV (ex.: ATIVO, INATIVO, Todos)}
-                            {--simular : Só lista os vínculos sem plano que seriam atualizados}';
+                            {--simular : Só lista o que seria alterado nos parceiros, sem gravar}';
 
-    protected $description = 'Lista os associados com benefício na SIPROV e completa o plano dos vínculos dos parceiros gravados sem plano (mesmo CPF)';
+    protected $description = 'Lista os associados com benefício na SIPROV e leva o plano para os parceiros (mesmo CPF): completa vínculos sem plano e cria os que faltam';
 
     public function handle(SiprovAssociadoService $associadoService, SiprovPlanoVinculoService $planoVinculoService): int
     {
@@ -39,19 +39,19 @@ class SiprovAssociadosCommand extends Command
         );
 
         $simular = (bool) $this->option('simular');
-        $atualizados = $planoVinculoService->completarPlanos($associados, $simular);
+        $atualizados = $planoVinculoService->sincronizar($associados, $simular);
 
         $this->newLine();
 
         if (! $atualizados) {
-            $this->info('Nenhum vínculo de parceiro sem plano para atualizar.');
+            $this->info('Nenhum parceiro com beneficiário sem plano para atualizar.');
 
             return self::SUCCESS;
         }
 
-        $this->info(count($atualizados).($simular ? ' vínculo(s) sem plano seriam atualizados:' : ' vínculo(s) sem plano atualizados:'));
+        $this->info(count($atualizados).($simular ? ' beneficiário(s) de parceiro seriam atualizados:' : ' beneficiário(s) de parceiro atualizados:'));
         $this->table(
-            ['Vínculo', 'Parceiro', 'Nome', 'CPF', 'Plano'],
+            ['Ação', 'Parceiro', 'Nome', 'CPF', 'Plano'],
             collect($atualizados)->map(fn (array $vinculo) => array_values($vinculo))->all()
         );
 
