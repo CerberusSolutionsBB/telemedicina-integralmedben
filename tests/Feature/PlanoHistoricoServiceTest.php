@@ -36,6 +36,14 @@ class PlanoHistoricoServiceTest extends TestCase
         $this->assertSame(['Carlos'], $this->pacientes(['busca' => 'CARL']));
     }
 
+    public function test_mostra_o_valor_do_plano_no_registro(): void
+    {
+        $this->registro('t3', null, 'Sem valor', '331384', '2026-10-01 09:00:00');
+        $this->registro('t3', null, 'Com valor', '331384', '2026-10-01 10:00:00', 39.9);
+
+        $this->assertSame(['R$ 39,90', null], array_column($this->service->listar('t3'), 'valor'));
+    }
+
     public function test_filtro_por_plano(): void
     {
         $this->assertSame(['Fulano', 'Ana Paula'], $this->pacientes(['plano' => '331385']));
@@ -84,7 +92,7 @@ class PlanoHistoricoServiceTest extends TestCase
         return array_column($this->service->listar('t1', $filtros), 'paciente');
     }
 
-    private function registro(string $tenant, ?string $usuario, string $paciente, string $codPlano, string $quando): void
+    private function registro(string $tenant, ?string $usuario, string $paciente, string $codPlano, string $quando, ?float $valor = null): void
     {
         $audit = Audit::create([
             'event' => 'registro_plano',
@@ -98,6 +106,7 @@ class PlanoHistoricoServiceTest extends TestCase
                 'plano' => 'Plano '.$codPlano,
                 'origem' => $usuario ? 'cadastro_paciente' : 'formulario_publico',
                 'planos' => [$codPlano => ['saldo' => 1, 'quantidade' => 2]],
+                'valor' => $valor,
             ],
             'tags' => "tenant:{$tenant}",
         ]);

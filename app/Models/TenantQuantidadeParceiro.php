@@ -26,22 +26,33 @@ class TenantQuantidadeParceiro extends Model
     protected $fillable = [
         'tenant_id',
         'cod_plano',
+        'plano_id',
+        'user_id',
         'parceiro_id',
         'telemedicina_tenant_id',
         'tipo',
         'variacao',
         'quantidade',
+        'valor',
     ];
 
     protected $casts = [
+        'plano_id' => 'integer',
+        'user_id' => 'integer',
         'parceiro_id' => 'integer',
         'variacao' => 'integer',
         'quantidade' => 'integer',
+        'valor' => 'decimal:2',
     ];
 
     public function tenant()
     {
         return $this->belongsTo(Tenant::class, 'tenant_id', 'id');
+    }
+
+    public function plano()
+    {
+        return $this->belongsTo(TenantPlano::class, 'plano_id');
     }
 
     public function telemedicinaTenant()

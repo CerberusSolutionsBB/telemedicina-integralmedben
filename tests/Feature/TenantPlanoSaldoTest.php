@@ -6,6 +6,7 @@ use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
 use App\Models\TenantPlano;
 use App\Models\TenantQuantidadeParceiro;
+use App\Models\User;
 use App\Services\Tenant\TenantPlanoCotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -31,7 +32,10 @@ class TenantPlanoSaldoTest extends TestCase
     public function test_consumo_decrementa_saldo_e_registra_extrato_com_paciente(): void
     {
         $this->service->ajustarQuantidade($this->tenant->id, '331385', 2);
+        TenantPlano::where('cod_plano', '331385')->update(['valor' => 39.90]);
         $vinculo = $this->vinculo(['331385']);
+        $usuario = User::factory()->create();
+        $this->actingAs($usuario);
 
         $this->service->consumir($this->tenant->id, ['331385'], 42, $vinculo->id);
 
@@ -43,6 +47,9 @@ class TenantPlanoSaldoTest extends TestCase
         $this->assertSame(-1, $movimento->variacao);
         $this->assertSame(1, $movimento->quantidade);
         $this->assertSame($vinculo->id, $movimento->telemedicina_tenant_id);
+        $this->assertSame(TenantPlano::where('cod_plano', '331385')->value('id'), $movimento->plano_id);
+        $this->assertSame($usuario->id, $movimento->user_id);
+        $this->assertSame('39.90', $movimento->valor);
     }
 
     public function test_sem_saldo_nao_consome_nada(): void

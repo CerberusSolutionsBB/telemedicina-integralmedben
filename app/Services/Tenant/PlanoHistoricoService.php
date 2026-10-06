@@ -4,6 +4,7 @@ namespace App\Services\Tenant;
 
 use App\Models\Audit;
 use App\Support\Formatar;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -21,6 +22,7 @@ class PlanoHistoricoService
     private const ORIGENS = [
         'cadastro_paciente' => 'Cadastro manual',
         'formulario_publico' => 'Formulário público',
+        'sincronizacao_siprov' => 'Sincronização SIPROV',
     ];
 
     /**
@@ -67,7 +69,7 @@ class PlanoHistoricoService
     /**
      * Registros do tenant com busca (quem registrou/paciente) e período aplicados.
      *
-     * @return \Illuminate\Support\Collection<int, Audit>
+     * @return Collection<int, Audit>
      */
     private function filtrados(string $tenantId, array $filtros)
     {
@@ -114,6 +116,7 @@ class PlanoHistoricoService
             'user_agent' => $audit->user_agent,
             'saldo' => $plano['saldo'] ?? null,
             'quantidade' => $plano['quantidade'] ?? null,
+            'valor' => isset($dados['valor']) ? 'R$ '.number_format((float) $dados['valor'], 2, ',', '.') : null,
         ];
     }
 

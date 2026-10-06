@@ -14,7 +14,7 @@ class SiprovAssociadosCommand extends Command
                             {--situacao=Todos : Situação do benefício na SIPROV (ex.: ATIVO, INATIVO, Todos)}
                             {--simular : Só lista o que seria alterado nos parceiros, sem gravar}';
 
-    protected $description = 'Lista os associados com benefício na SIPROV e leva o plano para os parceiros (mesmo CPF): completa vínculos sem plano e cria os que faltam';
+    protected $description = 'Lista os associados com benefício na SIPROV e leva o plano para os parceiros (mesmo CPF): completa vínculos sem plano, cria os que faltam e desconta a vaga com o valor do plano';
 
     public function handle(SiprovAssociadoService $associadoService, SiprovPlanoVinculoService $planoVinculoService): int
     {
@@ -51,8 +51,8 @@ class SiprovAssociadosCommand extends Command
 
         $this->info(count($atualizados).($simular ? ' beneficiário(s) de parceiro seriam atualizados:' : ' beneficiário(s) de parceiro atualizados:'));
         $this->table(
-            ['Ação', 'Parceiro', 'Nome', 'CPF', 'Plano'],
-            collect($atualizados)->map(fn (array $vinculo) => array_values($vinculo))->all()
+            ['Ação', 'Parceiro', 'Nome', 'CPF', 'Plano', 'Vaga'],
+            collect($atualizados)->map(fn (array $linha) => [$linha['acao'], $linha['tenant_id'], $linha['nome'], $linha['cpf'], $linha['plano'], $linha['vaga']])->all()
         );
 
         return self::SUCCESS;
