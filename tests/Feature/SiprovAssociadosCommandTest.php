@@ -13,6 +13,10 @@ use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
 use App\Models\TenantQuantidadeParceiro;
 use App\Services\Siprov\SiprovAssociadoService;
+use App\Services\Siprov\SiprovPlanoVinculoService;
+use App\Services\Tenant\PacientePlanoService;
+use App\Services\Tenant\PacientesDoParceiroService;
+use App\Services\Tenant\TenantPlanoCotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -25,6 +29,13 @@ class SiprovAssociadosCommandTest extends TestCase
 
     private TenantPlano $plano;
 
+    /**
+     * CPFs cadastrados como pacientes no banco de cada parceiro.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private array $pacientes = ['tenant-siprov' => ['12345678909', '11122233344']];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -34,6 +45,12 @@ class SiprovAssociadosCommandTest extends TestCase
         // Plano habilitado antes dos vínculos do teste: 50 vagas de R$ 39,90.
         $this->plano = TenantPlano::create(['tenant_id' => $this->tenant->id, 'cod_plano' => '331384', 'quantidade' => 50, 'saldo' => 50, 'valor' => 39.90]);
         $this->plano->forceFill(['created_at' => now()->subHour()])->save();
+
+        $this->mock(PacientesDoParceiroService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('ehPaciente')->andReturnUsing(
+                fn (string $tenantId, ?string $cpf) => in_array(preg_replace('/\D/', '', (string) $cpf), $this->pacientes[$tenantId] ?? [], true)
+            );
+        });
 
         $this->mock(SiprovAssociadoService::class, function (MockInterface $mock) {
             $mock->shouldReceive('todos')->andReturn([
@@ -143,6 +160,44 @@ class SiprovAssociadosCommandTest extends TestCase
             ->assertSuccessful();
 
         $this->assertSame(49, $this->plano->fresh()->saldo);
+    }
+
+    public function test_nao_desconta_vinculo_de_quem_nao_e_paciente_do_parceiro(): void
+    {
+        $this->vinculo(['cpf_cnpj' => '99988877766', 'cod_plano' => '331384', 'cod_planos' => ['331384']]);
+
+        $this->artisan('siprov:associados')
+            ->expectsOutputToContain('Nenhum parceiro com beneficiário sem plano para atualizar.')
+            ->assertSuccessful();
+
+        $this->assertSame(50, $this->plano->fresh()->saldo);
+        $this->assertSame(0, TenantQuantidadeParceiro::count());
+    }
+
+    public function test_devolve_vaga_descontada_pela_sincronizacao_para_quem_nao_e_paciente(): void
+    {
+        $vinculo = $this->vinculo(['cpf_cnpj' => '99988877766', 'cod_plano' => '331384', 'cod_planos' => ['331384']]);
+
+        // Desconto feito por engano por uma execução anterior da sincronização.
+        app(TenantPlanoCotaService::class)->consumir($this->tenant->id, ['331384'], null, $vinculo->id);
+        app(PacientePlanoService::class)->auditarRegistro($vinculo, $this->tenant->id, '331384', 'Clínica Individual', 'Fulano', null, SiprovPlanoVinculoService::ORIGEM);
+        $this->assertSame(49, $this->plano->fresh()->saldo);
+
+        $this->artisan('siprov:associados')
+            ->expectsOutputToContain('Vaga devolvida')
+            ->assertSuccessful();
+
+        $this->assertSame(50, $this->plano->fresh()->saldo);
+        $devolucao = TenantQuantidadeParceiro::where('tipo', TenantQuantidadeParceiro::TIPO_DEVOLUCAO)->sole();
+        $this->assertSame($vinculo->id, $devolucao->telemedicina_tenant_id);
+        $this->assertSame('39.90', $devolucao->valor);
+        $this->assertSame(0, Audit::where('event', 'registro_plano')->count());
+
+        $this->artisan('siprov:associados')
+            ->expectsOutputToContain('Nenhum parceiro com beneficiário sem plano para atualizar.')
+            ->assertSuccessful();
+
+        $this->assertSame(50, $this->plano->fresh()->saldo);
     }
 
     public function test_sem_vaga_mantem_o_plano_e_nao_desconta(): void

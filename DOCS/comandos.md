@@ -22,6 +22,12 @@ Lista os **associados com benefício na SIPROV** (os mesmos da tela Telemedicina
   Página do Parceiro). É o caso do beneficiário que aparece como "Sem plano" no parceiro e com plano na SIPROV.
 - **Vaga descontada**: o vínculo já tem plano, mas a vaga não foi descontada do parceiro (ex.: corrigido
   por uma versão anterior deste comando) → a vaga é descontada agora.
+- **Vaga devolvida**: a vaga foi descontada por esta sincronização, mas o CPF **não é paciente do parceiro**
+  (não aparece em Beneficiários) → a vaga volta (movimento de devolução, com valor) e o registro feito por
+  engano sai do histórico de Planos.
+
+Só conta como beneficiário do parceiro quem está cadastrado como **paciente no banco do parceiro**
+(a mesma lista da tela Beneficiários). Vínculos da aba Telemedicina sem paciente no parceiro não descontam vaga.
 
 Em todos os casos, **cada beneficiário desconta 1 vaga** do plano no parceiro (ex.: 50 → 49). O movimento
 (`tenants_quantidade_parceiros`) grava: data e horário (`created_at`), `tenant_id`, `plano_id`, `cod_plano`,
@@ -59,7 +65,7 @@ php artisan siprov:associados --situacao=ATIVO --simular
 
 1. Total e tabela dos associados da SIPROV: Nome, CPF, Benefício, Situação, Plano(s).
 2. Tabela dos beneficiários de parceiro atualizados (ou que seriam, com `--simular`): Ação
-   (`Plano preenchido` / `Vínculo criado` / `Vaga descontada`), Parceiro, Nome, CPF, Plano e Vaga
+   (`Plano preenchido` / `Vínculo criado` / `Vaga descontada` / `Vaga devolvida`), Parceiro, Nome, CPF, Plano e Vaga
    (ex.: `Descontada: saldo 44 de 50 · R$ 39,90`). Se não houver nenhum:
    `Nenhum parceiro com beneficiário sem plano para atualizar.`
 
