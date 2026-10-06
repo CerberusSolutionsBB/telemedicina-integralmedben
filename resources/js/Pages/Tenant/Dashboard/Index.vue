@@ -35,6 +35,7 @@ const PALETA = ['#22b8cf', '#e11d2e', '#1e293b', '#f59e0b', '#94a3b8', '#8b5cf6'
 
 const fmtReal = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const nomeMesAtual = monthNames[props.currentMonth - 1].toLowerCase();
+const inativos = computed(() => props.totalPatients - props.activePatients);
 const periodoLabel = computed(() => props.selectedMonth ? `${monthNames[props.selectedMonth - 1]} de ${props.currentYear}` : `${props.currentYear}`);
 
 // Recarrega os dados do período; enquanto a requisição roda, a tela mostra o esqueleto.
@@ -91,19 +92,19 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
     <div class="py-6 space-y-5">
 
       <!-- Cabeçalho -->
-      <section class="relative overflow-hidden rounded-2xl bg-[#0f7a85] px-5 sm:px-6 pt-5 pb-5 text-white">
+      <section class="relative overflow-hidden rounded-2xl bg-[#23BACF] px-5 sm:px-6 pt-5 pb-5 text-white">
         <Heart class="pointer-events-none absolute -right-6 -top-6 h-36 w-36 text-white/10" />
         <div class="relative flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div>
             <h2 class="text-2xl font-extrabold uppercase tracking-wide">Dashboard</h2>
-            <p class="mt-1 text-sm text-white/80">
+            <p class="mt-1 text-sm text-white/90">
               Visão geral de {{ nomeParceiro }} em {{ currentYear }} ·
               <span v-if="carregando" class="inline-block h-3 w-28 rounded bg-white/30 align-middle animate-pulse" />
               <template v-else>atualizado em {{ updatedAt }}</template>
             </p>
           </div>
           <div class="grid grid-cols-2 sm:flex gap-2">
-            <label class="flex flex-col gap-1 text-xs text-white/80">
+            <label class="flex flex-col gap-1 text-xs text-white/90">
               Período
               <select :value="monthValue" :disabled="carregando" @change="goToMonth($event.target.value)"
                 class="rounded-lg border-0 bg-white px-3 py-2 pr-8 text-sm font-medium text-gray-800 focus:ring-2 focus:ring-cyan-300">
@@ -111,7 +112,7 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
                 <option v-for="(name, i) in monthNames" :key="i" :value="i + 1">{{ name }}</option>
               </select>
             </label>
-            <label class="flex flex-col gap-1 text-xs text-white/80">
+            <label class="flex flex-col gap-1 text-xs text-white/90">
               Ano
               <select :value="currentYear" :disabled="carregando" @change="goToYear($event.target.value)"
                 class="rounded-lg border-0 bg-white px-3 py-2 pr-8 text-sm font-medium text-gray-800 focus:ring-2 focus:ring-cyan-300">
@@ -125,7 +126,7 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
           <div class="rounded-xl bg-white px-4 py-3 text-gray-800">
             <p class="text-xs font-medium text-gray-600">Beneficiários</p>
             <div v-if="carregando" class="mt-2 h-7 w-16 rounded bg-gray-200 animate-pulse" />
-            <p v-else class="mt-1 text-2xl font-extrabold text-[#0f7a85]">{{ totalPatients.toLocaleString('pt-BR') }}</p>
+            <p v-else class="mt-1 text-2xl font-extrabold text-[#23BACF]">{{ totalPatients.toLocaleString('pt-BR') }}</p>
           </div>
           <div class="rounded-xl bg-white px-4 py-3 text-gray-800">
             <p class="text-xs font-medium text-gray-600">Novos em {{ nomeMesAtual }}</p>
@@ -135,12 +136,15 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
           <div class="rounded-xl bg-white px-4 py-3 text-gray-800">
             <p class="text-xs font-medium text-gray-600">Beneficiários ativos</p>
             <div v-if="carregando" class="mt-2 h-7 w-16 rounded bg-gray-200 animate-pulse" />
-            <p v-else class="mt-1 text-2xl font-extrabold">{{ activePatients }}<span class="ml-1 text-base font-semibold text-gray-400">/ {{ totalPatients }}</span></p>
+            <template v-else>
+              <p class="mt-1 text-2xl font-extrabold">{{ activePatients }}<span class="ml-1 text-base font-semibold text-gray-500">/ {{ totalPatients }}</span></p>
+              <p class="mt-1 text-xs font-semibold text-red-600">{{ inativos.toLocaleString('pt-BR') }} inativos</p>
+            </template>
           </div>
           <div class="rounded-xl bg-white px-4 py-3 text-gray-800">
             <p class="text-xs font-medium text-gray-600">Vagas disponíveis nos planos</p>
             <div v-if="carregando" class="mt-2 h-7 w-16 rounded bg-gray-200 animate-pulse" />
-            <p v-else class="mt-1 text-2xl font-extrabold">{{ vagasDisponiveis }}<span class="ml-1 text-base font-semibold text-gray-400">/ {{ vagasContratadas }}</span></p>
+            <p v-else class="mt-1 text-2xl font-extrabold">{{ vagasDisponiveis }}<span class="ml-1 text-base font-semibold text-gray-500">/ {{ vagasContratadas }}</span></p>
           </div>
         </div>
       </section>
@@ -246,7 +250,7 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div class="flex items-center gap-2">
-            <Layers class="h-4 w-4 text-[#0f7a85]" />
+            <Layers class="h-4 w-4 text-[#23BACF]" />
             <h3 class="text-base font-bold text-gray-900">Origem do cadastro</h3>
           </div>
           <p class="text-xs text-gray-500">{{ periodoLabel }}</p>
@@ -260,13 +264,13 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
                 <div class="h-2 rounded-full bg-[#22b8cf]" :style="{ width: (o.total / maxOrigem * 100) + '%' }" />
               </div>
             </li>
-            <li v-if="!porOrigem.length" class="py-6 text-center text-xs text-gray-400">Nenhum cadastro no período.</li>
+            <li v-if="!porOrigem.length" class="py-6 text-center text-xs text-gray-500">Nenhum cadastro no período.</li>
           </ul>
         </div>
 
         <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div class="flex items-center gap-2">
-            <UserPlus class="h-4 w-4 text-[#0f7a85]" />
+            <UserPlus class="h-4 w-4 text-[#23BACF]" />
             <h3 class="text-base font-bold text-gray-900">Quem mais cadastrou</h3>
           </div>
           <p class="text-xs text-gray-500">{{ periodoLabel }}</p>
@@ -285,13 +289,13 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
                 </div>
               </div>
             </li>
-            <li v-if="!porUsuario.length" class="py-6 text-center text-xs text-gray-400">Nenhum cadastro feito por usuários no período.</li>
+            <li v-if="!porUsuario.length" class="py-6 text-center text-xs text-gray-500">Nenhum cadastro feito por usuários no período.</li>
           </ul>
         </div>
 
         <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div class="flex items-center gap-2">
-            <PieChart class="h-4 w-4 text-[#0f7a85]" />
+            <PieChart class="h-4 w-4 text-[#23BACF]" />
             <h3 class="text-base font-bold text-gray-900">Perfil dos beneficiários</h3>
           </div>
           <p class="text-xs text-gray-500">{{ periodoLabel }}</p>
@@ -309,13 +313,13 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
           <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500">Faixa etária</p>
           <div class="mt-2 flex h-24 items-end gap-2 border-b border-gray-200">
             <div v-for="f in porFaixaEtaria" :key="f.label" class="flex h-full flex-1 flex-col items-center justify-end" :title="`${f.label}: ${f.total}`">
-              <span v-if="f.total > 0" class="mb-0.5 text-[10px] font-bold text-gray-900">{{ f.total }}</span>
-              <div class="w-full max-w-[2rem] rounded-t bg-[#0f7a85]"
+              <span v-if="f.total > 0" class="mb-0.5 text-xs font-bold text-gray-900">{{ f.total }}</span>
+              <div class="w-full max-w-[2rem] rounded-t bg-[#23BACF]"
                 :style="{ height: f.total > 0 ? (f.total / maxFaixa * 80) + '%' : '2px', opacity: f.total > 0 ? 1 : 0.25 }" />
             </div>
           </div>
           <div class="mt-1 flex gap-2">
-            <span v-for="f in porFaixaEtaria" :key="f.label" class="flex-1 text-center text-[10px] text-gray-500">{{ f.label }}</span>
+            <span v-for="f in porFaixaEtaria" :key="f.label" class="flex-1 text-center text-xs text-gray-500">{{ f.label }}</span>
           </div>
         </div>
       </div>
@@ -345,7 +349,7 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
                   <span class="flex items-center gap-2">
                     <span class="h-2.5 w-2.5 shrink-0 rounded-sm" :style="{ background: PALETA[i % PALETA.length] }" />
                     <span class="font-medium text-gray-800">{{ p.plano }}</span>
-                    <span v-if="p.quantidade && p.disponivel === 0" class="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600">esgotado</span>
+                    <span v-if="p.quantidade && p.disponivel === 0" class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600">esgotado</span>
                   </span>
                 </td>
                 <td class="py-3 pr-6">
@@ -360,7 +364,7 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
                 <td class="py-3 pr-2 text-right font-semibold text-gray-900">{{ fmtReal(p.receita) }}</td>
               </tr>
               <tr v-if="!planos.length">
-                <td colspan="4" class="py-10 text-center text-sm text-gray-400">Nenhum plano contratado.</td>
+                <td colspan="4" class="py-10 text-center text-sm text-gray-500">Nenhum plano contratado.</td>
               </tr>
             </tbody>
             <tfoot v-if="planos.length">

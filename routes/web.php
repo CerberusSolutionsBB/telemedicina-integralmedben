@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CentralUserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FinancieroController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestionController;
@@ -18,6 +19,10 @@ Route::middleware([PreventAccessFromTenantDomains::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware(['auth', 'verified'])
         ->name('dashboard');
+
+    Route::get('/financiero', [FinancieroController::class, 'index'])
+        ->middleware(['auth', 'verified'])
+        ->name('financiero.index');
 
     Route::middleware('auth')->group(function () {
         Route::get('/credenciados', [TenantController::class, 'index'])->name('credenciados.index');
