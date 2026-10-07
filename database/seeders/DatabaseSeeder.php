@@ -13,6 +13,8 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             AclPermissionSeeder::class,
             TenantRolesSeeder::class,
+            TenantRolePermissionsSeeder::class,
+            UsuariosPorPerfilSeeder::class,
             TiposVinculoFamiliarSeeder::class,
             QuestionSeeder::class,
         ]);
