@@ -15,6 +15,7 @@ use App\Services\Tenant\PacientesDoParceiroService;
 use App\Services\Tenant\TenantPlanoCotaService;
 use App\Support\Planos;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -39,6 +40,13 @@ class SiprovPlanoVinculoService
     public const ACAO_VAGA_DEVOLVIDA = 'Vaga devolvida';
 
     public const ACAO_HISTORICO_REGISTRADO = 'Histórico registrado';
+
+    public const ACAO_HISTORICO_ATUALIZADO = 'Histórico atualizado';
+
+    /**
+     * @var array<int, array{plano: string, quantidade: int, saldo: int}>
+     */
+    private array $saldosIniciais = [];
 
     public const ORIGEM = 'sincronizacao_siprov';
 
@@ -293,9 +301,8 @@ class SiprovPlanoVinculoService
         $registrados = Audit::where('event', 'registro_plano')
             ->where('auditable_type', TelemedicinaTenant::class)
             ->whereIn('auditable_id', $vinculos->pluck('id'))
-            ->distinct()
-            ->pluck('auditable_id')
-            ->flip();
+            ->get()
+            ->groupBy('auditable_id');
 
         $movimentos = TenantQuantidadeParceiro::whereIn('telemedicina_tenant_id', $vinculos->pluck('id'))
             ->orderBy('id')
@@ -312,9 +319,15 @@ class SiprovPlanoVinculoService
             $codigos = TenantPlanoCotaService::codigosDoVinculo($vinculo->data ?? []);
             $movimentosDoVinculo = $movimentos[$vinculo->id] ?? collect();
 
-            if (isset($registrados[$vinculo->id])
-                || ! $codigos
-                || ! $this->pacientesDoParceiro->ehPaciente($vinculo->tenant_id, $vinculo->data['cpf_cnpj'] ?? null)) {
+            if (! $codigos || ! $this->pacientesDoParceiro->ehPaciente($vinculo->tenant_id, $vinculo->data['cpf_cnpj'] ?? null)) {
+                continue;
+            }
+
+            if (isset($registrados[$vinculo->id])) {
+                if ($linha = $this->completarSaldoDoRegistro($vinculo, $registrados[$vinculo->id], $movimentosDoVinculo->isEmpty(), $planos, $simular)) {
+                    $linhas[] = $linha;
+                }
+
                 continue;
             }
 
@@ -367,17 +380,90 @@ class SiprovPlanoVinculoService
                 'cod_plano' => $plano->cod_plano,
                 'plano' => $this->label($plano->cod_plano),
                 'valor' => $consumo?->valor ?? $plano->valor,
-                // Saldo logo após a vaga ser ocupada; sem o movimento, não há como saber.
-                'planos' => $consumo ? [$plano->cod_plano => [
-                    'plano' => $this->label($plano->cod_plano),
-                    'quantidade' => $plano->quantidade,
-                    'saldo' => $consumo->quantidade,
-                ]] : [],
+                // Saldo logo após a vaga ser ocupada; sem o movimento, o saldo inicial do plano.
+                'planos' => [$plano->cod_plano => $consumo
+                    ? ['plano' => $this->label($plano->cod_plano), 'quantidade' => $plano->quantidade, 'saldo' => $consumo->quantidade]
+                    : $this->saldoInicial($plano)],
             ],
             'tags' => 'tenant:'.$vinculo->tenant_id,
         ]);
 
         $audit->forceFill(['created_at' => $consumo?->created_at ?? $vinculo->created_at])->save();
+    }
+
+    /**
+     * Registro do histórico criado sem saldo (vaga contada no saldo inicial, antes de
+     * o saldo inicial ser preenchido): completa com o saldo inicial do plano.
+     *
+     * @param  Collection<int, Audit>  $registros
+     * @param  Collection<string, TenantPlano>  $planos
+     */
+    private function completarSaldoDoRegistro(TelemedicinaTenant $vinculo, $registros, bool $semMovimento, $planos, bool $simular): ?array
+    {
+        $semSaldo = $registros->filter(fn (Audit $audit) => $semMovimento
+            && empty($audit->new_values['planos'])
+            && isset($planos[$vinculo->tenant_id.'|'.($audit->new_values['cod_plano'] ?? '')]));
+
+        if ($semSaldo->isEmpty()) {
+            return null;
+        }
+
+        if (! $simular) {
+            $semSaldo->each(function (Audit $audit) use ($vinculo, $planos) {
+                $plano = $planos[$vinculo->tenant_id.'|'.$audit->new_values['cod_plano']];
+
+                $audit->new_values = [...$audit->new_values, 'planos' => [$plano->cod_plano => $this->saldoInicial($plano)]];
+                $audit->save();
+            });
+        }
+
+        $linha = $this->linhaSemDesconto(self::ACAO_HISTORICO_ATUALIZADO, $vinculo);
+        $linha['vaga'] = $simular ? 'Saldo inicial seria preenchido' : 'Saldo inicial preenchido';
+
+        return $linha;
+    }
+
+    /**
+     * Saldo e quantidade contratada logo que o plano foi habilitado, refeitos pelo
+     * extrato: a criação do plano grava um ajuste com o saldo inicial; planos
+     * anteriores ao extrato partem do saldo antes do primeiro movimento.
+     *
+     * @return array{plano: string, quantidade: int, saldo: int}
+     */
+    private function saldoInicial(TenantPlano $plano): array
+    {
+        if (isset($this->saldosIniciais[$plano->id])) {
+            return $this->saldosIniciais[$plano->id];
+        }
+
+        $movimentos = TenantQuantidadeParceiro::where('tenant_id', $plano->tenant_id)
+            ->where('cod_plano', $plano->cod_plano)
+            ->orderBy('id')
+            ->get();
+
+        $primeiro = $movimentos->first();
+        $criacao = $primeiro
+            && $primeiro->tipo === TenantQuantidadeParceiro::TIPO_AJUSTE
+            && $primeiro->created_at
+            && $plano->created_at
+            && abs($primeiro->created_at->diffInSeconds($plano->created_at)) <= 5;
+
+        $saldo = match (true) {
+            ! $primeiro => $plano->saldo,
+            $criacao => $primeiro->quantidade,
+            default => $primeiro->quantidade - $primeiro->variacao,
+        };
+
+        // Ajustes de quantidade feitos depois da criação mudaram o contratado.
+        $ajustes = $movimentos->where('tipo', TenantQuantidadeParceiro::TIPO_AJUSTE)
+            ->reject(fn (TenantQuantidadeParceiro $movimento) => $criacao && $movimento->is($primeiro))
+            ->sum('variacao');
+
+        return $this->saldosIniciais[$plano->id] = [
+            'plano' => $this->label($plano->cod_plano),
+            'quantidade' => $plano->quantidade - $ajustes,
+            'saldo' => $saldo,
+        ];
     }
 
     /**

@@ -29,6 +29,9 @@ Lista os **associados com benefício na SIPROV** (os mesmos da tela Telemedicina
 - **Histórico registrado**: o paciente do parceiro já ocupa a vaga (ex.: vínculo pelo modal da aba
   Telemedicina, ou já contado quando o plano foi habilitado), mas não aparecia no histórico de Planos →
   o registro é criado com a data, o saldo e o valor de quando a vaga foi ocupada, **sem descontar de novo**.
+  Se a vaga foi contada quando o plano foi habilitado, o "Saldo após" é o saldo inicial do plano, refeito
+  pelo extrato de movimentos. Usuário, IP e dispositivo ficam "—" (não foram gravados na época).
+- **Histórico atualizado**: registro criado antes sem "Saldo após" → recebe o saldo inicial do plano.
 
 Só conta como beneficiário do parceiro quem está cadastrado como **paciente no banco do parceiro**
 (a mesma lista da tela Beneficiários). Vínculos da aba Telemedicina sem paciente no parceiro não descontam vaga.
@@ -69,7 +72,7 @@ php artisan siprov:associados --situacao=ATIVO --simular
 
 1. Total e tabela dos associados da SIPROV: Nome, CPF, Benefício, Situação, Plano(s).
 2. Tabela dos beneficiários de parceiro atualizados (ou que seriam, com `--simular`): Ação
-   (`Plano preenchido` / `Vínculo criado` / `Vaga descontada` / `Vaga devolvida` / `Histórico registrado`), Parceiro, Nome, CPF, Plano e Vaga
+   (`Plano preenchido` / `Vínculo criado` / `Vaga descontada` / `Vaga devolvida` / `Histórico registrado` / `Histórico atualizado`), Parceiro, Nome, CPF, Plano e Vaga
    (ex.: `Descontada: saldo 44 de 50 · R$ 39,90`). Se não houver nenhum:
    `Nenhum parceiro com beneficiário sem plano para atualizar.`
 

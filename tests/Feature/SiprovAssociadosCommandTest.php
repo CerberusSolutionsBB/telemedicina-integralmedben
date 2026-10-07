@@ -224,7 +224,38 @@ class SiprovAssociadosCommandTest extends TestCase
         $this->assertSame('vinculo_siprov', $registroModal->new_values['origem']);
         $this->assertSame(49, $registroModal->new_values['planos']['331384']['saldo']);
         $this->assertEquals(39.90, $registroModal->new_values['valor']);
-        $this->assertSame(1, Audit::where('event', 'registro_plano')->where('auditable_id', $inicial->id)->count());
+        // Sem movimento: saldo inicial do plano refeito pelo extrato (antes do 1º consumo).
+        $registroInicial = Audit::where('event', 'registro_plano')->where('auditable_id', $inicial->id)->sole();
+        $this->assertSame(['plano' => 'Clínica Individual', 'quantidade' => 50, 'saldo' => 50], $registroInicial->new_values['planos']['331384']);
+
+        $this->artisan('siprov:associados')
+            ->expectsOutputToContain('Nenhum parceiro com beneficiário sem plano para atualizar.')
+            ->assertSuccessful();
+    }
+
+    public function test_completa_saldo_inicial_de_registro_ja_criado_sem_saldo(): void
+    {
+        // Vínculo existente quando o plano foi habilitado com 20 vagas; depois o contratado subiu para 25.
+        $vinculo = $this->vinculo(['cpf_cnpj' => '12345678909', 'cod_plano' => '331385', 'cod_planos' => ['331385']]);
+        $cota = app(TenantPlanoCotaService::class);
+        $cota->ajustarQuantidade($this->tenant->id, '331385', 20);
+        $cota->ajustarQuantidade($this->tenant->id, '331385', 25);
+
+        Audit::create([
+            'event' => 'registro_plano',
+            'auditable_type' => TelemedicinaTenant::class,
+            'auditable_id' => $vinculo->id,
+            'old_values' => [],
+            'new_values' => ['paciente' => 'Fulano', 'origem' => 'vinculo_siprov', 'cod_plano' => '331385', 'plano' => 'Clínica Familiar', 'planos' => []],
+            'tags' => 'tenant:'.$this->tenant->id,
+        ]);
+
+        $this->artisan('siprov:associados')
+            ->expectsOutputToContain('Histórico atualizado')
+            ->assertSuccessful();
+
+        $planos = Audit::where('event', 'registro_plano')->sole()->new_values['planos'];
+        $this->assertSame(['plano' => 'Clínica Familiar', 'quantidade' => 20, 'saldo' => 19], $planos['331385']);
 
         $this->artisan('siprov:associados')
             ->expectsOutputToContain('Nenhum parceiro com beneficiário sem plano para atualizar.')
