@@ -71,6 +71,7 @@ Route::middleware([
         Route::prefix('admin/acl')->name('tenant.acl.')->group(base_path('routes/acl.php'));
 
         // Metas de desempenho dos usuários (acesso: qualquer usuário logado).
+        Route::get('desempenho/usuarios', [DesempenhoController::class, 'usuarios'])->name('desempenho.usuarios');
         Route::resource('desempenho', DesempenhoController::class)->parameters(['desempenho' => 'desempenho']);
 
         // Relatórios da tela Relatório (produção por usuário).

@@ -19,6 +19,8 @@ const buildRows = (planos, tenantPlanos, planoUso) => {
             selecionado: salvos.has(plano.value),
             quantidade: salvos.get(plano.value)?.quantidade ?? Math.max(1, emUso),
             valor: salvos.get(plano.value)?.valor ?? '',
+            comissao_tipo: salvos.get(plano.value)?.comissao_tipo ?? '',
+            comissao_valor: salvos.get(plano.value)?.comissao_valor ?? '',
         }
     })
 }
@@ -27,7 +29,13 @@ const buildRows = (planos, tenantPlanos, planoUso) => {
 const valorOuNull = (valor) => (valor === '' || valor === null || valor === undefined ? null : Number(valor))
 
 const serialize = (rows) =>
-    JSON.stringify(rows.filter(r => r.selecionado).map(r => [r.cod_plano, Number(r.quantidade), valorOuNull(r.valor)]))
+    JSON.stringify(rows.filter(r => r.selecionado).map(r => [
+        r.cod_plano,
+        Number(r.quantidade),
+        valorOuNull(r.valor),
+        r.comissao_tipo || null,
+        valorOuNull(r.comissao_valor),
+    ]))
 
 // Um plano em uso não pode ser desmarcado nem ficar abaixo das vagas ocupadas.
 export const quantidadeMinima = (row) => Math.max(1, row.emUso)
@@ -75,6 +83,16 @@ export function usePaginaPlanos(props) {
 
     const hasQuantidadeInvalida = computed(() => planoRows.value.some(isQuantidadeInvalida))
     const hasValorInvalido = computed(() => planoRows.value.some(isValorInvalido))
+
+    // Comissão: valor obrigatório quando o tipo é escolhido; percentual até 100%.
+    const isComissaoInvalida = (row) => {
+        if (!row.selecionado || !row.comissao_tipo) return false
+        const valor = valorOuNull(row.comissao_valor)
+        if (valor === null || !Number.isFinite(valor) || valor < 0) return true
+        return row.comissao_tipo === 'percentual' && valor > 100
+    }
+
+    const hasComissaoInvalida = computed(() => planoRows.value.some(isComissaoInvalida))
 
     // Vagas conforme o que está salvo (não o rascunho da aba), usadas no vínculo SIPROV.
     const planoVagas = computed(() => {
@@ -185,6 +203,11 @@ export function usePaginaPlanos(props) {
             return
         }
 
+        if (hasComissaoInvalida.value) {
+            showToast('A comissão deve ser um número maior ou igual a zero (percentual até 100%).', 'warning')
+            return
+        }
+
         isSavingPlanos.value = true
 
         router.put(
@@ -194,6 +217,8 @@ export function usePaginaPlanos(props) {
                     cod_plano: r.cod_plano,
                     quantidade: Number(r.quantidade),
                     valor: valorOuNull(r.valor),
+                    comissao_tipo: r.comissao_tipo || null,
+                    comissao_valor: r.comissao_tipo ? valorOuNull(r.comissao_valor) : null,
                 })),
             },
             {
@@ -223,6 +248,8 @@ export function usePaginaPlanos(props) {
         hasQuantidadeInvalida,
         isValorInvalido,
         hasValorInvalido,
+        isComissaoInvalida,
+        hasComissaoInvalida,
         planoVagas,
         errosCotaSiprov,
         zerarModal,

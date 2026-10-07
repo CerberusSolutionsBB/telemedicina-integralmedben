@@ -1,5 +1,5 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { router, useForm } from '@inertiajs/vue3'
+import { router, useForm, usePage } from '@inertiajs/vue3'
 import { campoDoErro, irParaCampo } from './foco'
 
 const ENDERECO_VAZIO = { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' }
@@ -10,6 +10,7 @@ const ENDERECO_VAZIO = { cep: '', logradouro: '', numero: '', complemento: '', b
  */
 export function usePatientForm({ patient = null, familiares = [] } = {}) {
     const isEdit = Boolean(patient)
+    const usuarioAtual = usePage().props.auth?.user?.id ?? null
 
     const enderecos = patient?.enderecos && typeof patient.enderecos === 'object'
         ? Object.fromEntries(Object.keys(ENDERECO_VAZIO).map((k) => [k, patient.enderecos[k] || '']))
@@ -23,6 +24,8 @@ export function usePatientForm({ patient = null, familiares = [] } = {}) {
         sexo: patient?.sexo || '',
         email: patient?.email || '',
         numero: patient?.numero || '',
+        // Vendedor/indicado por: quem recebe a comissão da venda do plano.
+        user_id: isEdit ? (patient?.user_id ?? null) : usuarioAtual,
         ...(isEdit ? { status: Boolean(patient.status) } : {}),
         enderecos,
         cod_plano: '',

@@ -11,6 +11,7 @@ const props = defineProps({
     breadcrumbs: { type: Array, required: true },
     patient: { type: Object, required: true },
     planos: { type: Array, default: () => [] },
+    vendedores: { type: Array, default: () => [] },
     planoAtual: { type: Object, default: null },
     familiares: { type: Array, default: () => [] },
     tiposFamiliares: { type: Array, default: () => [] },
@@ -38,7 +39,7 @@ const nome = computed(() => props.patient.nome || `beneficiário #${props.patien
             <p v-if="patient.email" class="mt-1 text-sm text-gray-500">{{ patient.email }}</p>
         </div>
 
-        <PatientForm :form="form" :planos="planos" :plano-atual="planoAtual"
+        <PatientForm :form="form" :planos="planos" :vendedores="vendedores" :plano-atual="planoAtual"
             :tipos-familiares="tiposFamiliares"
             :cancelar-href="route('patients.index')" rotulo-salvar="Salvar alterações" @submit="salvar" />
     </TenantAdminLayout>

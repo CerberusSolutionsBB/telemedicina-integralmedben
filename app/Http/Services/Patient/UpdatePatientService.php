@@ -11,7 +11,7 @@ class UpdatePatientService
     public function execute(Patient $patient, array $data): void
     {
         $patientFields = [
-            'nome', 'cpf', 'rg', 'data_nascimento', 'sexo',
+            'user_id', 'nome', 'cpf', 'rg', 'data_nascimento', 'sexo',
             'email', 'numero', 'enderecos', 'status',
         ];
 
