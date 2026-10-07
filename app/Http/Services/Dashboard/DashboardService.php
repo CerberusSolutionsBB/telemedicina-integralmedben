@@ -199,6 +199,9 @@ class DashboardService
                 ];
             });
         } catch (Throwable $e) {
+            // run() não desfaz a troca de banco quando falha: volta para o central.
+            tenancy()->end();
+
             Log::warning("Beneficiários indisponíveis para o tenant {$tenant->id}: {$e->getMessage()}");
 
             return ['total' => 0, 'ativos' => 0, 'inativos' => 0, 'sem_plano' => 0, 'meses' => array_fill(0, 12, 0)];

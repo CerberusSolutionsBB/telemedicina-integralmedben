@@ -4,6 +4,7 @@ namespace App\Http\Services\Patient;
 
 use App\Models\Audit;
 use App\Models\Patient;
+use App\Models\Siprov;
 use App\Models\TelemedicinaTenant;
 use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
@@ -62,7 +63,7 @@ class PatientFiltros
         $pacientes = self::aplicar(Patient::query(), $tenantId, array_diff_key($filtros, array_flip(['status', 'plano'])))
             ->get(['id', 'cpf', 'status']);
 
-        $mapa = self::codigosPorCpf($tenantId);
+        $mapa = self::codigosPorCpf($tenantId, $pacientes->pluck('cpf')->all());
         $porPlano = [];
         $semPlano = 0;
 
@@ -124,7 +125,7 @@ class PatientFiltros
 
     /**
      * CPFs (com e sem máscara) de beneficiários vinculados a pelo menos um plano
-     * (telemedicina ou plano interno). Usado para contar só quem tem plano.
+     * (telemedicina, plano interno ou associado da SIPROV). Usado para contar só quem tem plano.
      *
      * @return array<int, string>
      */
@@ -140,27 +141,26 @@ class PatientFiltros
      */
     private static function cpfsComPlano(string $tenantId, ?string $codPlano): array
     {
-        $daTelemedicina = TelemedicinaTenant::where('tenant_id', $tenantId)
-            ->get(['data'])
-            ->filter(fn ($v) => $codPlano === null
-                || in_array($codPlano, TenantPlanoCotaService::codigosDoVinculo($v->data ?? []), true))
-            ->map(fn ($v) => preg_replace('/\D/', '', (string) ($v->data['cpf_cnpj'] ?? '')));
+        // Mesmo mapa dos cards: filtro e totalizador contam as mesmas pessoas.
+        $mapa = self::codigosPorCpf($tenantId, Patient::whereNotNull('cpf')->pluck('cpf')->all());
 
-        $internos = TenantPlanoBeneficiario::where('tenant_id', $tenantId)
-            ->when($codPlano !== null, fn ($q) => $q->where('cod_plano', $codPlano))
-            ->whereNotNull('cpf')
-            ->pluck('cpf');
-
-        return $daTelemedicina->merge($internos)->filter()->unique()->values()->all();
+        return collect($mapa)
+            ->filter(fn (array $codigos) => $codPlano === null ? $codigos !== [] : in_array($codPlano, $codigos, true))
+            ->keys()
+            ->map(fn ($cpf) => (string) $cpf)
+            ->values()
+            ->all();
     }
 
     /**
-     * CPF (só dígitos) => códigos de plano. Plano interno tem prioridade sobre a
-     * telemedicina, como na coluna Plano (PacientePlanoService::planosPorCpf).
+     * CPF (só dígitos) => códigos de plano, com a mesma prioridade da coluna Plano
+     * (PacientePlanoService::planosPorCpf): plano interno sobre a telemedicina e,
+     * para quem não tem vínculo no parceiro, o plano do associado registrado na SIPROV.
      *
+     * @param  array<int, ?string>  $cpfsDosPacientes  CPFs dos beneficiários do parceiro (para o plano da SIPROV)
      * @return array<string, array<int, string>>
      */
-    private static function codigosPorCpf(string $tenantId): array
+    public static function codigosPorCpf(string $tenantId, array $cpfsDosPacientes = []): array
     {
         $mapa = [];
 
@@ -177,6 +177,28 @@ class PatientFiltros
             ->each(function ($v) use (&$mapa) {
                 $mapa[$v->cpf] = [(string) $v->cod_plano];
             });
+
+        $semVinculo = collect($cpfsDosPacientes)
+            ->map(fn ($cpf) => preg_replace('/\D/', '', (string) $cpf))
+            ->filter(fn (string $cpf) => $cpf !== '' && ! array_key_exists($cpf, $mapa))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($semVinculo) {
+            Siprov::whereIn('cpf_cnpj', self::formatosCpf($semVinculo))
+                ->orderBy('integrated_at')
+                ->orderBy('id')
+                ->get(['cpf_cnpj', 'cod_plano'])
+                ->each(function (Siprov $siprov) use (&$mapa) {
+                    $cpf = preg_replace('/\D/', '', (string) $siprov->cpf_cnpj);
+                    $codigo = (string) ($siprov->cod_plano ?? '');
+
+                    if ($cpf !== '' && $codigo !== '') {
+                        $mapa[$cpf] = [$codigo];
+                    }
+                });
+        }
 
         return $mapa;
     }
