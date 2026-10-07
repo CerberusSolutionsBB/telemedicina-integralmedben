@@ -267,6 +267,24 @@ class PaginaPlanoTest extends TestCase
         ]);
     }
 
+    public function test_cards_da_listagem_ignoram_contratos_de_parceiro_excluido(): void
+    {
+        $this->plano('331384', 20);
+
+        $excluido = Tenant::withoutEvents(fn () => Tenant::create(['id' => 'tenant-excluido']));
+        TenantPlano::create(['tenant_id' => $excluido->id, 'cod_plano' => '331384', 'quantidade' => 30, 'saldo' => 30]);
+        Tenant::withoutEvents(fn () => $excluido->delete());
+
+        $this->actingAs($this->user)
+            ->get(route('pagina.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('totais.contratos', 1)
+                ->where('totais.planos.0.value', '331384')
+                ->where('totais.planos.0.parceiros', 1)
+                ->where('totais.planos.0.vagas', 20));
+    }
+
     private function plano(string $codPlano, int $quantidade): void
     {
         app(TenantPlanoCotaService::class)->ajustarQuantidade($this->tenant->id, $codPlano, $quantidade);

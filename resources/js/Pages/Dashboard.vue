@@ -296,17 +296,17 @@ const ocupacao = (p) => p.quantidade ? Math.min(100, Math.round(p.beneficiarios 
       <!-- Vidas por plano -->
       <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <h3 class="text-base font-bold text-gray-900">Vidas por plano</h3>
-        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <div v-for="(g, i) in vidasPorPlano" :key="g.cod_plano"
             class="rounded-xl border p-4" :class="CORES_PLANO[i % CORES_PLANO.length]">
             <p class="truncate text-sm font-bold text-gray-900" :title="g.plano">{{ g.plano }}</p>
-            <p class="text-xs text-gray-500">Mensalidade: {{ mensalidade(g) }}</p>
+            <!-- <p class="text-xs text-gray-500">Mensalidade: {{ mensalidade(g) }}</p> -->
             <div class="mt-2 flex items-end justify-between">
               <p class="text-2xl font-extrabold text-gray-900">{{ g.vidas }} <span class="text-xs font-normal text-gray-500">vidas</span></p>
-              <p class="text-sm font-semibold text-gray-700">{{ fmtReal(g.receita) }}/mês</p>
+              <!-- <p class="text-sm font-semibold text-gray-700">{{ fmtReal(g.receita) }}/mês</p> -->
             </div>
           </div>
-          <p v-if="!vidasPorPlano.length" class="md:col-span-3 py-6 text-center text-sm text-gray-500">
+          <p v-if="!vidasPorPlano.length" class="col-span-full py-6 text-center text-sm text-gray-500">
             Nenhum plano configurado nas Páginas de Parceiros.
           </p>
         </div>

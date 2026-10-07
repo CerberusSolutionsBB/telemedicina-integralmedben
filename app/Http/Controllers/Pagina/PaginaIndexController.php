@@ -36,11 +36,13 @@ class PaginaIndexController extends Controller
             ->withQueryString();
 
         $labels = collect(Planos::options())->pluck('label', 'value');
-        $contratos = TenantPlano::all();
-        $contratados = $contratos->groupBy('tenant_id');
 
         // Beneficiários de todos os parceiros (uma consulta por banco de tenant).
         $todos = Tenant::with('details')->get();
+
+        // Só contratos de parceiros existentes (excluídos ficam fora dos cards, como os beneficiários).
+        $contratos = TenantPlano::whereIn('tenant_id', $todos->pluck('id'))->get();
+        $contratados = $contratos->groupBy('tenant_id');
         $beneficiarios = $todos->mapWithKeys(fn (Tenant $t) => [$t->id => $this->beneficiarios($t)]);
 
         $tenants->getCollection()->each(function (Tenant $tenant) use ($labels, $contratados, $beneficiarios) {
@@ -122,6 +124,9 @@ class PaginaIndexController extends Controller
         try {
             return $tenant->run(fn () => PatientFiltros::totais($tenant->id, []));
         } catch (Throwable $e) {
+            // run() não desfaz a troca de banco quando falha: volta para o central.
+            tenancy()->end();
+
             Log::warning("Totais de beneficiários indisponíveis para o tenant {$tenant->id}: {$e->getMessage()}");
 
             return null;
