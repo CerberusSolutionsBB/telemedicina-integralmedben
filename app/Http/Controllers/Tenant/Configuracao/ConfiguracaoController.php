@@ -10,16 +10,21 @@ use App\Http\Requests\ExpiresAtRequest;
 use App\Http\Requests\TenantFormsRequest;
 use App\Models\CentralPatient;
 use App\Models\CentralPatientAnswer;
+use App\Models\Patient;
 use App\Models\Question;
 use App\Models\TelemedicinaTenant;
 use App\Models\Tenant;
 use App\Models\TenantForm;
 use App\Models\TenantsDetail;
 use App\Services\Siprov\SiprovAssociadoService;
+use App\Services\Tenant\PacientePlanoService;
 use App\Services\Tenant\TenantConfigurationService;
 use App\Services\Tenant\TenantFormService;
 use App\Services\Tenant\TenantPlanoCotaService;
+use App\Support\Planos;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -38,6 +43,7 @@ class ConfiguracaoController extends Controller
         private TenantFormService $tenantFormService,
         private readonly SiprovAssociadoService $siprovAssociadoService,
         private readonly TenantPlanoCotaService $planoCotaService,
+        private readonly PacientePlanoService $pacientePlanoService,
     ) {}
 
     private function tenantId(): string
@@ -534,7 +540,7 @@ class ConfiguracaoController extends Controller
             $config['telemedicina_enabled'] = $request->boolean('enabled');
             $detail->update(['configuracao' => $config]);
 
-            if ($request->boolean('enabled') && !empty($request->input('questions'))) {
+            if ($request->boolean('enabled') && ! empty($request->input('questions'))) {
                 $questions = Question::whereIn('id', $request->input('questions'))->get();
 
                 $existingIds = TelemedicinaTenant::where('tenant_id', $tenant->id)
@@ -558,14 +564,14 @@ class ConfiguracaoController extends Controller
                 }
             }
 
-            if (!empty($request->input('siprov_items'))) {
+            if (! empty($request->input('siprov_items'))) {
                 $cpfQuestion = Question::where('role', QuestionRoleEnum::Cpf)->first();
                 $nomeQuestion = Question::where('role', QuestionRoleEnum::Nome)->first();
                 $vinculosCriados = [];
 
                 foreach ($request->input('siprov_items') as $item) {
                     $planos = $item['planos'] ?? [];
-                    $primeiroPlano = !empty($planos) ? $planos[0] : [];
+                    $primeiroPlano = ! empty($planos) ? $planos[0] : [];
 
                     $vinculosCriados[] = TelemedicinaTenant::create([
                         'tenant_id' => $tenant->id,
@@ -591,7 +597,7 @@ class ConfiguracaoController extends Controller
                             })
                             ->exists();
 
-                        if (!$existing) {
+                        if (! $existing) {
                             $centralPatient = CentralPatient::create([
                                 'tenant_id' => $tenant->id,
                             ]);
@@ -628,10 +634,10 @@ class ConfiguracaoController extends Controller
 
                         if ($centralPatientId) {
                             $hasPatient = $tenant->run(function () use ($cpf) {
-                                return \App\Models\Patient::where('cpf', $cpf)->exists();
+                                return Patient::where('cpf', $cpf)->exists();
                             });
 
-                            if (!$hasPatient) {
+                            if (! $hasPatient) {
                                 $tenant->run(function () use ($centralPatientId, $item, $cpf) {
                                     $sexo = match (strtoupper($item['sexo'] ?? '')) {
                                         'M', 'MASCULINO' => 'masculino',
@@ -640,15 +646,15 @@ class ConfiguracaoController extends Controller
                                     };
 
                                     $dataNascimento = null;
-                                    if (!empty($item['dataNascimento'])) {
+                                    if (! empty($item['dataNascimento'])) {
                                         try {
-                                            $dataNascimento = \Carbon\Carbon::createFromFormat('d/m/Y', $item['dataNascimento']);
+                                            $dataNascimento = Carbon::createFromFormat('d/m/Y', $item['dataNascimento']);
                                         } catch (\Exception $e) {
                                             $dataNascimento = null;
                                         }
                                     }
 
-                                    \App\Models\Patient::create([
+                                    Patient::create([
                                         'central_patient_id' => $centralPatientId,
                                         'nome' => $item['nomePessoa'] ?? '',
                                         'cpf' => $cpf,
@@ -673,13 +679,24 @@ class ConfiguracaoController extends Controller
             }
 
             // Consome uma vaga por plano de cada vínculo criado, com o paciente como parceiro.
+            // Cada vínculo entra no histórico de registros dos Planos.
             foreach ($vinculosCriados ?? [] as $vinculo) {
-                $this->planoCotaService->consumir(
-                    $tenant->id,
-                    TenantPlanoCotaService::codigosDoVinculo($vinculo->data),
-                    $this->pacienteIdPorCpf($tenant, $vinculo->data['cpf_cnpj'] ?? null),
-                    $vinculo->id,
-                );
+                $codigos = TenantPlanoCotaService::codigosDoVinculo($vinculo->data);
+                $pacienteId = $this->pacienteIdPorCpf($tenant, $vinculo->data['cpf_cnpj'] ?? null);
+
+                $this->planoCotaService->consumir($tenant->id, $codigos, $pacienteId, $vinculo->id);
+
+                foreach ($codigos as $codigo) {
+                    $this->pacientePlanoService->auditarRegistro(
+                        $vinculo,
+                        $tenant->id,
+                        $codigo,
+                        collect(Planos::options())->pluck('label', 'value')[$codigo] ?? ($vinculo->data['plano_label'] ?? ''),
+                        $vinculo->data['title'] ?? '',
+                        $pacienteId,
+                        'vinculo_siprov',
+                    );
+                }
             }
 
             return redirect()
@@ -709,7 +726,7 @@ class ConfiguracaoController extends Controller
 
             if ($cpf) {
                 $tenant->run(function () use ($cpf) {
-                    \App\Models\Patient::where('cpf', $cpf)
+                    Patient::where('cpf', $cpf)
                         ->where('status_registro', 'vinculo')
                         ->delete();
                 });
@@ -722,7 +739,7 @@ class ConfiguracaoController extends Controller
                 }
             }
 
-            \Illuminate\Support\Facades\DB::connection('mysql')->transaction(function () use ($telemedicinaTenant, $parceiroId) {
+            DB::connection('mysql')->transaction(function () use ($telemedicinaTenant, $parceiroId) {
                 $this->planoCotaService->devolver($telemedicinaTenant, $parceiroId);
                 $telemedicinaTenant->delete();
             });
@@ -752,7 +769,7 @@ class ConfiguracaoController extends Controller
             return null;
         }
 
-        $id = $tenant->run(fn () => \App\Models\Patient::withTrashed()->where('cpf', $cpf)->value('id'));
+        $id = $tenant->run(fn () => Patient::withTrashed()->where('cpf', $cpf)->value('id'));
 
         return $id ? (int) $id : null;
     }

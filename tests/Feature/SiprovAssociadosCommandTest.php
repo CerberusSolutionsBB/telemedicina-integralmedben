@@ -200,6 +200,37 @@ class SiprovAssociadosCommandTest extends TestCase
         $this->assertSame(50, $this->plano->fresh()->saldo);
     }
 
+    public function test_registra_no_historico_paciente_que_ja_ocupa_vaga_sem_registro(): void
+    {
+        // Vínculo pelo modal: vaga descontada, sem registro no histórico.
+        $modal = $this->vinculo(['cpf_cnpj' => '11122233344', 'cod_plano' => '331384', 'cod_planos' => ['331384']]);
+        app(TenantPlanoCotaService::class)->consumir($this->tenant->id, ['331384'], null, $modal->id);
+        $consumo = TenantQuantidadeParceiro::sole();
+        $consumo->forceFill(['created_at' => '2026-07-26 14:33:00'])->save();
+
+        // Já existia quando o plano foi habilitado (saldo inicial).
+        $inicial = $this->vinculo(['cpf_cnpj' => '12345678909', 'cod_plano' => '331384', 'cod_planos' => ['331384']]);
+        $inicial->forceFill(['created_at' => now()->subDays(2), 'updated_at' => now()->subDays(2)])->saveQuietly();
+
+        $this->artisan('siprov:associados')
+            ->expectsOutputToContain('2 beneficiário(s) de parceiro atualizados:')
+            ->assertSuccessful();
+
+        $this->assertSame(49, $this->plano->fresh()->saldo);
+        $this->assertSame(1, TenantQuantidadeParceiro::count());
+
+        $registroModal = Audit::where('event', 'registro_plano')->where('auditable_id', $modal->id)->sole();
+        $this->assertSame('2026-07-26 14:33:00', $registroModal->created_at->format('Y-m-d H:i:s'));
+        $this->assertSame('vinculo_siprov', $registroModal->new_values['origem']);
+        $this->assertSame(49, $registroModal->new_values['planos']['331384']['saldo']);
+        $this->assertEquals(39.90, $registroModal->new_values['valor']);
+        $this->assertSame(1, Audit::where('event', 'registro_plano')->where('auditable_id', $inicial->id)->count());
+
+        $this->artisan('siprov:associados')
+            ->expectsOutputToContain('Nenhum parceiro com beneficiário sem plano para atualizar.')
+            ->assertSuccessful();
+    }
+
     public function test_sem_vaga_mantem_o_plano_e_nao_desconta(): void
     {
         $this->plano->update(['saldo' => 0]);
@@ -212,6 +243,7 @@ class SiprovAssociadosCommandTest extends TestCase
         $this->assertSame(['331384'], $semPlano->fresh()->data['cod_planos']);
         $this->assertSame(0, $this->plano->fresh()->saldo);
         $this->assertSame(0, TenantQuantidadeParceiro::count());
+        $this->assertSame(0, Audit::where('event', 'registro_plano')->count());
     }
 
     public function test_nao_duplica_vinculo_existente_do_parceiro(): void
