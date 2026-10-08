@@ -14,6 +14,8 @@ const props = defineProps({
 });
 
 const coletiva = computed(() => props.desempenho.tipo_meta === "coletiva");
+const comissao = computed(() => props.desempenho.funcao_key === "comissao_venda_plano");
+const fmtMoeda = (valor) => Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const breadcrumbItems = computed(() => [
     { label: "Início", href: route("patients.index"), icon: Home },
@@ -50,13 +52,26 @@ const contribuicao = percentualDoTotal;
 
         <div class="space-y-6">
             <!-- Configuração -->
-            <section class="grid grid-cols-2 gap-4 rounded-xl border border-gray-200 bg-white p-4 text-sm shadow-sm sm:p-6 lg:grid-cols-6">
+            <section class="grid grid-cols-2 gap-4 rounded-xl border border-gray-200 bg-white p-4 text-sm shadow-sm sm:p-6 lg:grid-cols-4">
                 <div><p class="text-xs text-gray-500">Função</p><p class="font-medium text-gray-900">{{ desempenho.funcao }}</p></div>
                 <div><p class="text-xs text-gray-500">Planos</p><p class="font-medium text-gray-900">{{ desempenho.plano }}</p></div>
                 <div><p class="text-xs text-gray-500">Tipo</p><p class="font-medium text-gray-900">{{ desempenho.tipo_label }}</p></div>
-                <div><p class="text-xs text-gray-500">Meta</p><p class="font-medium text-gray-900">{{ desempenho.meta }} {{ coletiva ? 'no grupo' : 'por usuário' }}</p></div>
+                <div>
+                    <p class="text-xs text-gray-500">Meta</p>
+                    <p class="font-medium text-gray-900">
+                        {{ desempenho.meta }}
+                        {{ comissao ? (coletiva ? 'vendas no grupo' : 'vendas por usuário') : (coletiva ? 'no grupo' : 'por usuário') }}
+                        <template v-if="comissao && desempenho.meta_valor">· {{ fmtMoeda(desempenho.meta_valor) }} de comissão</template>
+                    </p>
+                </div>
                 <div><p class="text-xs text-gray-500">Período</p><p class="font-medium text-gray-900">{{ desempenho.data_inicio }} a {{ desempenho.prazo }}</p></div>
                 <div><p class="text-xs text-gray-500">Perfis</p><p class="font-medium text-gray-900">{{ desempenho.roles.join(', ') }}</p></div>
+                <div class="lg:col-span-2">
+                    <p class="text-xs text-gray-500">Usuários selecionados</p>
+                    <p class="truncate font-medium text-gray-900" :title="desempenho.usuarios.join(', ')">
+                        {{ desempenho.usuarios.length }} · {{ desempenho.usuarios.join(', ') || '-' }}
+                    </p>
+                </div>
             </section>
 
             <!-- Progresso -->
@@ -65,11 +80,17 @@ const contribuicao = percentualDoTotal;
                     <div>
                         <h2 class="text-base font-semibold text-gray-900">Progresso</h2>
                         <p v-if="coletiva" class="text-sm text-gray-600">
-                            <strong class="text-gray-900">{{ progresso.total }}</strong> de {{ desempenho.meta }} registros do grupo
+                            <strong class="text-gray-900">{{ progresso.total }}</strong> de {{ desempenho.meta }}
+                            {{ comissao ? 'vendas do grupo' : 'registros do grupo' }}
                         </p>
                         <p v-else class="text-sm text-gray-600">
                             <strong class="text-gray-900">{{ progresso.atingiram }}</strong> de {{ progresso.participantes }} usuário(s)
-                            bateram a meta de {{ desempenho.meta }} · {{ progresso.total }} registros no total
+                            bateram a meta de {{ desempenho.meta }}
+                            {{ comissao ? 'vendas' : 'registros' }} · {{ progresso.total }} no total
+                        </p>
+                        <p v-if="comissao" class="text-sm text-gray-600">
+                            <strong class="text-gray-900">{{ fmtMoeda(progresso.valor) }}</strong>
+                            de {{ fmtMoeda(desempenho.meta_valor) }} em comissões
                         </p>
                     </div>
                     <span class="text-2xl font-bold text-gray-900">{{ progresso.percentual }}%</span>
@@ -81,17 +102,19 @@ const contribuicao = percentualDoTotal;
 
             <!-- Registros de pacientes por plano -->
             <section>
-                <h2 class="mb-3 text-base font-semibold text-gray-900">Registros por plano</h2>
+                <h2 class="mb-3 text-base font-semibold text-gray-900">{{ comissao ? 'Vendas por plano' : 'Registros por plano' }}</h2>
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <div class="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
-                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Total de pacientes</p>
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">{{ comissao ? 'Total de vendas' : 'Total de pacientes' }}</p>
                         <p class="mt-1 text-2xl font-bold text-gray-900">{{ progresso.total }}</p>
                         <p class="text-xs text-gray-500">{{ progresso.por_plano.length > 1 ? 'todos os planos' : 'no plano da meta' }}</p>
                     </div>
                     <div v-for="card in progresso.por_plano" :key="card.cod_plano" class="rounded-xl border border-gray-200 bg-white p-4">
                         <p class="truncate text-xs font-medium uppercase tracking-wide text-gray-500" :title="card.plano">{{ card.plano }}</p>
                         <p class="mt-1 text-2xl font-bold text-gray-900">{{ card.total }}</p>
-                        <p class="text-xs text-gray-500">{{ percentualDoTotal(card.total) }}% do total</p>
+                        <p class="text-xs text-gray-500">
+                            {{ percentualDoTotal(card.total) }}% do total<template v-if="comissao"> · {{ fmtMoeda(card.valor) }}</template>
+                        </p>
                     </div>
                 </div>
             </section>
@@ -100,11 +123,13 @@ const contribuicao = percentualDoTotal;
             <section class="rounded-xl border border-gray-200 bg-white shadow-sm">
                 <div class="p-4 sm:px-6">
                     <h2 class="text-base font-semibold text-gray-900">Por usuário</h2>
-                    <p class="text-sm text-gray-500">Registros de beneficiários feitos por cada usuário no período.</p>
+                    <p class="text-sm text-gray-500">
+                        {{ comissao ? 'Vendas de planos e comissão de cada usuário no período.' : 'Registros de beneficiários feitos por cada usuário no período.' }}
+                    </p>
                 </div>
 
                 <p v-if="!progresso.usuarios.length" class="border-t border-gray-100 p-6 text-center text-sm text-gray-500">
-                    Nenhum usuário nos perfis desta meta.
+                    Nenhum usuário selecionado para esta meta.
                 </p>
 
                 <div v-else class="overflow-x-auto border-t border-gray-100">
@@ -112,7 +137,8 @@ const contribuicao = percentualDoTotal;
                         <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                             <tr>
                                 <th class="px-4 py-3 sm:px-6">Usuário</th>
-                                <th class="px-4 py-3 text-right">Registros</th>
+                                <th class="px-4 py-3 text-right">{{ comissao ? 'Vendas' : 'Registros' }}</th>
+                                <th v-if="comissao" class="px-4 py-3 text-right">Comissão</th>
                                 <th class="w-1/3 px-4 py-3 sm:px-6">{{ coletiva ? 'Contribuição' : 'Progresso' }}</th>
                             </tr>
                         </thead>
@@ -125,6 +151,10 @@ const contribuicao = percentualDoTotal;
                                 <td class="whitespace-nowrap px-4 py-3 text-right font-semibold text-gray-900">
                                     {{ usuario.total }}<span v-if="!coletiva" class="font-normal text-gray-500"> / {{ desempenho.meta }}</span>
                                 </td>
+                                <td v-if="comissao" class="whitespace-nowrap px-4 py-3 text-right">
+                                    <p class="font-semibold text-gray-900">{{ fmtMoeda(usuario.valor) }}</p>
+                                    <p v-if="!coletiva && desempenho.meta_valor" class="text-xs text-gray-500">de {{ fmtMoeda(desempenho.meta_valor) }}</p>
+                                </td>
                                 <td class="px-4 py-3 sm:px-6">
                                     <div class="flex items-center gap-2">
                                         <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
@@ -133,6 +163,16 @@ const contribuicao = percentualDoTotal;
                                         </div>
                                         <span class="w-12 text-right text-xs text-gray-600">{{ coletiva ? contribuicao(usuario.total) : usuario.percentual }}%</span>
                                         <Check v-if="usuario.atingiu" class="h-4 w-4 text-emerald-600" aria-label="Meta batida" />
+                                    </div>
+                                    <div v-if="comissao && desempenho.meta_valor" class="mt-1 flex items-center gap-2">
+                                        <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                            <div class="h-full rounded-full" :class="usuario.atingiu_valor ? 'bg-emerald-500' : 'bg-amber-500'"
+                                                :style="{ width: `${coletiva ? (progresso.valor ? Math.round((usuario.valor / progresso.valor) * 100) : 0) : (usuario.percentual_valor ?? 0)}%` }" />
+                                        </div>
+                                        <span class="w-12 text-right text-xs text-gray-600">
+                                            {{ coletiva ? (progresso.valor ? Math.round((usuario.valor / progresso.valor) * 100) : 0) : (usuario.percentual_valor ?? 0) }}%
+                                        </span>
+                                        <Check v-if="usuario.atingiu_valor" class="h-4 w-4 text-emerald-600" aria-label="Comissão batida" />
                                     </div>
                                 </td>
                             </tr>

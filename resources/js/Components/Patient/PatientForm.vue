@@ -15,6 +15,8 @@ import { Loader2, Plus, Trash2 } from "lucide-vue-next";
 const props = defineProps({
     form: { type: Object, required: true },
     planos: { type: Array, default: () => [] },
+    // Usuários do tenant que podem receber a comissão da venda.
+    vendedores: { type: Array, default: () => [] },
     // Vínculo de telemedicina existente (Edit): plano só leitura e não obrigatório.
     planoAtual: { type: Object, default: null },
     // Tipos de membro da família (MAE, PAI...) do plano familiar.
@@ -170,6 +172,16 @@ const input = (erro) => [
                 <h2 :class="[titulo, 'mb-4']">Plano / Telemedicina <span v-if="exigePlano" class="text-red-600">*</span></h2>
                 <PatientPlanoSelect v-model="form.cod_plano" :planos="planos" :plano-atual="planoAtual"
                     :error="form.errors.cod_plano" :required="exigePlano" bare />
+
+                <div class="mt-4">
+                    <label :class="label" for="vendedor">Vendedor / indicado por</label>
+                    <select id="vendedor" v-model="form.user_id" :class="input(form.errors.user_id)">
+                        <option :value="null">Não informado</option>
+                        <option v-for="vendedor in vendedores" :key="vendedor.id" :value="vendedor.id">{{ vendedor.name }}</option>
+                    </select>
+                    <p v-if="form.errors.user_id" class="mt-1 text-sm text-red-600">{{ form.errors.user_id }}</p>
+                    <p class="mt-1 text-xs text-gray-500">Usuário que recebe a comissão pela venda deste plano.</p>
+                </div>
             </div>
         </section>
 

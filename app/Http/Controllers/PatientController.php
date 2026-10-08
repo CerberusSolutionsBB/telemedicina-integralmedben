@@ -15,6 +15,7 @@ use App\Models\SmsLogs;
 use App\Models\Tenant;
 use App\Models\TenantsDetail;
 use App\Models\TipoVinculoFamiliar;
+use App\Models\User;
 use App\Services\Tenant\PacienteDependentesSiprovService;
 use App\Services\Tenant\PacienteFamiliaresService;
 use App\Services\Tenant\PacientePlanoService;
@@ -69,6 +70,7 @@ class PatientController extends Controller
             'tenantName' => $tenant->name,
             'tenantPhoto' => $tenant->photo_url,
             'planos' => $this->pacientePlanoService->opcoes(tenant('id')),
+            'vendedores' => User::orderBy('name')->get(['id', 'name']),
             'tiposFamiliares' => TipoVinculoFamiliar::options(),
             'breadcrumbs' => [
                 ['label' => 'Beneficiários', 'href' => route('patients.index')],
@@ -99,6 +101,7 @@ class PatientController extends Controller
             'patient' => $patient,
             'planos' => $this->pacientePlanoService->opcoes(tenant('id')),
             'planoAtual' => $this->pacientePlanoService->vinculoAtual(tenant('id'), $patient->cpf),
+            'vendedores' => User::orderBy('name')->get(['id', 'name']),
             'familiares' => $this->pacienteFamiliaresService->doPaciente($patient),
             'tiposFamiliares' => TipoVinculoFamiliar::options(),
             'breadcrumbs' => [

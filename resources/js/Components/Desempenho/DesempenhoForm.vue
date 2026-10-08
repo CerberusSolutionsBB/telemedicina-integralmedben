@@ -1,7 +1,8 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
 import { useCamposDesempenho } from "@/Composables/Desempenho/useCamposDesempenho";
-import { Info, Loader2 } from "lucide-vue-next";
+import UsuariosDialog from "@/Components/Desempenho/UsuariosDialog.vue";
+import { Info, Loader2, Users, X } from "lucide-vue-next";
 
 /**
  * Formulário da meta de desempenho (Create/Edit). A lógica fica nos composables de Desempenho.
@@ -9,6 +10,7 @@ import { Info, Loader2 } from "lucide-vue-next";
 const props = defineProps({
     form: { type: Object, required: true },
     roles: { type: Array, default: () => [] },
+    usuariosIniciais: { type: Array, default: () => [] },
     funcoes: { type: Array, default: () => [] },
     tipos: { type: Array, default: () => [] },
     planos: { type: Array, default: () => [] },
@@ -20,7 +22,19 @@ const props = defineProps({
 const emit = defineEmits(["submit"]);
 
 const form = props.form;
-const { alternarRole, resumo, contador } = useCamposDesempenho(form, { planos: props.planos, roles: props.roles });
+const {
+    alternarRole,
+    usuariosDoPerfil,
+    abrirSelecaoUsuarios,
+    confirmarUsuarios,
+    removerUsuario,
+    perfilModal,
+    modalAberto,
+    selecionadosModal,
+    erroUsuarios,
+    resumo,
+    contador,
+} = useCamposDesempenho(form, { planos: props.planos, roles: props.roles, usuariosIniciais: props.usuariosIniciais });
 
 const card = "w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6";
 const titulo = "mb-4 text-base font-semibold text-gray-900";
@@ -68,17 +82,49 @@ const opcao = (ativa) => [
         <!-- Participantes -->
         <section :class="card">
             <h2 class="text-base font-semibold text-gray-900">Perfis de usuário <span class="text-red-600">*</span></h2>
-            <p class="mb-4 text-sm text-gray-500">Os usuários desses perfis participam da meta.</p>
+            <p class="mb-4 text-sm text-gray-500">Escolha os perfis e selecione os usuários que participam da meta.</p>
 
             <p v-if="!roles.length" class="text-sm text-gray-500">Nenhum perfil cadastrado no Controle de Acesso.</p>
-            <div v-else class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <label v-for="role in roles" :key="role.id" :class="opcao(form.roles.includes(role.id))">
-                    <input type="checkbox" :checked="form.roles.includes(role.id)"
-                        class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500" @change="alternarRole(role.id)" />
-                    {{ role.name }}
-                </label>
+            <div v-else class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div v-for="role in roles" :key="role.id" class="rounded-xl border p-3 transition-colors"
+                    :class="form.roles.includes(role.id) ? 'border-cyan-500 bg-cyan-50/40' : 'border-gray-300 bg-white'">
+                    <label class="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                        <input type="checkbox" :checked="form.roles.includes(role.id)"
+                            class="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500" @change="alternarRole(role.id)" />
+                        {{ role.name }}
+                    </label>
+
+                    <template v-if="form.roles.includes(role.id)">
+                        <button type="button" @click="abrirSelecaoUsuarios(role)"
+                            class="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-cyan-700 hover:text-cyan-800">
+                            <Users class="h-4 w-4" />
+                            Selecionar usuários
+                            <span class="rounded-full bg-cyan-100 px-1.5 text-xs font-semibold text-cyan-800">
+                                {{ usuariosDoPerfil(role.id).length }}
+                            </span>
+                        </button>
+
+                        <p v-if="!usuariosDoPerfil(role.id).length" class="mt-1 text-xs text-amber-600">
+                            Nenhum usuário selecionado — este perfil não terá participantes.
+                        </p>
+                        <ul v-else class="mt-2 flex flex-wrap gap-1.5">
+                            <li v-for="usuario in usuariosDoPerfil(role.id)" :key="usuario.id"
+                                class="inline-flex max-w-full items-center gap-1 rounded-full bg-white px-2 py-1 text-xs text-gray-700 shadow-sm">
+                                <span class="truncate" :title="usuario.email">{{ usuario.name }}</span>
+                                <button type="button" class="text-gray-400 hover:text-red-600" :title="`Remover ${usuario.name}`"
+                                    @click="removerUsuario(usuario, role.id)">
+                                    <X class="h-3.5 w-3.5" />
+                                </button>
+                            </li>
+                        </ul>
+                    </template>
+                </div>
             </div>
             <p v-if="form.errors.roles" class="mt-2 text-sm text-red-600">{{ form.errors.roles }}</p>
+            <p v-if="erroUsuarios" class="mt-2 text-sm text-red-600">{{ erroUsuarios }}</p>
+
+            <UsuariosDialog v-model:open="modalAberto" :perfil="perfilModal" :selecionados="selecionadosModal"
+                @confirm="confirmarUsuarios" />
         </section>
 
         <!-- Função e meta -->
@@ -94,7 +140,7 @@ const opcao = (ativa) => [
                     <p v-if="form.errors.funcao" class="mt-1 text-sm text-red-600">{{ form.errors.funcao }}</p>
                 </div>
 
-                <template v-if="form.funcao === 'registro_beneficiario_plano'">
+                <template>
                     <div class="md:col-span-6 xl:col-span-6">
                         <span :class="label">Planos que contam <span class="text-red-600">*</span></span>
                         <div class="grid grid-cols-2 gap-2">
@@ -133,9 +179,18 @@ const opcao = (ativa) => [
                 </div>
 
                 <div class="md:col-span-2 xl:col-span-2">
-                    <label :class="label" for="meta">Meta <span class="text-red-600">*</span></label>
+                    <label :class="label" for="meta">
+                        {{ form.funcao === 'comissao_venda_plano' ? 'Meta (vendas)' : 'Meta' }} <span class="text-red-600">*</span>
+                    </label>
                     <input id="meta" v-model.number="form.meta" type="number" min="1" step="1" :class="input(form.errors.meta)" required />
                     <p v-if="form.errors.meta" class="mt-1 text-sm text-red-600">{{ form.errors.meta }}</p>
+                </div>
+
+                <div v-if="form.funcao === 'comissao_venda_plano'" class="md:col-span-2 xl:col-span-2">
+                    <label :class="label" for="meta_valor">Meta em R$ (comissão) <span class="text-red-600">*</span></label>
+                    <input id="meta_valor" v-model.number="form.meta_valor" type="number" min="0" step="0.01" placeholder="0,00"
+                        :class="input(form.errors.meta_valor)" required />
+                    <p v-if="form.errors.meta_valor" class="mt-1 text-sm text-red-600">{{ form.errors.meta_valor }}</p>
                 </div>
 
                 <div class="md:col-span-2 xl:col-span-2">

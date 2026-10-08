@@ -108,7 +108,7 @@ class PaginaShowController extends Controller
             'telemedicinaVinculados' => $telemedicinaVinculados,
             'planos' => Planos::options(),
             'tenantPlanos' => TenantPlano::where('tenant_id', $tenant->id)
-                ->get(['cod_plano', 'quantidade', 'valor']),
+                ->get(['cod_plano', 'quantidade', 'valor', 'comissao_tipo', 'comissao_valor']),
             'planoUso' => (object) $planoCotaService->uso($tenant->id),
             // Closure: no reload parcial dos filtros do histórico só ele é recalculado.
             'planoRegistros' => fn () => $planoHistorico->listar($tenant->id, $this->filtrosHistorico($request)),

@@ -17,6 +17,7 @@ const props = defineProps({
 const emit = defineEmits(["excluir"]);
 
 const filtros = props.filtros;
+const fmtMoeda = (valor) => Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const cabecalho = "text-center whitespace-nowrap text-xs font-semibold text-gray-600 uppercase tracking-wider";
 const campoFiltro =
@@ -95,7 +96,12 @@ const campoFiltro =
                                 </span>
                             </TableCell>
 
-                            <TableCell class="text-center font-semibold text-gray-900">{{ item.meta }}</TableCell>
+                            <TableCell class="text-center font-semibold text-gray-900">
+                                {{ item.meta }}
+                                <span v-if="item.funcao_key === 'comissao_venda_plano' && item.meta_valor" class="block text-[11px] font-normal text-gray-500">
+                                    {{ fmtMoeda(item.meta_valor) }}
+                                </span>
+                            </TableCell>
 
                             <TableCell class="text-center text-sm text-gray-500 whitespace-nowrap">
                                 {{ item.data_inicio }} a {{ item.prazo }}
@@ -114,8 +120,14 @@ const campoFiltro =
                                     <span class="w-10 text-right text-xs font-medium text-gray-700">{{ item.progresso.percentual }}%</span>
                                 </div>
                                 <p class="mt-1 text-[11px] text-gray-500 whitespace-nowrap">
-                                    <template v-if="item.tipo_meta === 'coletiva'">{{ item.progresso.total }} de {{ item.meta }} registros</template>
+                                    <template v-if="item.funcao_key === 'comissao_venda_plano'">
+                                        {{ item.progresso.total }} de {{ item.meta }} vendas
+                                    </template>
+                                    <template v-else-if="item.tipo_meta === 'coletiva'">{{ item.progresso.total }} de {{ item.meta }} registros</template>
                                     <template v-else>{{ item.progresso.atingiram }} de {{ item.progresso.participantes }} usuário(s)</template>
+                                </p>
+                                <p v-if="item.funcao_key === 'comissao_venda_plano' && item.meta_valor" class="text-[11px] text-gray-500 whitespace-nowrap">
+                                    {{ fmtMoeda(item.progresso.valor) }} de {{ fmtMoeda(item.meta_valor) }}
                                 </p>
                             </TableCell>
 

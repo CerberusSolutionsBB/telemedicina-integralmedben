@@ -24,6 +24,8 @@ class PaginaPlanoController extends Controller
             'planos.*.cod_plano' => ['required', 'string', 'distinct', Rule::in(Planos::codigos())],
             'planos.*.quantidade' => ['required', 'integer', 'min:1', 'max:1000000'],
             'planos.*.valor' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'planos.*.comissao_tipo' => ['nullable', Rule::in(array_keys(TenantPlano::COMISSOES))],
+            'planos.*.comissao_valor' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
         ], [
             'planos.*.cod_plano.in' => 'Plano inválido.',
             'planos.*.cod_plano.distinct' => 'Plano repetido.',
@@ -33,7 +35,21 @@ class PaginaPlanoController extends Controller
             'planos.*.valor.numeric' => 'Informe um valor válido.',
             'planos.*.valor.min' => 'O valor não pode ser negativo.',
             'planos.*.valor.max' => 'O valor é muito alto.',
+            'planos.*.comissao_tipo.in' => 'Tipo de comissão inválido.',
+            'planos.*.comissao_valor.numeric' => 'Informe um valor de comissão válido.',
+            'planos.*.comissao_valor.min' => 'A comissão não pode ser negativa.',
+            'planos.*.comissao_valor.max' => 'A comissão é muito alta.',
         ]);
+
+        // Percentual não pode passar de 100%.
+        foreach ($validated['planos'] as $i => $plano) {
+            if (($plano['comissao_tipo'] ?? null) === TenantPlano::COMISSAO_PERCENTUAL
+                && (float) ($plano['comissao_valor'] ?? 0) > 100) {
+                throw ValidationException::withMessages([
+                    "planos.{$i}.comissao_valor" => 'O percentual de comissão não pode ser maior que 100%.',
+                ]);
+            }
+        }
 
         $planos = collect($validated['planos']);
 
@@ -53,7 +69,11 @@ class PaginaPlanoController extends Controller
                 TenantPlano::where('tenant_id', $tenant->id)
                     ->where('cod_plano', $plano['cod_plano'])
                     ->first()
-                    ?->update(['valor' => $plano['valor'] ?? null]);
+                    ?->update([
+                        'valor' => $plano['valor'] ?? null,
+                        'comissao_tipo' => $plano['comissao_tipo'] ?? null,
+                        'comissao_valor' => $plano['comissao_valor'] ?? null,
+                    ]);
             }
         });
 

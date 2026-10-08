@@ -36,7 +36,7 @@ const breadcrumbItems = computed(() => [
             <p class="mt-1 text-sm text-gray-500">Alterações valem para o cálculo do progresso imediatamente.</p>
         </div>
 
-        <DesempenhoForm :form="form" :roles="roles" :funcoes="funcoes" :tipos="tipos" :planos="planos" :limites="limites"
+        <DesempenhoForm :form="form" :roles="roles" :usuarios-iniciais="desempenho.usuarios" :funcoes="funcoes" :tipos="tipos" :planos="planos" :limites="limites"
             :cancelar-href="route('desempenho.show', desempenho.id)" rotulo-salvar="Salvar alterações" @submit="salvar" />
     </TenantAdminLayout>
 </template>

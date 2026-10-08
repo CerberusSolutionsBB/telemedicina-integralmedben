@@ -307,6 +307,8 @@ const {
     hasQuantidadeInvalida,
     isValorInvalido,
     hasValorInvalido,
+    isComissaoInvalida,
+    hasComissaoInvalida,
     planoVagas,
     errosCotaSiprov,
     zerarModal,
@@ -1054,6 +1056,26 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                             :disabled="!row.selecionado" :aria-label="`Valor do plano ${row.label}`"
                                             class="w-32 pl-9 pr-2 py-1.5 text-right rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                             :class="isValorInvalido(row) ? 'border-red-300 bg-red-50' : 'border-gray-300'" />
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2" :class="{ 'opacity-40': !row.selecionado }">
+                                    <span class="text-sm text-gray-600">Comissão</span>
+                                    <select v-model="row.comissao_tipo" :disabled="!row.selecionado"
+                                        :aria-label="`Tipo de comissão do plano ${row.label}`"
+                                        class="rounded-lg border bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 border-gray-300">
+                                        <option value="">Sem comissão</option>
+                                        <option value="percentual">% do plano</option>
+                                        <option value="fixo">R$ fixo</option>
+                                    </select>
+                                    <div v-if="row.comissao_tipo" class="relative">
+                                        <span class="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-gray-500">
+                                            {{ row.comissao_tipo === 'percentual' ? '%' : 'R$' }}
+                                        </span>
+                                        <input v-model="row.comissao_valor" type="number" min="0" step="0.01" placeholder="0,00"
+                                            :disabled="!row.selecionado" :aria-label="`Comissão do plano ${row.label}`"
+                                            class="w-28 pl-9 pr-2 py-1.5 text-right rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            :class="isComissaoInvalida(row) ? 'border-red-300 bg-red-50' : 'border-gray-300'" />
                                     </div>
                                 </div>
 

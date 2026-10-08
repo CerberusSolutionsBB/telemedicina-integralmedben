@@ -16,6 +16,7 @@ class StorePatientService
             : StatusRegistroEnum::Formulario;
 
         $patient = Patient::create([
+            'user_id' => $data['user_id'] ?? auth()->id(),
             'nome' => $data['nome'] ?? null,
             'cpf' => $data['cpf'] ?? null,
             'rg' => $data['rg'] ?? null,

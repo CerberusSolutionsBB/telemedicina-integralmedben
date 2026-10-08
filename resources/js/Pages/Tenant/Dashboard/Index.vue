@@ -22,6 +22,7 @@ const props = defineProps({
   porSexo:        { type: Array,  default: () => [] },
   porFaixaEtaria: { type: Array,  default: () => [] },
   planos:         { type: Array,  default: () => [] },
+  comissoes:      { type: Object, default: () => ({ total: 0, valor: 0, ticket: 0, vendedores: [], por_plano: [] }) },
   sms:            { type: Object, default: () => ({ saldo: 0, enviados: 0, falhas: 0, pendentes: 0 }) },
 });
 
@@ -178,6 +179,60 @@ const CORES_SEXO = ['#22b8cf', '#e11d2e', '#cbd5e1'];
       </div>
 
       <template v-else>
+      <!-- Comissões por venda de plano -->
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <div class="xl:col-span-2 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-base font-bold text-gray-900">Comissões por vendedor</h3>
+              <p class="text-xs text-gray-500">Vendas de plano e comissão no período</p>
+            </div>
+            <span class="shrink-0 text-sm font-semibold text-gray-700">{{ comissoes.total }} venda(s)</span>
+          </div>
+
+          <p v-if="!comissoes.vendedores.length" class="py-8 text-center text-sm text-gray-500">Nenhuma venda no período.</p>
+          <div v-else class="mt-3 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b text-xs uppercase tracking-wide text-gray-500">
+                  <th class="py-2 text-left font-semibold">Vendedor</th>
+                  <th class="py-2 text-right font-semibold">Vendas</th>
+                  <th class="py-2 text-right font-semibold">Comissão</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="v in comissoes.vendedores" :key="v.id" class="border-b border-gray-100">
+                  <td class="py-2.5 text-gray-800">{{ v.nome }}</td>
+                  <td class="py-2.5 text-right text-gray-700">{{ v.total }}</td>
+                  <td class="py-2.5 text-right font-semibold text-gray-900">{{ fmtReal(v.valor) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <h3 class="text-base font-bold text-gray-900">Resumo de comissões</h3>
+          <div class="mt-4 space-y-3">
+            <div class="flex items-center justify-between rounded-xl bg-cyan-50 px-4 py-3">
+              <span class="text-sm font-medium text-gray-700">Comissão total</span>
+              <span class="text-lg font-extrabold text-gray-900">{{ fmtReal(comissoes.valor) }}</span>
+            </div>
+            <div class="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+              <span class="text-sm font-medium text-gray-700">Ticket médio</span>
+              <span class="text-lg font-extrabold text-gray-900">{{ fmtReal(comissoes.ticket) }}</span>
+            </div>
+            <div v-if="comissoes.por_plano.length" class="pt-1">
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Por plano</p>
+              <div v-for="p in comissoes.por_plano" :key="p.cod_plano" class="flex items-center justify-between gap-3 py-1 text-sm">
+                <span class="truncate text-gray-700" :title="p.plano">{{ p.plano }} <span class="text-xs text-gray-400">({{ p.total }})</span></span>
+                <span class="shrink-0 font-semibold text-gray-900">{{ fmtReal(p.valor) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Evolução + Vidas por plano -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <div class="xl:col-span-2 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">

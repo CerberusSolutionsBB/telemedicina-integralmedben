@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use OwenIt\Auditing\Contracts\Auditable;
 use OwenIt\Auditing\Events\AuditCustom;
@@ -436,6 +437,17 @@ class PacientePlanoService
      */
     public function auditarRegistro(Model&Auditable $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem): void
     {
+        // Regra de comissão vigente no momento da venda: gravada como snapshot
+        // para o histórico não mudar se a configuração do plano for alterada.
+        $plano = TenantPlano::where('tenant_id', $tenantId)->where('cod_plano', $codPlano)->first();
+
+        // Vendedor: quem o cadastro aponta; senão, o usuário autenticado.
+        $vendedorId = auth()->id();
+
+        if ($patientId && Schema::hasTable('patients')) {
+            $vendedorId = Patient::find($patientId)?->user_id ?? $vendedorId;
+        }
+
         $vinculo->auditEvent = 'registro_plano';
         $vinculo->isCustomEvent = true;
         $vinculo->auditCustomOld = [];
@@ -449,7 +461,11 @@ class PacientePlanoService
             'origem' => $origem,
             'cod_plano' => $codPlano,
             'plano' => $label,
-            'valor' => TenantPlano::where('tenant_id', $tenantId)->where('cod_plano', $codPlano)->value('valor'),
+            'valor' => $plano?->valor,
+            'comissao_tipo' => $plano?->comissao_tipo,
+            'comissao' => $plano?->comissao_tipo ? $plano->comissaoVenda() : null,
+            'vendedor_id' => $vendedorId,
+            'vendedor' => $vendedorId ? User::find($vendedorId)?->name : null,
             'planos' => $this->planoCotaService->resumo($tenantId),
         ];
 

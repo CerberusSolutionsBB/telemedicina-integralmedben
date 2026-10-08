@@ -14,8 +14,11 @@ class Desempenho extends Model
 {
     public const FUNCAO_REGISTRO_BENEFICIARIO_PLANO = 'registro_beneficiario_plano';
 
+    public const FUNCAO_COMISSAO_VENDA_PLANO = 'comissao_venda_plano';
+
     public const FUNCOES = [
         self::FUNCAO_REGISTRO_BENEFICIARIO_PLANO => 'Registro de beneficiário por plano',
+        self::FUNCAO_COMISSAO_VENDA_PLANO => 'Comissão por venda de plano',
     ];
 
     public const ESCOPO_TODOS = 'todos';
@@ -45,6 +48,7 @@ class Desempenho extends Model
         'cod_plano',
         'tipo_meta',
         'meta',
+        'meta_valor',
         'data_inicio',
         'prazo',
         'user_id',
@@ -52,13 +56,27 @@ class Desempenho extends Model
 
     protected $casts = [
         'meta' => 'integer',
+        'meta_valor' => 'decimal:2',
         'data_inicio' => 'date:Y-m-d',
         'prazo' => 'date:Y-m-d',
     ];
 
+    /**
+     * Meta financeira (comissão por venda): acumula R$ além da quantidade.
+     */
+    public function ehComissao(): bool
+    {
+        return $this->funcao === self::FUNCAO_COMISSAO_VENDA_PLANO;
+    }
+
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'desempenho_role');
+    }
+
+    public function usuarios(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'desempenho_user');
     }
 
     public function criador(): BelongsTo

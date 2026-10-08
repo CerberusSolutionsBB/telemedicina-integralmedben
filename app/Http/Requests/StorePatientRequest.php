@@ -39,6 +39,8 @@ class StorePatientRequest extends FormRequest
             'enderecos.estado' => 'nullable|string|max:2',
             'status' => 'nullable|boolean',
             'response_id' => 'nullable|integer',
+            // Vendedor/indicado por: usuário do tenant que recebe a comissão.
+            'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'cod_plano' => [
                 Rule::requiredIf(fn () => ! $this->pacienteJaVinculado()),
                 'nullable',
