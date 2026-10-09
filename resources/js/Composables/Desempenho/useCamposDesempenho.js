@@ -116,7 +116,7 @@ export function useCamposDesempenho(form, { planos, roles, usuariosIniciais = []
         const usados = String(form[campo] ?? '').length
         return {
             texto: `${usados}/${limite}`,
-            classe: usados >= limite ? 'text-red-600' : usados >= limite * 0.9 ? 'text-amber-600' : 'text-gray-400',
+            classe: usados >= limite ? 'text-red-600' : usados >= limite * 0.9 ? 'text-amber-600' : 'text-gray-500',
         }
     }
 
