@@ -70,8 +70,9 @@ class PatientController extends Controller
             'tenantName' => $tenant->name,
             'tenantPhoto' => $tenant->photo_url,
             'planos' => $this->pacientePlanoService->opcoes(tenant('id')),
-            'vendedores' => User::orderBy('name')->get(['id', 'name']),
+            'vendedores' => $this->vendedores(),
             'tiposFamiliares' => TipoVinculoFamiliar::options(),
+            'limites' => StorePatientRequest::LIMITES,
             'breadcrumbs' => [
                 ['label' => 'Beneficiários', 'href' => route('patients.index')],
                 ['label' => 'Novo beneficiário', 'href' => null],
@@ -101,9 +102,10 @@ class PatientController extends Controller
             'patient' => $patient,
             'planos' => $this->pacientePlanoService->opcoes(tenant('id')),
             'planoAtual' => $this->pacientePlanoService->vinculoAtual(tenant('id'), $patient->cpf),
-            'vendedores' => User::orderBy('name')->get(['id', 'name']),
+            'vendedores' => $this->vendedores(),
             'familiares' => $this->pacienteFamiliaresService->doPaciente($patient),
             'tiposFamiliares' => TipoVinculoFamiliar::options(),
+            'limites' => StorePatientRequest::LIMITES,
             'breadcrumbs' => [
                 ['label' => 'Beneficiários', 'href' => route('patients.index')],
                 ['label' => $patient->nome ?: "Beneficiário #{$patient->id}", 'href' => null],
@@ -184,6 +186,25 @@ class PatientController extends Controller
         }
 
         return $redirect;
+    }
+
+    /**
+     * Usuários que podem receber a comissão da venda, em ordem alfabética e com
+     * os perfis (para filtrar no modal de escolha).
+     *
+     * @return array<int, array{id: int, name: string, perfis: array<int, string>}>
+     */
+    private function vendedores(): array
+    {
+        return User::with('roles:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'perfis' => $user->roles->pluck('name')->sort()->values()->all(),
+            ])
+            ->all();
     }
 
     public function toggleStatus(Patient $patient)

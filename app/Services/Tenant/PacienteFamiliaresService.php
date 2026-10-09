@@ -35,7 +35,7 @@ class PacienteFamiliaresService
      * Grava a lista do formulário: atualiza os existentes (por id), cria os
      * novos e remove os que saíram da lista.
      *
-     * @param  array<int, array{id?: ?int, nome: string, cpf?: ?string, data_nascimento?: ?string, tipo: string}>  $familiares
+     * @param  array<int, array{id?: ?int, nome: string, cpf?: ?string, data_nascimento?: ?string, sexo: string, tipo: string}>  $familiares
      * @return array<int, int> codDependente SIPROV dos familiares removidos (para inativar lá)
      */
     public function sincronizar(Patient $patient, string $planoId, array $familiares): array
@@ -49,6 +49,7 @@ class PacienteFamiliaresService
                     'nome' => $familiar['nome'],
                     'cpf' => preg_replace('/\D/', '', (string) ($familiar['cpf'] ?? '')) ?: null,
                     'data_nascimento' => $familiar['data_nascimento'] ?? null,
+                    'sexo' => $familiar['sexo'],
                     'tipo' => $familiar['tipo'],
                 ];
 
@@ -74,7 +75,7 @@ class PacienteFamiliaresService
     }
 
     /**
-     * @return array<int, array{id: int, nome: string, cpf: string, data_nascimento: string, tipo: string}>
+     * @return array<int, array{id: int, nome: string, cpf: string, data_nascimento: string, sexo: string, tipo: string}>
      */
     public function doPaciente(Patient $patient): array
     {
@@ -86,6 +87,7 @@ class PacienteFamiliaresService
                 'nome' => $f->nome,
                 'cpf' => $f->cpf ?? '',
                 'data_nascimento' => $f->data_nascimento?->format('Y-m-d') ?? '',
+                'sexo' => $f->sexo ?? '',
                 'tipo' => $f->tipo,
             ])
             ->all();
@@ -94,7 +96,7 @@ class PacienteFamiliaresService
     /**
      * Para a tela do beneficiário: com o nome do vínculo e a data formatada.
      *
-     * @return array<int, array{id: int, nome: string, cpf: ?string, data_nascimento: ?string, tipo: string}>
+     * @return array<int, array{id: int, nome: string, cpf: ?string, data_nascimento: ?string, sexo: ?string, tipo: string}>
      */
     public function paraExibicao(Patient $patient): array
     {
@@ -107,6 +109,7 @@ class PacienteFamiliaresService
                 'nome' => $f->nome,
                 'cpf' => $f->cpf,
                 'data_nascimento' => $f->data_nascimento?->format('d/m/Y'),
+                'sexo' => $f->sexo,
                 'tipo' => $f->tipoVinculo?->nome ?? $f->tipo,
             ])
             ->all();

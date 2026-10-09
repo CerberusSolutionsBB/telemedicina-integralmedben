@@ -16,32 +16,6 @@ use Throwable;
  */
 class PacienteDependentesSiprovService
 {
-    /** Tipo local (tipos_vinculo_familiar) => parentesco aceito pelo POST da SIPROV. */
-    private const PARENTESCO = [
-        'CONJUGE' => 'CONJUGE',
-        'FILHO' => 'FILHO',
-        'FILHA' => 'FILHO',
-        'MAE' => 'PAI',
-        'PAI' => 'PAI',
-        'IRMAO' => 'IRMAO',
-        'IRMA' => 'IRMAO',
-        'AVO' => 'AVO',
-        'NETO' => 'NETO',
-        'ENTEADO' => 'ENTEADO',
-        'SOGRO' => 'SOGRO',
-        'OUTRO' => 'OUTRO',
-    ];
-
-    /** Sexo deduzido do tipo quando ele é inequívoco (o familiar não tem campo de sexo). */
-    private const SEXO = [
-        'FILHO' => 'Masculino',
-        'PAI' => 'Masculino',
-        'IRMAO' => 'Masculino',
-        'FILHA' => 'Feminino',
-        'MAE' => 'Feminino',
-        'IRMA' => 'Feminino',
-    ];
-
     public function __construct(
         private readonly PacientePlanoService $pacientePlanoService,
         private readonly SiprovDependenteService $siprovDependenteService,
@@ -49,7 +23,7 @@ class PacienteDependentesSiprovService
 
     /**
      * @param  array<int, int>  $removidos  codDependente dos familiares tirados da lista
-     * @return string|null  erros (um por dependente) ou null quando tudo foi enviado
+     * @return string|null erros (um por dependente) ou null quando tudo foi enviado
      */
     public function enviar(string $tenantId, Patient $patient, array $removidos = []): ?string
     {
@@ -103,8 +77,9 @@ class PacienteDependentesSiprovService
             'nome' => Str::limit(trim($familiar->nome), 100, ''),
             'cpf' => $familiar->cpf ?: null,
             'dataNascimento' => $familiar->data_nascimento?->format('d/m/Y'),
-            'parentesco' => self::PARENTESCO[$familiar->tipo] ?? 'OUTRO',
-            'sexo' => self::SEXO[$familiar->tipo] ?? null,
+            // O vínculo já é o parentesco da SIPROV (TiposVinculoFamiliarSeeder).
+            'parentesco' => $familiar->tipo,
+            'sexo' => $familiar->sexo,
             'planos' => [(int) $familiar->plano_id],
             'ativo' => true,
         ], fn ($valor) => $valor !== null && $valor !== '');

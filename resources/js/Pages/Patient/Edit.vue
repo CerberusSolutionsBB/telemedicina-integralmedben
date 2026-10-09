@@ -15,6 +15,7 @@ const props = defineProps({
     planoAtual: { type: Object, default: null },
     familiares: { type: Array, default: () => [] },
     tiposFamiliares: { type: Array, default: () => [] },
+    limites: { type: Object, default: () => ({}) },
 });
 
 const { form, salvar } = usePatientForm({ patient: props.patient, familiares: props.familiares });
@@ -40,7 +41,7 @@ const nome = computed(() => props.patient.nome || `beneficiário #${props.patien
         </div>
 
         <PatientForm :form="form" :planos="planos" :vendedores="vendedores" :plano-atual="planoAtual"
-            :tipos-familiares="tiposFamiliares"
+            :tipos-familiares="tiposFamiliares" :limites="limites"
             :cancelar-href="route('patients.index')" rotulo-salvar="Salvar alterações" @submit="salvar" />
     </TenantAdminLayout>
 </template>

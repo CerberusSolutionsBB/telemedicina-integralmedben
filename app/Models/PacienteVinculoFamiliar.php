@@ -18,6 +18,7 @@ class PacienteVinculoFamiliar extends Model
         'nome',
         'cpf',
         'data_nascimento',
+        'sexo',
         'tipo',
         'siprov_cod_dependente',
     ];

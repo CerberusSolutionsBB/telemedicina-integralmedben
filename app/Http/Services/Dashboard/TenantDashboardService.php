@@ -5,6 +5,7 @@ namespace App\Http\Services\Dashboard;
 use App\Enums\PatientSexoEnum;
 use App\Enums\SmsStatusEnum;
 use App\Enums\StatusRegistroEnum;
+use App\Http\Services\Patient\PatientFiltros;
 use App\Models\Audit;
 use App\Models\Patient;
 use App\Models\SmsLogs;
@@ -13,16 +14,20 @@ use App\Models\TenantPlano;
 use App\Models\User;
 use App\Services\Tenant\TenantPlanoCotaService;
 use App\Support\Planos;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
  * Dashboard do painel do parceiro: beneficiários (banco do tenant), planos
- * contratados e SMS (banco central) do tenant atual.
+ * contratados e SMS (banco central) do tenant atual. Como no dashboard central,
+ * só conta beneficiário com plano vinculado.
  */
 class TenantDashboardService
 {
     private const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    private const MESES_EXTENSO = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
     private const FAIXAS_ETARIAS = [
         ['label' => 'Até 17', 'min' => 0, 'max' => 17],
@@ -38,7 +43,13 @@ class TenantDashboardService
     {
         $currentMonth = now()->month;
 
-        // Período dos blocos filtráveis: o ano todo ou um mês dele.
+        $cpfsComPlano = PatientFiltros::cpfsComPlanoFormatos($tenant->id);
+        $beneficiarios = fn () => Patient::whereIn('cpf', $cpfsComPlano);
+
+        // Período do filtro: o ano todo ou um mês dele. A base conta quem foi
+        // cadastrado até o fim do período.
+        $fimPeriodo = Carbon::create($year, $month ?? 12)->endOfMonth();
+        $base = fn () => $beneficiarios()->where('created_at', '<=', $fimPeriodo);
         $periodo = function (Builder $q) use ($year, $month) {
             $q->whereYear('created_at', $year);
             if ($month) {
@@ -46,7 +57,7 @@ class TenantDashboardService
             }
         };
 
-        $mensal = Patient::whereYear('created_at', $year)
+        $mensal = $beneficiarios()->whereYear('created_at', $year)
             ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')
             ->groupBy('month')
             ->pluck('total', 'month');
@@ -56,20 +67,22 @@ class TenantDashboardService
             'currentMonth' => $currentMonth,
             'selectedMonth' => $month,
             'monthLabels' => self::MESES,
+            'periodoLabel' => $month ? self::MESES_EXTENSO[$month - 1]." de {$year}" : (string) $year,
             'updatedAt' => now()->format('d/m/Y H:i'),
 
-            'totalPatients' => Patient::count(),
-            'activePatients' => Patient::where('status', true)->count(),
-            'newThisMonth' => Patient::whereYear('created_at', now()->year)->whereMonth('created_at', $currentMonth)->count(),
+            'totalPatients' => $base()->count(),
+            'activePatients' => $base()->where('status', true)->count(),
+            'novosNoPeriodo' => $beneficiarios()->where($periodo)->count(),
             'monthlyGrowth' => collect(range(1, 12))->map(fn ($m) => (int) ($mensal[$m] ?? 0))->all(),
 
-            'porOrigem' => $this->porOrigem($periodo),
-            'porUsuario' => $this->porUsuario($periodo),
-            'porSexo' => $this->porSexo($periodo),
-            'porFaixaEtaria' => $this->porFaixaEtaria($periodo),
-            'planos' => $this->planos($tenant),
+            'porOrigem' => $this->porOrigem($beneficiarios()->where($periodo)),
+            'porUsuario' => $this->porUsuario($beneficiarios()->where($periodo)),
+            'porSexo' => $this->porSexo($beneficiarios()->where($periodo)),
+            'porFaixaEtaria' => $this->porFaixaEtaria($beneficiarios()->where($periodo)),
+            'planos' => $planos = $this->planos($tenant),
+            'planosNoLimite' => $this->planosNoLimite($planos),
             'comissoes' => $this->comissoes($tenant, $year, $month),
-            'sms' => $this->sms($tenant, $year),
+            'sms' => $this->sms($tenant, $year, $month),
         ];
     }
 
@@ -158,9 +171,9 @@ class TenantDashboardService
     }
 
     /** @return array<int, array{label: string, total: int}> */
-    private function porOrigem(callable $periodo): array
+    private function porOrigem(Builder $pacientes): array
     {
-        $totais = Patient::where($periodo)
+        $totais = $pacientes
             ->selectRaw('status_registro, COUNT(*) as total')
             ->groupBy('status_registro')
             ->pluck('total', 'status_registro');
@@ -178,9 +191,9 @@ class TenantDashboardService
     }
 
     /** Usuários que mais cadastraram no período (top 5). */
-    private function porUsuario(callable $periodo): array
+    private function porUsuario(Builder $pacientes): array
     {
-        $totais = Patient::where($periodo)
+        $totais = $pacientes
             ->whereNotNull('user_id')
             ->selectRaw('user_id, COUNT(*) as total')
             ->groupBy('user_id')
@@ -196,9 +209,9 @@ class TenantDashboardService
             ->all();
     }
 
-    private function porSexo(callable $periodo): array
+    private function porSexo(Builder $pacientes): array
     {
-        $totais = Patient::where($periodo)
+        $totais = $pacientes
             ->selectRaw('sexo, COUNT(*) as total')
             ->groupBy('sexo')
             ->pluck('total', 'sexo');
@@ -210,9 +223,9 @@ class TenantDashboardService
             ->all();
     }
 
-    private function porFaixaEtaria(callable $periodo): array
+    private function porFaixaEtaria(Builder $pacientes): array
     {
-        $idades = Patient::where($periodo)
+        $idades = $pacientes
             ->whereNotNull('data_nascimento')
             ->selectRaw('TIMESTAMPDIFF(YEAR, data_nascimento, CURDATE()) as idade')
             ->pluck('idade');
@@ -252,10 +265,29 @@ class TenantDashboardService
             ->all();
     }
 
-    private function sms(Tenant $tenant, int $year): array
+    /**
+     * Planos com a cota quase no fim (10% ou menos das vagas sobrando), já com o
+     * texto do card de atenção.
+     *
+     * @return array{total: int, descricao: string}
+     */
+    private function planosNoLimite(array $planos): array
+    {
+        $nomes = collect($planos)
+            ->filter(fn (array $plano) => $plano['quantidade'] && $plano['disponivel'] / $plano['quantidade'] <= 0.1)
+            ->pluck('plano');
+
+        return [
+            'total' => $nomes->count(),
+            'descricao' => $nomes->join(', ') ?: '10% ou menos das vagas livres',
+        ];
+    }
+
+    private function sms(Tenant $tenant, int $year, ?int $month): array
     {
         $porStatus = SmsLogs::where('tenant_id', $tenant->id)
             ->whereYear('created_at', $year)
+            ->when($month, fn ($q) => $q->whereMonth('created_at', $month))
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');

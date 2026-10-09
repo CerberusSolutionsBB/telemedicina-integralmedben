@@ -13,12 +13,15 @@ const props = defineProps({
     loading: { type: Boolean, default: false },
     placeholder: { type: String, default: "Buscar..." },
     emptyText: { type: String, default: "Nenhum resultado encontrado." },
+    // Filtro opcional em chips (ex.: perfis). Cada item informa os seus em item.filtros.
+    filtros: { type: Array, default: () => [] },
 });
 
 const open = defineModel("open", { type: Boolean, default: false });
 const emit = defineEmits(["select"]);
 
 const termo = ref("");
+const filtroAtivo = ref("");
 const destaque = ref(0);
 const inputRef = ref(null);
 const listaRef = ref(null);
@@ -29,7 +32,9 @@ const indexados = computed(() =>
 
 const filtrados = computed(() => {
     const q = normalizar(termo.value);
-    return q ? indexados.value.filter((item) => item.busca.includes(q)) : indexados.value;
+    return indexados.value.filter((item) =>
+        (!q || item.busca.includes(q)) && (!filtroAtivo.value || item.filtros?.includes(filtroAtivo.value)),
+    );
 });
 
 const isSelecionado = (item) => normalizar(item.value) === normalizar(props.selected);
@@ -37,6 +42,7 @@ const isSelecionado = (item) => normalizar(item.value) === normalizar(props.sele
 watch(open, async (aberto) => {
     if (!aberto) return;
     termo.value = "";
+    filtroAtivo.value = "";
     await nextTick();
     const indice = filtrados.value.findIndex(isSelecionado);
     destaque.value = Math.max(0, indice);
@@ -44,7 +50,7 @@ watch(open, async (aberto) => {
     inputRef.value?.focus();
 });
 
-watch(termo, () => {
+watch([termo, filtroAtivo], () => {
     destaque.value = 0;
 });
 
@@ -86,6 +92,15 @@ const escolher = (item) => {
                         class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
                         @click="termo = ''; inputRef?.focus()">
                         <X class="w-4 h-4" />
+                    </button>
+                </div>
+                <div v-if="filtros.length" class="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filtrar">
+                    <button v-for="filtro in ['', ...filtros]" :key="filtro || 'todos'" type="button"
+                        :aria-pressed="filtroAtivo === filtro"
+                        class="rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                        :class="filtroAtivo === filtro ? 'border-cyan-500 bg-cyan-50 text-cyan-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'"
+                        @click="filtroAtivo = filtro">
+                        {{ filtro || "Todos" }}
                     </button>
                 </div>
                 <p v-if="!loading" class="mt-2 text-xs text-gray-500">{{ filtrados.length }} de {{ items.length }}</p>

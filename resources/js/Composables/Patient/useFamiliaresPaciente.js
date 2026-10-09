@@ -4,7 +4,10 @@ import { soDigitos } from './useCamposPaciente'
 // Mesmo limite do StorePatientRequest::MAX_FAMILIARES.
 export const MAX_FAMILIARES = 3
 
-const FAMILIAR_VAZIO = { id: null, nome: '', cpf: '', data_nascimento: '', tipo: '' }
+const FAMILIAR_VAZIO = { id: null, nome: '', cpf: '', data_nascimento: '', sexo: '', tipo: '' }
+
+// Valores aceitos pela SIPROV no dependente.
+export const SEXOS_FAMILIAR = ['Feminino', 'Masculino']
 
 const formatarCpf = (valor) =>
     soDigitos(valor).slice(0, 11)
