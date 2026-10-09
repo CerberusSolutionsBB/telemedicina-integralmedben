@@ -3,10 +3,12 @@ import { Link } from "@inertiajs/vue3";
 import AppSwitch from "@/Components/ui/switch/Switch.vue";
 import PatientPlanoSelect from "@/Components/PatientPlanoSelect.vue";
 import UfCidadeSelect from "@/Components/UfCidadeSelect.vue";
+import ContadorCaracteres from "@/Components/ContadorCaracteres.vue";
+import VendedorSelect from "@/Components/Patient/VendedorSelect.vue";
 import { useCamposPaciente } from "@/Composables/Patient/useCamposPaciente";
 import { useCepPaciente } from "@/Composables/Patient/useCepPaciente";
 import { usePermissoesBeneficiario } from "@/Composables/Patient/usePermissoesBeneficiario";
-import { MAX_FAMILIARES, useFamiliaresPaciente } from "@/Composables/Patient/useFamiliaresPaciente";
+import { MAX_FAMILIARES, SEXOS_FAMILIAR, useFamiliaresPaciente } from "@/Composables/Patient/useFamiliaresPaciente";
 import { Loader2, Plus, Trash2 } from "lucide-vue-next";
 
 /**
@@ -21,6 +23,8 @@ const props = defineProps({
     planoAtual: { type: Object, default: null },
     // Tipos de membro da família (MAE, PAI...) do plano familiar.
     tiposFamiliares: { type: Array, default: () => [] },
+    // Máximo de caracteres por campo (StorePatientRequest::LIMITES).
+    limites: { type: Object, default: () => ({}) },
     cancelarHref: { type: String, required: true },
     rotuloSalvar: { type: String, default: "Salvar" },
 });
@@ -42,6 +46,10 @@ const { planoFamiliar, podeAdicionar, adicionarFamiliar, removerFamiliar, erroFa
     planos: props.planos,
     planoAtual: props.planoAtual,
 });
+
+// Campos com máscara: o limite é o tamanho do formato.
+const MASCARAS = { cpf: 14, celular: 15, cep: 9 };
+const limite = (campo) => props.limites[campo] ?? 255;
 
 const card = "w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6";
 const titulo = "text-base font-semibold text-gray-900";
@@ -68,22 +76,32 @@ const input = (erro) => [
             <div class="grid grid-cols-1 gap-4 md:grid-cols-6 xl:grid-cols-12">
                 <div class="md:col-span-6 xl:col-span-6">
                     <label :class="label" for="nome">Nome <span class="text-red-600">*</span></label>
-                    <input id="nome" v-model="form.nome" type="text" autocomplete="name" :class="input(form.errors.nome)" required />
-                    <p v-if="form.errors.nome" class="mt-1 text-sm text-red-600">{{ form.errors.nome }}</p>
+                    <input id="nome" v-model="form.nome" type="text" autocomplete="name" :maxlength="limite('nome')"
+                        :class="input(form.errors.nome)" required />
+                    <div class="mt-1 flex items-start gap-2">
+                        <p v-if="form.errors.nome" class="text-sm text-red-600">{{ form.errors.nome }}</p>
+                        <ContadorCaracteres :valor="form.nome" :limite="limite('nome')" />
+                    </div>
                 </div>
 
                 <div class="md:col-span-3 xl:col-span-3">
                     <label :class="label" for="cpf">CPF <span v-if="exigePlano" class="text-red-600">*</span></label>
                     <input id="cpf" v-model="form.cpf" type="text" inputmode="numeric" maxlength="14"
                         placeholder="000.000.000-00" autocomplete="off" :class="input(form.errors.cpf)" :required="exigePlano" />
-                    <p v-if="form.errors.cpf || avisoCpf" class="mt-1 text-sm"
-                        :class="form.errors.cpf ? 'text-red-600' : 'text-amber-700'">{{ form.errors.cpf || avisoCpf }}</p>
+                    <div class="mt-1 flex items-start gap-2">
+                        <p v-if="form.errors.cpf || avisoCpf" class="text-sm"
+                            :class="form.errors.cpf ? 'text-red-600' : 'text-amber-700'">{{ form.errors.cpf || avisoCpf }}</p>
+                        <ContadorCaracteres :valor="form.cpf" :limite="MASCARAS.cpf" />
+                    </div>
                 </div>
 
                 <div class="md:col-span-3 xl:col-span-3">
                     <label :class="label" for="rg">RG</label>
-                    <input id="rg" v-model="form.rg" type="text" autocomplete="off" :class="input(form.errors.rg)" />
-                    <p v-if="form.errors.rg" class="mt-1 text-sm text-red-600">{{ form.errors.rg }}</p>
+                    <input id="rg" v-model="form.rg" type="text" autocomplete="off" :maxlength="limite('rg')" :class="input(form.errors.rg)" />
+                    <div class="mt-1 flex items-start gap-2">
+                        <p v-if="form.errors.rg" class="text-sm text-red-600">{{ form.errors.rg }}</p>
+                        <ContadorCaracteres :valor="form.rg" :limite="limite('rg')" />
+                    </div>
                 </div>
 
                 <div class="md:col-span-3 xl:col-span-2">
@@ -106,16 +124,22 @@ const input = (erro) => [
                 <div class="md:col-span-3 xl:col-span-5">
                     <label :class="label" for="email">E-mail</label>
                     <input id="email" v-model="form.email" type="email" autocomplete="email" placeholder="nome@exemplo.com"
-                        :class="input(form.errors.email)" />
-                    <p v-if="form.errors.email || avisoEmail" class="mt-1 text-sm"
-                        :class="form.errors.email ? 'text-red-600' : 'text-amber-700'">{{ form.errors.email || avisoEmail }}</p>
+                        :maxlength="limite('email')" :class="input(form.errors.email)" />
+                    <div class="mt-1 flex items-start gap-2">
+                        <p v-if="form.errors.email || avisoEmail" class="text-sm"
+                            :class="form.errors.email ? 'text-red-600' : 'text-amber-700'">{{ form.errors.email || avisoEmail }}</p>
+                        <ContadorCaracteres :valor="form.email" :limite="limite('email')" />
+                    </div>
                 </div>
 
                 <div class="md:col-span-3 xl:col-span-3">
                     <label :class="label" for="numero">Celular</label>
                     <input id="numero" v-model="form.numero" type="tel" inputmode="numeric" maxlength="15"
                         placeholder="(00) 00000-0000" autocomplete="tel-national" :class="input(form.errors.numero)" />
-                    <p v-if="form.errors.numero" class="mt-1 text-sm text-red-600">{{ form.errors.numero }}</p>
+                    <div class="mt-1 flex items-start gap-2">
+                        <p v-if="form.errors.numero" class="text-sm text-red-600">{{ form.errors.numero }}</p>
+                        <ContadorCaracteres :valor="form.numero" :limite="MASCARAS.celular" />
+                    </div>
                 </div>
             </div>
         </section>
@@ -134,33 +158,53 @@ const input = (erro) => [
                                 placeholder="00000-000" autocomplete="postal-code" :class="[input(form.errors['enderecos.cep']), 'pr-9']" />
                             <Loader2 v-if="buscandoCep" class="absolute right-3 top-3 h-4 w-4 animate-spin text-gray-400" />
                         </div>
-                        <p v-if="form.errors['enderecos.cep'] || cepNaoEncontrado" class="mt-1 text-sm"
-                            :class="form.errors['enderecos.cep'] ? 'text-red-600' : 'text-amber-700'">
-                            {{ form.errors['enderecos.cep'] || "CEP não encontrado. Preencha manualmente." }}
-                        </p>
+                        <div class="mt-1 flex items-start gap-2">
+                            <p v-if="form.errors['enderecos.cep'] || cepNaoEncontrado" class="text-sm"
+                                :class="form.errors['enderecos.cep'] ? 'text-red-600' : 'text-amber-700'">
+                                {{ form.errors['enderecos.cep'] || "CEP não encontrado. Preencha manualmente." }}
+                            </p>
+                            <ContadorCaracteres :valor="form.enderecos.cep" :limite="MASCARAS.cep" />
+                        </div>
                     </div>
 
                     <div class="md:col-span-4">
                         <label :class="label" for="logradouro">Logradouro</label>
                         <input id="logradouro" v-model="form.enderecos.logradouro" type="text" placeholder="Rua, avenida..."
-                            :class="input(form.errors['enderecos.logradouro'])" />
+                            :maxlength="limite('logradouro')" :class="input(form.errors['enderecos.logradouro'])" />
+                        <div class="mt-1 flex items-start gap-2">
+                            <p v-if="form.errors['enderecos.logradouro']" class="text-sm text-red-600">{{ form.errors['enderecos.logradouro'] }}</p>
+                            <ContadorCaracteres :valor="form.enderecos.logradouro" :limite="limite('logradouro')" />
+                        </div>
                     </div>
 
                     <div class="md:col-span-2">
                         <label :class="label" for="numero_endereco">Número</label>
                         <input id="numero_endereco" v-model="form.enderecos.numero" type="text" placeholder="Nº"
-                            :class="input(form.errors['enderecos.numero'])" />
+                            :maxlength="limite('numero_endereco')" :class="input(form.errors['enderecos.numero'])" />
+                        <div class="mt-1 flex items-start gap-2">
+                            <p v-if="form.errors['enderecos.numero']" class="text-sm text-red-600">{{ form.errors['enderecos.numero'] }}</p>
+                            <ContadorCaracteres :valor="form.enderecos.numero" :limite="limite('numero_endereco')" />
+                        </div>
                     </div>
 
                     <div class="md:col-span-4">
                         <label :class="label" for="complemento">Complemento</label>
                         <input id="complemento" v-model="form.enderecos.complemento" type="text" placeholder="Apto, bloco..."
-                            :class="input(form.errors['enderecos.complemento'])" />
+                            :maxlength="limite('complemento')" :class="input(form.errors['enderecos.complemento'])" />
+                        <div class="mt-1 flex items-start gap-2">
+                            <p v-if="form.errors['enderecos.complemento']" class="text-sm text-red-600">{{ form.errors['enderecos.complemento'] }}</p>
+                            <ContadorCaracteres :valor="form.enderecos.complemento" :limite="limite('complemento')" />
+                        </div>
                     </div>
 
                     <div class="md:col-span-2">
                         <label :class="label" for="bairro">Bairro</label>
-                        <input id="bairro" v-model="form.enderecos.bairro" type="text" :class="input(form.errors['enderecos.bairro'])" />
+                        <input id="bairro" v-model="form.enderecos.bairro" type="text" :maxlength="limite('bairro')"
+                            :class="input(form.errors['enderecos.bairro'])" />
+                        <div class="mt-1 flex items-start gap-2">
+                            <p v-if="form.errors['enderecos.bairro']" class="text-sm text-red-600">{{ form.errors['enderecos.bairro'] }}</p>
+                            <ContadorCaracteres :valor="form.enderecos.bairro" :limite="limite('bairro')" />
+                        </div>
                     </div>
 
                     <UfCidadeSelect v-model:uf="form.enderecos.estado" v-model:cidade="form.enderecos.cidade" class="md:col-span-4"
@@ -173,15 +217,7 @@ const input = (erro) => [
                 <PatientPlanoSelect v-model="form.cod_plano" :planos="planos" :plano-atual="planoAtual"
                     :error="form.errors.cod_plano" :required="exigePlano" bare />
 
-                <div class="mt-4">
-                    <label :class="label" for="vendedor">Vendedor / indicado por</label>
-                    <select id="vendedor" v-model="form.user_id" :class="input(form.errors.user_id)">
-                        <option :value="null">Não informado</option>
-                        <option v-for="vendedor in vendedores" :key="vendedor.id" :value="vendedor.id">{{ vendedor.name }}</option>
-                    </select>
-                    <p v-if="form.errors.user_id" class="mt-1 text-sm text-red-600">{{ form.errors.user_id }}</p>
-                    <p class="mt-1 text-xs text-gray-500">Usuário que recebe a comissão pela venda deste plano.</p>
-                </div>
+                <VendedorSelect v-model="form.user_id" :vendedores="vendedores" :error="form.errors.user_id" class="mt-4" />
             </div>
         </section>
 
@@ -207,14 +243,17 @@ const input = (erro) => [
 
             <div v-for="(familiar, i) in form.familiares" :key="familiar.id ?? `novo-${i}`"
                 class="grid grid-cols-1 gap-4 border-t border-gray-100 py-4 first-of-type:border-t-0 first-of-type:pt-0 md:grid-cols-6 xl:grid-cols-12">
-                <div class="md:col-span-6 xl:col-span-4">
+                <div class="md:col-span-6 xl:col-span-3">
                     <label :class="label" :for="`familiar_nome_${i}`">Nome <span class="text-red-600">*</span></label>
-                    <input :id="`familiar_nome_${i}`" v-model="familiar.nome" type="text" autocomplete="off"
-                        :class="input(erroFamiliar(i, 'nome'))" required />
-                    <p v-if="erroFamiliar(i, 'nome')" class="mt-1 text-sm text-red-600">{{ erroFamiliar(i, 'nome') }}</p>
+                    <input :id="`familiar_nome_${i}`" v-model="familiar.nome" type="text" minlength="3" :maxlength="limite('familiar_nome')"
+                        autocomplete="off" :class="input(erroFamiliar(i, 'nome'))" required />
+                    <div class="mt-1 flex items-start gap-2">
+                        <p v-if="erroFamiliar(i, 'nome')" class="text-sm text-red-600">{{ erroFamiliar(i, 'nome') }}</p>
+                        <ContadorCaracteres :valor="familiar.nome" :limite="limite('familiar_nome')" />
+                    </div>
                 </div>
 
-                <div class="md:col-span-3 xl:col-span-3">
+                <div class="md:col-span-3 xl:col-span-2">
                     <label :class="label" :for="`familiar_tipo_${i}`">Vínculo <span class="text-red-600">*</span></label>
                     <select :id="`familiar_tipo_${i}`" v-model="familiar.tipo" :class="input(erroFamiliar(i, 'tipo'))" required>
                         <option value="" disabled>Selecione</option>
@@ -224,16 +263,28 @@ const input = (erro) => [
                 </div>
 
                 <div class="md:col-span-3 xl:col-span-2">
+                    <label :class="label" :for="`familiar_sexo_${i}`">Sexo <span class="text-red-600">*</span></label>
+                    <select :id="`familiar_sexo_${i}`" v-model="familiar.sexo" :class="input(erroFamiliar(i, 'sexo'))" required>
+                        <option value="" disabled>Selecione</option>
+                        <option v-for="sexo in SEXOS_FAMILIAR" :key="sexo" :value="sexo">{{ sexo }}</option>
+                    </select>
+                    <p v-if="erroFamiliar(i, 'sexo')" class="mt-1 text-sm text-red-600">{{ erroFamiliar(i, 'sexo') }}</p>
+                </div>
+
+                <div class="md:col-span-2 xl:col-span-2">
                     <label :class="label" :for="`familiar_cpf_${i}`">CPF</label>
                     <input :id="`familiar_cpf_${i}`" v-model="familiar.cpf" type="text" inputmode="numeric" maxlength="14"
                         placeholder="000.000.000-00" autocomplete="off"
                         :class="input(erroFamiliar(i, 'cpf') || avisoCpfFamiliar(i))" />
-                    <p v-if="erroFamiliar(i, 'cpf') || avisoCpfFamiliar(i)" class="mt-1 text-sm text-red-600">
-                        {{ erroFamiliar(i, 'cpf') || avisoCpfFamiliar(i) }}
-                    </p>
+                    <div class="mt-1 flex items-start gap-2">
+                        <p v-if="erroFamiliar(i, 'cpf') || avisoCpfFamiliar(i)" class="text-sm text-red-600">
+                            {{ erroFamiliar(i, 'cpf') || avisoCpfFamiliar(i) }}
+                        </p>
+                        <ContadorCaracteres :valor="familiar.cpf" :limite="MASCARAS.cpf" />
+                    </div>
                 </div>
 
-                <div class="md:col-span-4 xl:col-span-2">
+                <div class="md:col-span-2 xl:col-span-2">
                     <label :class="label" :for="`familiar_nascimento_${i}`">Data de nascimento</label>
                     <input :id="`familiar_nascimento_${i}`" v-model="familiar.data_nascimento" type="date" :max="hoje"
                         :class="input(erroFamiliar(i, 'data_nascimento'))" />

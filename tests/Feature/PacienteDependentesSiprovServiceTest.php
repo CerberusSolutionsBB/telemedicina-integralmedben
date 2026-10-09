@@ -45,6 +45,7 @@ class PacienteDependentesSiprovServiceTest extends TestCase
             $table->string('nome');
             $table->string('cpf', 14)->nullable();
             $table->date('data_nascimento')->nullable();
+            $table->string('sexo', 10)->nullable();
             $table->string('tipo', 30);
             $table->unsignedInteger('siprov_cod_dependente')->nullable();
             $table->timestamps();
@@ -80,7 +81,8 @@ class PacienteDependentesSiprovServiceTest extends TestCase
             'nome' => 'Ana Titular',
             'cpf' => '98765432100',
             'data_nascimento' => '2015-04-03',
-            'tipo' => 'FILHA',
+            'sexo' => 'Feminino',
+            'tipo' => 'FILHO',
         ]);
     }
 
@@ -117,7 +119,7 @@ class PacienteDependentesSiprovServiceTest extends TestCase
     public function test_reenvio_atualiza_pelo_codigo_e_inativa_os_removidos(): void
     {
         $this->vinculoFamiliar();
-        $this->familiar(['siprov_cod_dependente' => 55, 'tipo' => 'CONJUGE', 'nome' => 'Cônjuge']);
+        $this->familiar(['siprov_cod_dependente' => 55, 'tipo' => 'CONJUGE', 'sexo' => null, 'nome' => 'Cônjuge']);
         Http::fake([
             self::BASE.'/ext/beneficio/777/dependentes' => Http::response([
                 ['codDependente' => 90, 'nome' => 'Removido', 'parentesco' => 'Filho(a)', 'ativo' => true],

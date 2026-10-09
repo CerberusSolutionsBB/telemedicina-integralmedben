@@ -186,6 +186,7 @@ const botao = "inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-
                         <dl class="mt-3 grid grid-cols-2 gap-3">
                             <PatientCampo rotulo="CPF" :valor="familiar.cpf ? formatarCpf(familiar.cpf) : null" />
                             <PatientCampo rotulo="Nascimento" :valor="familiar.data_nascimento" />
+                            <PatientCampo rotulo="Sexo" :valor="familiar.sexo" />
                         </dl>
                     </li>
                 </ul>

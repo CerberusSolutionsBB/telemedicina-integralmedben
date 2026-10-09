@@ -14,6 +14,19 @@ class StorePatientRequest extends FormRequest
     /** Membros da família permitidos no plano familiar. */
     public const MAX_FAMILIARES = 3;
 
+    /** Máximo de caracteres dos campos de texto (validação e contador do formulário). */
+    public const LIMITES = [
+        'nome' => 255,
+        'rg' => 20,
+        'email' => 255,
+        'logradouro' => 255,
+        'numero_endereco' => 20,
+        'complemento' => 255,
+        'bairro' => 255,
+        // SIPROV aceita nome do dependente com 3 a 100 caracteres.
+        'familiar_nome' => 100,
+    ];
+
     public function authorize(): bool
     {
         return true;
@@ -22,19 +35,19 @@ class StorePatientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nome' => 'required|string|max:255',
+            'nome' => 'required|string|max:'.self::LIMITES['nome'],
             'cpf' => ['nullable', 'required_with:cod_plano', 'string', 'max:14'],
-            'rg' => 'nullable|string|max:20',
+            'rg' => 'nullable|string|max:'.self::LIMITES['rg'],
             'data_nascimento' => ['required', 'date', 'before_or_equal:today'],
             'sexo' => ['nullable', 'string', Rule::enum(PatientSexoEnum::class)],
-            'email' => ['nullable', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:'.self::LIMITES['email']],
             'numero' => 'nullable|string|max:20',
             'enderecos' => 'nullable|array',
             'enderecos.cep' => 'nullable|string|max:9',
-            'enderecos.logradouro' => 'nullable|string|max:255',
-            'enderecos.numero' => 'nullable|string|max:20',
-            'enderecos.complemento' => 'nullable|string|max:255',
-            'enderecos.bairro' => 'nullable|string|max:255',
+            'enderecos.logradouro' => 'nullable|string|max:'.self::LIMITES['logradouro'],
+            'enderecos.numero' => 'nullable|string|max:'.self::LIMITES['numero_endereco'],
+            'enderecos.complemento' => 'nullable|string|max:'.self::LIMITES['complemento'],
+            'enderecos.bairro' => 'nullable|string|max:'.self::LIMITES['bairro'],
             'enderecos.cidade' => 'nullable|string|max:255',
             'enderecos.estado' => 'nullable|string|max:2',
             'status' => 'nullable|boolean',
@@ -50,7 +63,7 @@ class StorePatientRequest extends FormRequest
             // Membros da família: só gravados quando o plano é o familiar.
             'familiares' => ['nullable', 'array', 'max:'.self::MAX_FAMILIARES],
             'familiares.*.id' => 'nullable|integer',
-            'familiares.*.nome' => 'required|string|max:255',
+            'familiares.*.nome' => 'required|string|min:3|max:'.self::LIMITES['familiar_nome'],
             // CPF do familiar: diferente do beneficiário e dos outros familiares.
             'familiares.*.cpf' => [
                 'nullable',
@@ -79,7 +92,9 @@ class StorePatientRequest extends FormRequest
                 },
             ],
             'familiares.*.data_nascimento' => ['nullable', 'date', 'before_or_equal:today'],
+            // Vínculo = parentesco da SIPROV (TiposVinculoFamiliarSeeder).
             'familiares.*.tipo' => ['required', 'string', Rule::exists('tipos_vinculo_familiar', 'codigo')],
+            'familiares.*.sexo' => ['required', Rule::in(['Feminino', 'Masculino'])],
         ];
     }
 
@@ -97,8 +112,12 @@ class StorePatientRequest extends FormRequest
             'cod_plano.in' => 'Plano inválido.',
             'familiares.max' => 'O plano familiar permite no máximo '.self::MAX_FAMILIARES.' membros da família.',
             'familiares.*.nome.required' => 'Informe o nome do familiar.',
+            'familiares.*.nome.min' => 'O nome do familiar deve ter pelo menos 3 caracteres.',
+            'familiares.*.nome.max' => 'O nome do familiar deve ter no máximo 100 caracteres.',
             'familiares.*.tipo.required' => 'Selecione o vínculo do familiar.',
             'familiares.*.tipo.exists' => 'Vínculo familiar inválido.',
+            'familiares.*.sexo.required' => 'Selecione o sexo do familiar.',
+            'familiares.*.sexo.in' => 'O sexo do familiar deve ser Feminino ou Masculino.',
             'familiares.*.data_nascimento.date' => 'Informe uma data de nascimento válida.',
             'familiares.*.data_nascimento.before_or_equal' => 'A data de nascimento não pode estar no futuro.',
         ];
