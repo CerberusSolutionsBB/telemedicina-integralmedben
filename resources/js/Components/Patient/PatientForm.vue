@@ -5,6 +5,7 @@ import PatientPlanoSelect from "@/Components/PatientPlanoSelect.vue";
 import UfCidadeSelect from "@/Components/UfCidadeSelect.vue";
 import ContadorCaracteres from "@/Components/ContadorCaracteres.vue";
 import VendedorSelect from "@/Components/Patient/VendedorSelect.vue";
+import VinculoFamiliarSelect from "@/Components/Patient/VinculoFamiliarSelect.vue";
 import { useCamposPaciente } from "@/Composables/Patient/useCamposPaciente";
 import { useCepPaciente } from "@/Composables/Patient/useCepPaciente";
 import { usePermissoesBeneficiario } from "@/Composables/Patient/usePermissoesBeneficiario";
@@ -21,7 +22,7 @@ const props = defineProps({
     vendedores: { type: Array, default: () => [] },
     // Vínculo de telemedicina existente (Edit): plano só leitura e não obrigatório.
     planoAtual: { type: Object, default: null },
-    // Tipos de membro da família (MAE, PAI...) do plano familiar.
+    // Vínculos do familiar (parentescos da SIPROV: CONJUGE, PAI...).
     tiposFamiliares: { type: Array, default: () => [] },
     // Máximo de caracteres por campo (StorePatientRequest::LIMITES).
     limites: { type: Object, default: () => ({}) },
@@ -255,10 +256,8 @@ const input = (erro) => [
 
                 <div class="md:col-span-3 xl:col-span-2">
                     <label :class="label" :for="`familiar_tipo_${i}`">Vínculo <span class="text-red-600">*</span></label>
-                    <select :id="`familiar_tipo_${i}`" v-model="familiar.tipo" :class="input(erroFamiliar(i, 'tipo'))" required>
-                        <option value="" disabled>Selecione</option>
-                        <option v-for="tipo in tiposFamiliares" :key="tipo.value" :value="tipo.value">{{ tipo.label }}</option>
-                    </select>
+                    <VinculoFamiliarSelect :id="`familiar_tipo_${i}`" v-model="familiar.tipo" :tipos="tiposFamiliares"
+                        :error="erroFamiliar(i, 'tipo')" />
                     <p v-if="erroFamiliar(i, 'tipo')" class="mt-1 text-sm text-red-600">{{ erroFamiliar(i, 'tipo') }}</p>
                 </div>
 

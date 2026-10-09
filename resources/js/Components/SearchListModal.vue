@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import { Check, Loader2, Search, X } from "lucide-vue-next";
 import { normalizar } from "@/Composables/useLocalidades";
 
@@ -15,6 +15,8 @@ const props = defineProps({
     emptyText: { type: String, default: "Nenhum resultado encontrado." },
     // Filtro opcional em chips (ex.: perfis). Cada item informa os seus em item.filtros.
     filtros: { type: Array, default: () => [] },
+    // Com confirmar, clicar só marca o item; a escolha vale ao clicar em Confirmar.
+    confirmar: { type: Boolean, default: false },
 });
 
 const open = defineModel("open", { type: Boolean, default: false });
@@ -22,6 +24,7 @@ const emit = defineEmits(["select"]);
 
 const termo = ref("");
 const filtroAtivo = ref("");
+const pendente = ref(null);
 const destaque = ref(0);
 const inputRef = ref(null);
 const listaRef = ref(null);
@@ -38,11 +41,14 @@ const filtrados = computed(() => {
 });
 
 const isSelecionado = (item) => normalizar(item.value) === normalizar(props.selected);
+// No modo confirmar, o item marcado (ou o atual, enquanto nada foi marcado).
+const isMarcado = (item) => (props.confirmar && pendente.value ? item.value === pendente.value.value : isSelecionado(item));
 
 watch(open, async (aberto) => {
     if (!aberto) return;
     termo.value = "";
     filtroAtivo.value = "";
+    pendente.value = null;
     await nextTick();
     const indice = filtrados.value.findIndex(isSelecionado);
     destaque.value = Math.max(0, indice);
@@ -68,7 +74,17 @@ const mover = (passo) => {
 
 const escolher = (item) => {
     if (!item) return;
+    if (props.confirmar) {
+        pendente.value = item;
+        return;
+    }
     emit("select", item);
+    open.value = false;
+};
+
+const confirmarEscolha = () => {
+    if (!pendente.value) return;
+    emit("select", pendente.value);
     open.value = false;
 };
 </script>
@@ -115,19 +131,32 @@ const escolher = (item) => {
                 <p v-else-if="!filtrados.length" class="py-10 text-center text-sm text-gray-500">{{ emptyText }}</p>
 
                 <button v-for="(item, index) in filtrados" v-else :key="item.value" type="button" role="option"
-                    :data-index="index" :aria-selected="isSelecionado(item)"
+                    :data-index="index" :aria-selected="isMarcado(item)"
                     class="w-full flex items-center justify-between gap-3 px-5 py-2.5 text-left text-sm transition-colors"
                     :class="index === destaque ? 'bg-cyan-50' : 'hover:bg-gray-50'" @mouseenter="destaque = index"
                     @click="escolher(item)">
-                    <span class="min-w-0 truncate" :class="isSelecionado(item) ? 'font-semibold text-cyan-700' : 'text-gray-800'">
+                    <span class="min-w-0 truncate" :class="isMarcado(item) ? 'font-semibold text-cyan-700' : 'text-gray-800'">
                         {{ item.label }}
                     </span>
                     <span class="flex items-center gap-2 shrink-0">
                         <span v-if="item.hint" class="text-xs text-gray-400">{{ item.hint }}</span>
-                        <Check v-if="isSelecionado(item)" class="w-4 h-4 text-cyan-600" />
+                        <Check v-if="isMarcado(item)" class="w-4 h-4 text-cyan-600" />
                     </span>
                 </button>
             </div>
+
+            <DialogFooter v-if="confirmar" class="flex-col-reverse gap-2 border-t border-gray-100 p-4 sm:flex-row sm:justify-end">
+                <button type="button"
+                    class="inline-flex min-h-10 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                    @click="open = false">
+                    Cancelar
+                </button>
+                <button type="button" :disabled="!pendente"
+                    class="inline-flex min-h-10 items-center justify-center rounded-lg bg-cyan-600 px-4 text-sm font-semibold text-white hover:bg-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    @click="confirmarEscolha">
+                    Confirmar
+                </button>
+            </DialogFooter>
         </DialogContent>
     </Dialog>
 </template>

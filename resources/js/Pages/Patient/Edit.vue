@@ -4,6 +4,7 @@ import { Head } from "@inertiajs/vue3";
 import TenantAdminLayout from "@/Layouts/TenantAdminLayout.vue";
 import Breadcrumb from "@/Components/Breadcrumb.vue";
 import PatientForm from "@/Components/Patient/PatientForm.vue";
+import SairSemSalvarDialog from "@/Components/SairSemSalvarDialog.vue";
 import { usePatientForm } from "@/Composables/Patient/usePatientForm";
 import { Home } from "lucide-vue-next";
 
@@ -18,7 +19,7 @@ const props = defineProps({
     limites: { type: Object, default: () => ({}) },
 });
 
-const { form, salvar } = usePatientForm({ patient: props.patient, familiares: props.familiares });
+const { form, salvar, saida: { aberto: confirmarSaida, ficar, sair } } = usePatientForm({ patient: props.patient, familiares: props.familiares });
 
 // Mesmo padrão do Controle de Acesso: "Início" › seção › registro atual.
 const breadcrumbItems = computed(() => [
@@ -43,5 +44,7 @@ const nome = computed(() => props.patient.nome || `beneficiário #${props.patien
         <PatientForm :form="form" :planos="planos" :vendedores="vendedores" :plano-atual="planoAtual"
             :tipos-familiares="tiposFamiliares" :limites="limites"
             :cancelar-href="route('patients.index')" rotulo-salvar="Salvar alterações" @submit="salvar" />
+
+        <SairSemSalvarDialog v-model:open="confirmarSaida" @ficar="ficar" @sair="sair" />
     </TenantAdminLayout>
 </template>

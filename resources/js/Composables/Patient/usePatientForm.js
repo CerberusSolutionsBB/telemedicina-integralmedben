@@ -1,16 +1,16 @@
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { router, useForm, usePage } from '@inertiajs/vue3'
+import { nextTick, ref } from 'vue'
+import { useForm } from '@inertiajs/vue3'
+import { useSairSemSalvar } from '@/Composables/useSairSemSalvar'
 import { campoDoErro, irParaCampo } from './foco'
 
 const ENDERECO_VAZIO = { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' }
 
 /**
  * Dados e persistência do beneficiário (Create/Edit). Sem `patient`, cria.
- * Também protege contra sair da página com alterações não salvas.
+ * Também protege contra sair da página com alterações não salvas (useSairSemSalvar).
  */
 export function usePatientForm({ patient = null, familiares = [] } = {}) {
     const isEdit = Boolean(patient)
-    const usuarioAtual = usePage().props.auth?.user?.id ?? null
 
     const enderecos = patient?.enderecos && typeof patient.enderecos === 'object'
         ? Object.fromEntries(Object.keys(ENDERECO_VAZIO).map((k) => [k, patient.enderecos[k] || '']))
@@ -25,7 +25,8 @@ export function usePatientForm({ patient = null, familiares = [] } = {}) {
         email: patient?.email || '',
         numero: patient?.numero || '',
         // Vendedor/indicado por: quem recebe a comissão da venda do plano.
-        user_id: isEdit ? (patient?.user_id ?? null) : usuarioAtual,
+        // No cadastro começa vazio: o vendedor é sempre escolhido.
+        user_id: patient?.user_id ?? null,
         ...(isEdit ? { status: Boolean(patient.status) } : {}),
         enderecos,
         cod_plano: '',
@@ -56,29 +57,7 @@ export function usePatientForm({ patient = null, familiares = [] } = {}) {
         }
     }
 
-    const onBeforeUnload = (event) => {
-        if (form.isDirty && !enviando.value) {
-            event.preventDefault()
-            event.returnValue = ''
-        }
-    }
+    const saida = useSairSemSalvar(form, { ignorar: enviando })
 
-    let removerGuarda = null
-
-    onMounted(() => {
-        window.addEventListener('beforeunload', onBeforeUnload)
-        removerGuarda = router.on('before', (event) => {
-            if (form.isDirty && !enviando.value
-                && !window.confirm('Você tem alterações não salvas. Deseja sair mesmo assim?')) {
-                event.preventDefault()
-            }
-        })
-    })
-
-    onBeforeUnmount(() => {
-        window.removeEventListener('beforeunload', onBeforeUnload)
-        removerGuarda?.()
-    })
-
-    return { form, salvar }
+    return { form, salvar, saida }
 }
