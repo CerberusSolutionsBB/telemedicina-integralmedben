@@ -1886,7 +1886,8 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
             @close="closeSmsDeleteModal" @confirm="confirmDeleteSmsTemplate" />
 
         <SmsTemplateModal :show="smsModalOpen" :template="smsModalTemplate" event="patient.created"
-            :tenants="allTenants || []" @close="closeSmsModal" />
+            :tenants="(allTenants || []).filter((t) => t.id === tenant.id)" :fixed-tenant-id="tenant.id"
+            @close="closeSmsModal" />
 
         <!-- SIPROV Modal -->
         <div v-if="siprovModalOpen"

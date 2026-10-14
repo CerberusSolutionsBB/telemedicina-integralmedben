@@ -10,6 +10,8 @@ const props = defineProps({
     template: { type: Object, default: null },
     event: { type: String, default: 'patient.created' },
     tenants: { type: Array, default: () => [] },
+    // Aberto na página de um tenant: o template fica exclusivo dele (sem seletor de páginas).
+    fixedTenantId: { type: [String, Number], default: null },
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -95,7 +97,7 @@ watch(() => props.show, (val) => {
             form_ids: props.template.form_ids || [],
             variables: props.template.variables || [],
             is_active: props.template.is_active ?? true,
-            tenant_ids: tenantIds,
+            tenant_ids: props.fixedTenantId ? [props.fixedTenantId] : tenantIds,
         };
     } else if (val) {
         form.value = {
@@ -106,7 +108,7 @@ watch(() => props.show, (val) => {
             form_ids: [],
             variables: [],
             is_active: true,
-            tenant_ids: [],
+            tenant_ids: props.fixedTenantId ? [props.fixedTenantId] : [],
         };
     }
     tenantOpen.value = false;
@@ -220,7 +222,7 @@ const handleSubmit = async () => {
                             </div>
                         </div>
 
-                        <div v-if="tenants.length">
+                        <div v-if="tenants.length && !fixedTenantId">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Vincular a páginas</label>
 
                             <div class="flex flex-wrap gap-1.5 mb-2">

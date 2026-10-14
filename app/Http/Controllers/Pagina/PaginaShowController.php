@@ -132,6 +132,8 @@ class PaginaShowController extends Controller
                 ->toArray(),
             'smsTemplates' => SmsTemplate::query()
                 ->with('tenants')
+                // Templates são exclusivos do tenant: só os vinculados a ele aparecem aqui.
+                ->whereHas('tenants', fn ($q) => $q->where('tenants.id', $tenant->id))
                 ->where('event', 'patient.created')
                 ->orderByDesc('updated_at')
                 ->get()

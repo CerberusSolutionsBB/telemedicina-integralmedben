@@ -127,6 +127,7 @@ class FormShowController extends Controller
                 'delete' => $user->can('forms.delete') || $form->user_id === $user->id,
             ],
             'smsTemplates' => SmsTemplate::query()
+                ->whereHas('tenants', fn ($q) => $q->where('tenants.id', $currentTenant))
                 ->where('event', 'patient.created')
                 ->orderByDesc('updated_at')
                 ->get()
