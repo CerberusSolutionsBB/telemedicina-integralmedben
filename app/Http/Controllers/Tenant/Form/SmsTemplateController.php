@@ -49,7 +49,7 @@ class SmsTemplateController extends Controller
                 'is_active' => $validated['is_active'] ?? true,
             ]);
 
-            if (!empty($validated['tenant_ids'])) {
+            if (! empty($validated['tenant_ids'])) {
                 $template->tenants()->sync($validated['tenant_ids']);
             }
 
@@ -63,7 +63,7 @@ class SmsTemplateController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Erro ao criar template: '.$e->getMessage(),
+                'message' => 'Não foi possível criar o template. Tente novamente.',
             ], 500);
         }
     }
@@ -106,7 +106,7 @@ class SmsTemplateController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Erro ao atualizar template: '.$e->getMessage(),
+                'message' => 'Não foi possível atualizar o template. Tente novamente.',
             ], 500);
         }
     }
@@ -126,7 +126,7 @@ class SmsTemplateController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Erro ao remover template: '.$e->getMessage(),
+                'message' => 'Não foi possível remover o template. Tente novamente.',
             ], 500);
         }
     }

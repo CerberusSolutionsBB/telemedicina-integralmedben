@@ -60,12 +60,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('destroy')
         ->middleware('permission:forms.delete');
 
-    Route::get('/sms-templates', [SmsTemplateController::class, 'index'])
-        ->name('sms-templates.index');
-    Route::post('/sms-templates', [SmsTemplateController::class, 'store'])
-        ->name('sms-templates.store');
-    Route::put('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'update'])
-        ->name('sms-templates.update');
-    Route::delete('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'destroy'])
-        ->name('sms-templates.destroy');
+    Route::middleware('permission:sms-templates.manage')->group(function () {
+        Route::get('/sms-templates', [SmsTemplateController::class, 'index'])
+            ->name('sms-templates.index');
+        Route::post('/sms-templates', [SmsTemplateController::class, 'store'])
+            ->name('sms-templates.store');
+        Route::put('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'update'])
+            ->name('sms-templates.update');
+        Route::delete('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'destroy'])
+            ->name('sms-templates.destroy');
+    });
 });

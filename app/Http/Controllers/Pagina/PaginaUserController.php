@@ -165,7 +165,7 @@ class PaginaUserController extends Controller
 
             return back()
                 ->withErrors([
-                    'general' => 'Erro ao atualizar usuário: '.$e->getMessage(),
+                    'general' => 'Não foi possível atualizar o usuário. Tente novamente.',
                 ])
                 ->withInput();
 

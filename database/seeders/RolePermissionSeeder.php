@@ -63,6 +63,15 @@ class RolePermissionSeeder extends Seeder
                 'paginas.manage',
             ],
 
+            'financeiro' => [
+                'financeiro.view',
+            ],
+
+            'integracoes' => [
+                'sms-templates.manage',
+                'integracoes.manage',
+            ],
+
             'leis' => [
                 'leis.view',
                 'leis.create',
@@ -132,6 +141,7 @@ class RolePermissionSeeder extends Seeder
             'paginas.edit',
             'paginas.delete',
             'paginas.show',
+            'sms-templates.manage',
 
             // LEIS
             'leis.view',

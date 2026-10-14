@@ -33,7 +33,7 @@ class ToggleVisibilityFormController extends Controller
 
             return redirect()->route('forms.index')
                 ->withErrors([
-                    'error' => 'Erro ao alterar visibilidade: '.$e->getMessage(),
+                    'error' => 'Não foi possível alterar a visibilidade. Tente novamente.',
                 ]);
         }
     }

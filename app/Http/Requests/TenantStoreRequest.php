@@ -8,11 +8,11 @@ use Illuminate\Foundation\Http\FormRequest;
 class TenantStoreRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Criar exige paginas.create; atualizar (PUT/PATCH) exige paginas.edit.
      */
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->can($this->isMethod('post') ? 'paginas.create' : 'paginas.edit');
     }
 
     /**

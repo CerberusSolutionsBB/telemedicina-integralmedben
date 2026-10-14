@@ -16,7 +16,7 @@ use App\Http\Controllers\CredenciasCluble\StoreCredenciasClubleController;
 use App\Http\Controllers\CredenciasCluble\UpdateCredenciasClubleController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('categories')->name('categories.')->group(function () {
+Route::prefix('categories')->name('categories.')->middleware('permission:forms.edit')->group(function () {
     Route::prefix('forms')->name('forms.')->group(function () {
         Route::get('/', IndexFormCategoryController::class)->name('index');
         Route::get('/create', CreateFormCategoryController::class)->name('create');
@@ -28,7 +28,7 @@ Route::prefix('categories')->name('categories.')->group(function () {
     });
 });
 
-Route::prefix('credencias_cluble')->name('credencias_cluble.')->group(function () {
+Route::prefix('credencias_cluble')->name('credencias_cluble.')->middleware('permission:integracoes.manage')->group(function () {
     Route::get('/create', CreateCredenciasCluble::class)->name('create');
     Route::get('/', IndexCredenciasClubleController::class)->name('index');
     Route::post('/', StoreCredenciasClubleController::class)->name('store');

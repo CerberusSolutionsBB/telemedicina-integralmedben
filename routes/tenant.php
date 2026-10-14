@@ -102,11 +102,3 @@ Route::middleware([
             });
     });
 });
-
-Route::middleware('tenant')->get('/teste', function () {
-    return [
-        'host' => request()->getHost(),
-        'tenant' => tenant('id'),
-        'db' => config('database.connections.tenant.database'),
-    ];
-});

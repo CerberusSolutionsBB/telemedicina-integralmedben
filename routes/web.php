@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\CentralUserController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\FinancieroController;
+use App\Http\Controllers\FinanceiroController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestionController;
@@ -20,9 +20,10 @@ Route::middleware([PreventAccessFromTenantDomains::class])->group(function () {
         ->middleware(['auth', 'verified'])
         ->name('dashboard');
 
-    Route::get('/financiero', [FinancieroController::class, 'index'])
-        ->middleware(['auth', 'verified'])
-        ->name('financiero.index');
+    Route::get('/financeiro', [FinanceiroController::class, 'index'])
+        ->middleware(['auth', 'verified', 'permission:financeiro.view'])
+        ->name('financeiro.index');
+    Route::permanentRedirect('/financiero', '/financeiro');
 
     Route::middleware('auth')->group(function () {
         Route::get('/credenciados', [TenantController::class, 'index'])->name('credenciados.index');
@@ -39,21 +40,23 @@ Route::middleware([PreventAccessFromTenantDomains::class])->group(function () {
 
         Route::post('/tenant_questions', [QuestionController::class, 'storeTenantQuestions'])->name('tenant_questions.store');
 
-        Route::get('/central-users', [CentralUserController::class, 'index'])->name('central-users.index');
-        Route::post('/central-users', [CentralUserController::class, 'store'])->name('central-users.store');
-        Route::put('/central-users/{user}', [CentralUserController::class, 'update'])->name('central-users.update');
-        Route::delete('/central-users/{user}', [CentralUserController::class, 'destroy'])->name('central-users.destroy');
+        Route::get('/central-users', [CentralUserController::class, 'index'])->middleware('permission:users.view')->name('central-users.index');
+        Route::post('/central-users', [CentralUserController::class, 'store'])->middleware('permission:users.create')->name('central-users.store');
+        Route::put('/central-users/{user}', [CentralUserController::class, 'update'])->middleware('permission:users.edit')->name('central-users.update');
+        Route::delete('/central-users/{user}', [CentralUserController::class, 'destroy'])->middleware('permission:users.delete')->name('central-users.destroy');
 
-        Route::get('/sms-templates', [SmsTemplateController::class, 'index'])->name('sms-templates.index');
-        Route::post('/sms-templates', [SmsTemplateController::class, 'store'])->name('sms-templates.store');
-        Route::put('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'update'])->name('sms-templates.update');
-        Route::delete('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'destroy'])->name('sms-templates.destroy');
-        Route::post('/sms-templates/{smsTemplate}/tenants', [SmsTemplateController::class, 'assignTenants'])->name('sms-templates.assign-tenants');
+        Route::middleware('permission:sms-templates.manage')->group(function () {
+            Route::get('/sms-templates', [SmsTemplateController::class, 'index'])->name('sms-templates.index');
+            Route::post('/sms-templates', [SmsTemplateController::class, 'store'])->name('sms-templates.store');
+            Route::put('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'update'])->name('sms-templates.update');
+            Route::delete('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'destroy'])->name('sms-templates.destroy');
+            Route::post('/sms-templates/{smsTemplate}/tenants', [SmsTemplateController::class, 'assignTenants'])->name('sms-templates.assign-tenants');
+        });
+
+        Route::post('/store', [TenantController::class, 'store'])->middleware('permission:paginas.create')->name('tenants.store');
+        Route::put('/tenants/{tenant}', [TenantController::class, 'update'])->middleware('permission:paginas.edit')->name('tenants.update');
+        Route::delete('/delete', [TenantController::class, 'destroy'])->middleware('permission:paginas.delete')->name('tenants.destroy');
     });
-
-    Route::post('/store', [TenantController::class, 'store'])->name('tenants.store');
-    Route::put('/tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
-    Route::delete('/delete', [TenantController::class, 'destroy'])->name('tenants.destroy');
 });
 
 require __DIR__.'/auth.php';
