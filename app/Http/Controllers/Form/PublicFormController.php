@@ -20,9 +20,11 @@ use App\Services\Form\PhoneVerificationService;
 use App\Services\Siprov\SiprovIntegrationService;
 use App\Services\SmsSenderService;
 use App\Services\Tenant\FormsResponseTenentService;
+use App\Services\Cupom\CupomService;
 use App\Services\Tenant\PacientePlanoService;
 use App\Services\Tenant\TenantPlanoCotaService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +45,7 @@ class PublicFormController extends Controller
         private PhoneVerificationService $phoneVerification,
         private TenantPlanoCotaService $planoCotaService,
         private PacientePlanoService $pacientePlanoService,
+        private CupomService $cupomService,
     ) {}
 
     private function canAcceptResponses(Form $form): bool
@@ -209,6 +212,8 @@ class PublicFormController extends Controller
                     'btn_confirmar_descricao' => $form->btn_confirmar_descricao ?? null,
                     'sub_descricao'           => $form->sub_descricao ?? null,
                     'observacao'              => $form->observacao ?? null,
+                    // Campo de cupom: formulário com plano, respondido no subdomínio de um parceiro.
+                    'aceita_cupom'            => $this->tenantDaRequisicao() !== null && $this->formularioTemPlano($form),
                     'fields'                  => $form->fields->map(fn($f) => [
                         'id'          => $f->id,
                         'type'        => $f->type,
@@ -349,6 +354,9 @@ class PublicFormController extends Controller
                     $processedAnswers[$field->id] = $answer;
                 }
             }
+
+            // Cupom de desconto: validado antes de gravar; aplicado com lock no vínculo do plano.
+            $cupom = $this->cupomDaResposta($request, $form, $tenantId, $processedAnswers);
             $formResponse = FormResponse::create([
                 'form_id'         => $form->id,
                 'user_id'         => auth()->id(),
@@ -379,7 +387,7 @@ class PublicFormController extends Controller
             if ($currentTenant != null) {
                 // Paciente antes da SIPROV: ele é o parceiro que consome a vaga do plano.
                 $patientId = $this->criarPacienteDinamico($currentTenant, $form, $formResponse, $processedAnswers, $acceptedTerms);
-                $this->integrarSiprov($form, $processedAnswers, $tenantId, $patientId);
+                $this->integrarSiprov($form, $processedAnswers, $tenantId, $patientId, $cupom);
                 $this->enviarSmsTemplate($currentTenant, $form, $processedAnswers, $patientId);
             }
 
@@ -1069,6 +1077,65 @@ class PublicFormController extends Controller
         return $result;
     }
 
+    /**
+     * Prévia do cupom no formulário público (botão "Aplicar"): desconto sobre o plano
+     * do formulário para o CPF informado. Rota com throttle.
+     */
+    public function cupom(Request $request, string $slug): JsonResponse
+    {
+        $form = Form::where('slug', $slug)->firstOrFail();
+        $tenantId = $this->tenantDaRequisicao();
+
+        $dados = $request->validate([
+            'cupom' => ['required', 'string', 'max:50'],
+            'cpf' => ['nullable', 'string', 'max:14'],
+        ]);
+
+        if (! $tenantId || ! $this->formularioTemPlano($form)) {
+            return response()->json(['valido' => false, 'mensagem' => 'Este formulário não aceita cupom.'], 422);
+        }
+
+        try {
+            $calculo = $this->cupomService->validar($dados['cupom'], $tenantId, (string) $form->plano_id, $dados['cpf'] ?? null);
+        } catch (ValidationException $e) {
+            Log::warning('Formulário público | Cupom recusado', [
+                'slug' => $slug,
+                'tenant_id' => $tenantId,
+                'ip' => $request->ip(),
+                'motivo' => collect($e->errors())->flatten()->first(),
+            ]);
+
+            return response()->json(['valido' => false, 'mensagem' => collect($e->errors())->flatten()->first()], 422);
+        }
+
+        return response()->json([
+            'valido' => true,
+            'valor_original' => $calculo['valor_original'],
+            'desconto' => $calculo['desconto'],
+            'valor_final' => $calculo['valor_final'],
+        ]);
+    }
+
+    /**
+     * Cupom informado na resposta, já validado para o tenant, o plano e o CPF.
+     *
+     * @throws ValidationException
+     */
+    private function cupomDaResposta(Request $request, Form $form, ?string $tenantId, array $processedAnswers): ?string
+    {
+        $cupom = trim((string) $request->input('cupom'));
+
+        if ($cupom === '' || ! $tenantId || ! $this->formularioTemPlano($form)) {
+            return null;
+        }
+
+        $cpf = $this->extrairDadosPacienteSiprov($form, $processedAnswers)['cpf'] ?? null;
+
+        $this->cupomService->validar($cupom, $tenantId, (string) $form->plano_id, $cpf);
+
+        return $cupom;
+    }
+
     private function formularioTemPlano(Form $form): bool
     {
         return (bool) $form->status_beneficio && (bool) $form->plano_id;
@@ -1112,7 +1179,7 @@ class PublicFormController extends Controller
         }
     }
 
-    private function integrarSiprov(Form $form, array $processedAnswers, ?string $tenantId = null, ?int $patientId = null): void
+    private function integrarSiprov(Form $form, array $processedAnswers, ?string $tenantId = null, ?int $patientId = null, ?string $cupom = null): void
     {
         if (! $form->status_beneficio || ! $form->plano_id) {
             return;
@@ -1162,10 +1229,11 @@ class PublicFormController extends Controller
                         $result,
                         $patientId,
                         'formulario_publico',
+                        $cupom,
                     );
                 } catch (ValidationException $e) {
-                    // Vaga acabou entre a validação e o registro (respostas simultâneas).
-                    Log::warning('SIPROV | Formulário público registrado sem vaga no plano', [
+                    // Vaga ou cupom acabou entre a validação e o registro (respostas simultâneas).
+                    Log::warning('SIPROV | Formulário público registrado sem vínculo no plano', [
                         'form_id' => $form->id,
                         'tenant_id' => $tenantId,
                         'cpf' => $data->cpfCnpj,

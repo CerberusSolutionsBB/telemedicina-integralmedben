@@ -4,6 +4,7 @@ namespace App\Services\Tenant;
 
 use App\Http\Services\ExternalApi\SiprovExternalService;
 use App\Models\Audit;
+use App\Models\CupomUso;
 use App\Models\ExternalApiLog;
 use App\Models\Patient;
 use App\Models\Siprov;
@@ -11,6 +12,7 @@ use App\Models\TelemedicinaTenant;
 use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
 use App\Models\User;
+use App\Services\Cupom\CupomService;
 use App\Support\Formatar;
 use App\Support\Planos;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +35,7 @@ class PacientePlanoService
     public function __construct(
         private readonly TenantPlanoCotaService $planoCotaService,
         private readonly SiprovExternalService $siprovService,
+        private readonly CupomService $cupomService,
     ) {}
 
     /**
@@ -300,20 +303,25 @@ class PacientePlanoService
         } catch (ValidationException $e) {
             throw ValidationException::withMessages(['cod_plano' => collect($e->errors())->flatten()->implode(' ')]);
         }
+
+        // Cupom validado antes da SIPROV; a aplicação revalida com lock na transação do vínculo.
+        if (filled($data['cupom'] ?? null)) {
+            $this->cupomService->validar($data['cupom'], $tenantId, $codPlano, $data['cpf'] ?? null);
+        }
     }
 
     /**
      * Integra o paciente na SIPROV e o adiciona aos associados da telemedicina.
      * Retorna a mensagem de erro quando a SIPROV falha (o paciente continua salvo).
      */
-    public function registrar(string $tenantId, Patient $patient, string $codPlano): ?string
+    public function registrar(string $tenantId, Patient $patient, string $codPlano, ?string $cupom = null): ?string
     {
         $cpf = preg_replace('/\D/', '', (string) $patient->cpf);
 
         // Plano interno: sem SIPROV; só vínculo próprio + consumo da vaga.
         if (! Planos::integraSiprov($codPlano)) {
             try {
-                $this->registrarVinculoInterno($tenantId, $codPlano, (string) $patient->nome, $cpf, $patient->id, 'cadastro_paciente');
+                $this->registrarVinculoInterno($tenantId, $codPlano, (string) $patient->nome, $cpf, $patient->id, 'cadastro_paciente', $cupom);
             } catch (ValidationException $e) {
                 return collect($e->errors())->flatten()->implode(' ');
             }
@@ -350,7 +358,7 @@ class PacientePlanoService
         $this->log($tenantId, $patient, $payload, 'success', response: $result);
 
         try {
-            $this->registrarVinculo($tenantId, $codPlano, (string) $patient->nome, $cpf, $result, $patient->id, 'cadastro_paciente');
+            $this->registrarVinculo($tenantId, $codPlano, (string) $patient->nome, $cpf, $result, $patient->id, 'cadastro_paciente', $cupom);
         } catch (ValidationException $e) {
             // Saldo acabou entre a validação e o consumo (cadastros simultâneos).
             return collect($e->errors())->flatten()->implode(' ');
@@ -365,15 +373,18 @@ class PacientePlanoService
      *
      * @param  array  $result  retorno da integração SIPROV (associado/benefício)
      * @param  string  $origem  cadastro_paciente | formulario_publico | sincronizacao_siprov | vinculo_siprov
+     * @param  string|null  $cupom  código do cupom de desconto (só cadastro manual e formulário público)
      *
-     * @throws ValidationException quando o plano não tem saldo
+     * @throws ValidationException quando o plano não tem saldo ou o cupom não vale mais
      */
-    public function registrarVinculo(string $tenantId, string $codPlano, string $nome, string $cpf, array $result, ?int $patientId, string $origem): TelemedicinaTenant
+    public function registrarVinculo(string $tenantId, string $codPlano, string $nome, string $cpf, array $result, ?int $patientId, string $origem, ?string $cupom = null): TelemedicinaTenant
     {
         $cpf = preg_replace('/\D/', '', $cpf);
         $label = collect(Planos::options())->pluck('label', 'value')[$codPlano] ?? '';
 
-        $vinculo = DB::connection('mysql')->transaction(function () use ($tenantId, $codPlano, $nome, $cpf, $result, $patientId, $origem, $label) {
+        $uso = null;
+
+        $vinculo = DB::connection('mysql')->transaction(function () use ($tenantId, $codPlano, $nome, $cpf, $result, $patientId, $origem, $label, $cupom, &$uso) {
             $vinculo = TelemedicinaTenant::create([
                 'tenant_id' => $tenantId,
                 'data' => [
@@ -392,10 +403,14 @@ class PacientePlanoService
 
             $this->planoCotaService->consumir($tenantId, [$codPlano], $patientId, $vinculo->id);
 
+            if (filled($cupom)) {
+                $uso = $this->cupomService->aplicar($cupom, $tenantId, $codPlano, $cpf, $nome, $vinculo);
+            }
+
             return $vinculo;
         });
 
-        $this->auditarRegistro($vinculo, $tenantId, $codPlano, $label, $nome, $patientId, $origem);
+        $this->auditarRegistro($vinculo, $tenantId, $codPlano, $label, $nome, $patientId, $origem, $uso);
 
         return $vinculo;
     }
@@ -404,14 +419,16 @@ class PacientePlanoService
      * Vincula o beneficiário a um plano interno (sem SIPROV/telemedicina) e consome
      * a vaga, juntos: sem saldo, nada é criado. Auditado como os demais registros.
      *
-     * @throws ValidationException quando o plano não tem saldo
+     * @throws ValidationException quando o plano não tem saldo ou o cupom não vale mais
      */
-    public function registrarVinculoInterno(string $tenantId, string $codPlano, string $nome, string $cpf, ?int $patientId, string $origem): TenantPlanoBeneficiario
+    public function registrarVinculoInterno(string $tenantId, string $codPlano, string $nome, string $cpf, ?int $patientId, string $origem, ?string $cupom = null): TenantPlanoBeneficiario
     {
         $cpf = preg_replace('/\D/', '', $cpf) ?: null;
         $label = collect(Planos::options())->pluck('label', 'value')[$codPlano] ?? '';
 
-        $vinculo = DB::connection('mysql')->transaction(function () use ($tenantId, $codPlano, $nome, $cpf, $patientId) {
+        $uso = null;
+
+        $vinculo = DB::connection('mysql')->transaction(function () use ($tenantId, $codPlano, $nome, $cpf, $patientId, $cupom, &$uso) {
             $vinculo = TenantPlanoBeneficiario::create([
                 'tenant_id' => $tenantId,
                 'cod_plano' => $codPlano,
@@ -422,10 +439,14 @@ class PacientePlanoService
 
             $this->planoCotaService->consumir($tenantId, [$codPlano], $patientId);
 
+            if (filled($cupom)) {
+                $uso = $this->cupomService->aplicar($cupom, $tenantId, $codPlano, (string) $cpf, $nome, $vinculo);
+            }
+
             return $vinculo;
         });
 
-        $this->auditarRegistro($vinculo, $tenantId, $codPlano, $label, $nome, $patientId, $origem);
+        $this->auditarRegistro($vinculo, $tenantId, $codPlano, $label, $nome, $patientId, $origem, $uso);
 
         return $vinculo;
     }
@@ -435,7 +456,7 @@ class PacientePlanoService
      * além de usuário, IP e dispositivo (resolvers), guarda o saldo de cada plano
      * do tenant e o total de pacientes por plano naquele momento.
      */
-    public function auditarRegistro(Model&Auditable $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem): void
+    public function auditarRegistro(Model&Auditable $vinculo, string $tenantId, string $codPlano, string $label, string $nome, ?int $patientId, string $origem, ?CupomUso $uso = null): void
     {
         // Regra de comissão vigente no momento da venda: gravada como snapshot
         // para o histórico não mudar se a configuração do plano for alterada.
@@ -461,9 +482,13 @@ class PacientePlanoService
             'origem' => $origem,
             'cod_plano' => $codPlano,
             'plano' => $label,
-            'valor' => $plano?->valor,
+            // Com cupom: valor vendido (com desconto); a comissão percentual incide sobre ele.
+            'valor' => $uso ? $uso->valor_final : $plano?->valor,
+            'valor_original' => $plano?->valor,
+            'cupom' => $uso?->cupom?->codigo,
+            'desconto' => $uso?->desconto,
             'comissao_tipo' => $plano?->comissao_tipo,
-            'comissao' => $plano?->comissao_tipo ? $plano->comissaoVenda() : null,
+            'comissao' => $plano?->comissao_tipo ? $plano->comissaoVenda($uso ? (float) $uso->valor_final : null) : null,
             'vendedor_id' => $vendedorId,
             'vendedor' => $vendedorId ? User::find($vendedorId)?->name : null,
             'planos' => $this->planoCotaService->resumo($tenantId),

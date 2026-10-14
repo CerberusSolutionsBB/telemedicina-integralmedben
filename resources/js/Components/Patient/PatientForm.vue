@@ -2,6 +2,7 @@
 import { Link } from "@inertiajs/vue3";
 import AppSwitch from "@/Components/ui/switch/Switch.vue";
 import PatientPlanoSelect from "@/Components/PatientPlanoSelect.vue";
+import CampoCupom from "@/Components/Cupom/CampoCupom.vue";
 import UfCidadeSelect from "@/Components/UfCidadeSelect.vue";
 import ContadorCaracteres from "@/Components/ContadorCaracteres.vue";
 import VendedorSelect from "@/Components/Patient/VendedorSelect.vue";
@@ -217,6 +218,11 @@ const input = (erro) => [
                 <h2 :class="[titulo, 'mb-4']">Plano / Telemedicina <span v-if="exigePlano" class="text-red-600">*</span></h2>
                 <PatientPlanoSelect v-model="form.cod_plano" :planos="planos" :plano-atual="planoAtual"
                     :error="form.errors.cod_plano" :required="exigePlano" bare />
+
+                <!-- Cupom: visível no cadastro; na edição, só quando um plano novo está sendo vinculado. -->
+                <CampoCupom v-if="!planoAtual || form.cod_plano" v-model="form.cupom" :url-validacao="route('cupons.validar')"
+                    :cod-plano="form.cod_plano" :cpf="form.cpf" :error="form.errors.cupom"
+                    :disabled="!form.cod_plano" class="mt-4" />
 
                 <VendedorSelect v-model="form.user_id" :vendedores="vendedores" :error="form.errors.user_id" class="mt-4" />
             </div>

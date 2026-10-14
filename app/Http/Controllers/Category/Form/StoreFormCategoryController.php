@@ -19,10 +19,12 @@ class StoreFormCategoryController extends Controller
                 ->with('success', "Categoria '{$category->name}' criada com sucesso!");
 
         } catch (\Throwable $e) {
+            report($e);
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Erro ao criar categoria: '.$e->getMessage());
+                ->with('error', 'Não foi possível criar a categoria. Tente novamente.');
         }
     }
 }

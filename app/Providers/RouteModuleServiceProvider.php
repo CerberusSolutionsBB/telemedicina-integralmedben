@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\PreventAccessFromTenantDomains;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Finder\Finder;
@@ -25,13 +26,13 @@ class RouteModuleServiceProvider extends ServiceProvider
             'file' => 'form.php',
         ],
         'lei' => [
-            'middleware' => ['web'],
+            'middleware' => ['web', 'auth'],
             'prefix' => 'leis',
             'name' => 'leis.',
             'file' => 'lei.php',
         ],
         'configuracao' => [
-            'middleware' => ['web'],
+            'middleware' => ['web', 'auth'],
             'prefix' => 'configuracoes',
             'name' => 'configuracoes.',
             'file' => 'configuracao.php',
@@ -43,7 +44,7 @@ class RouteModuleServiceProvider extends ServiceProvider
             'file' => 'admin.php',
         ],
         'pagina' => [
-            'middleware' => ['web'],
+            'middleware' => ['web', 'auth'],
             'prefix' => 'pagina',
             'name' => 'pagina.',
             'file' => 'pagina.php',
@@ -55,7 +56,7 @@ class RouteModuleServiceProvider extends ServiceProvider
             'file' => 'perfil.php',
         ],
         'acl' => [
-            'middleware' => ['web', 'auth', \App\Http\Middleware\PreventAccessFromTenantDomains::class],
+            'middleware' => ['web', 'auth', PreventAccessFromTenantDomains::class],
             'prefix' => 'acl',
             'name' => 'acl.',
             'file' => 'acl.php',

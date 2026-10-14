@@ -1,16 +1,16 @@
 <script setup>
 import { Link, useForm, usePage } from '@inertiajs/vue3';
-import { CheckCircle2, ChevronDown, LogOut, Menu, Search, ShieldCheck, UserCircle, X, XCircle } from 'lucide-vue-next';
+import { ChevronDown, LogOut, Menu, Search, ShieldCheck, UserCircle, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import ThemeSwitcher from '@/Components/Layout/ThemeSwitcher.vue';
 import { useAdminLayout } from '@/Composables/useAdminLayout';
 import { useBuscaGlobal } from '@/Composables/Layout/useBuscaGlobal';
-import { useFlashAlertas } from '@/Composables/Layout/useFlashAlertas';
+import { useFlashToast } from '@/Composables/Layout/useFlashToast';
 
 /**
  * Estrutura comum dos painéis (central e tenant): sidebar com marca, card do
  * painel, menu por grupos e card de ação; topbar com busca, tema e usuário;
- * alertas de flash acima do conteúdo.
+ * mensagens flash como toast (useFlashToast).
  */
 const props = defineProps({
     // [{ label, routeName, match?, icon, grupo?, key?, children?: [{ label, routeName, match?, icon }] }]
@@ -37,7 +37,7 @@ const ano = new Date().getFullYear();
 
 const { sidebarOpen, showUserMenu, userMenuRef, openSidebar, closeSidebar } = useAdminLayout();
 const { campo: campoBusca, termo: termoBusca, atalho: atalhoBusca, buscar } = useBuscaGlobal(props.busca.rota);
-const { alertas, fechar: fecharAlerta } = useFlashAlertas();
+useFlashToast();
 
 const logoutForm = useForm({});
 const sair = () => logoutForm.post(route(props.logoutRoute));
@@ -219,24 +219,6 @@ const itemClasse = (selecionado) => [
                     </transition>
                 </div>
             </header>
-
-            <!-- Alertas (flash): fixos abaixo da topbar para aparecerem mesmo com a página rolada -->
-            <div v-if="alertas.length" class="sticky top-[61px] z-20 space-y-2 px-4 pt-4 lg:px-6" aria-live="polite">
-                <div v-for="alerta in alertas" :key="alerta.id" role="alert" :class="[
-                    'flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-sm',
-                    alerta.tipo === 'success'
-                        ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200'
-                        : 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200',
-                ]">
-                    <CheckCircle2 v-if="alerta.tipo === 'success'" class="mt-0.5 w-4 h-4 shrink-0" />
-                    <XCircle v-else class="mt-0.5 w-4 h-4 shrink-0" />
-                    <span class="flex-1">{{ alerta.mensagem }}</span>
-                    <button type="button" @click="fecharAlerta(alerta.id)" aria-label="Fechar aviso"
-                        class="-m-1 p-1 rounded opacity-70 hover:opacity-100">
-                        <X class="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
 
             <main class="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
                 <div v-if="$slots.header" class="mb-5">

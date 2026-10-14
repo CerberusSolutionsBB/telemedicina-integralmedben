@@ -9,12 +9,20 @@ use App\Http\Controllers\Lei\StoreLeiController;
 use App\Http\Controllers\Lei\UpdateLeiController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/create', CreateLeiController::class)->name('create');
+Route::middleware('permission:leis.view')->group(function () {
     Route::get('/', IndexLeiController::class)->name('index');
+});
+
+Route::middleware('permission:leis.create')->group(function () {
+    Route::get('/create', CreateLeiController::class)->name('create');
     Route::post('/', StoreLeiController::class)->name('store');
-    Route::get('/{lei}', ShowLeiController::class)->name('show');
+});
+
+Route::middleware('permission:leis.edit')->group(function () {
     Route::get('{lei}/edit', EditLeiController::class)->name('edit');
-    Route::delete('/{lei}', DestroyLeiController::class)->name('destroy');
     Route::put('/{lei}', UpdateLeiController::class)->name('update');
 });
+
+Route::middleware('permission:leis.delete')->delete('/{lei}', DestroyLeiController::class)->name('destroy');
+
+Route::middleware('permission:leis.view')->get('/{lei}', ShowLeiController::class)->name('show');

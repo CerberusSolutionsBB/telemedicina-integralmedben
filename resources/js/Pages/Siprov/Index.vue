@@ -48,8 +48,6 @@ const props = defineProps({
 
 const page = usePage();
 
-const flashMessage = computed(() => page.props.flash?.message);
-const flashType = computed(() => page.props.flash?.type);
 
 const can = computed(() => page.props?.authUser?.can?.siprov || {});
 
@@ -520,15 +518,6 @@ const alterarSituacaoDependente = async (dependente) => {
             </div>
         </div>
         <div class="py-6">
-            <div v-if="flashMessage" :class="[
-                'mb-4 p-4 rounded-lg text-sm font-medium',
-                flashType === 'success'
-                    ? 'bg-green-100 text-green-800 border border-green-200'
-                    : 'bg-red-100 text-red-800 border border-red-200',
-            ]">
-                {{ flashMessage }}
-            </div>
-
             <!-- ═══ FILTROS ═══ -->
             <div class="mx-auto space-y-3">
                 <div class="inline-flex w-full sm:w-auto rounded-lg border border-gray-200 bg-white p-1 shadow-sm">

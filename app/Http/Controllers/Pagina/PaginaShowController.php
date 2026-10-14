@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\TenantForm;
 use App\Models\TenantPlano;
 use App\Models\TenantsDetail;
+use App\Services\Cupom\CupomService;
 use App\Services\Tenant\PlanoHistoricoService;
 use App\Services\Tenant\TenantPlanoCotaService;
 use App\Support\BeneficiarioPermissoes;
@@ -104,6 +105,7 @@ class PaginaShowController extends Controller
             'cartaoDinamicoEnabled' => $cartaoDinamicoEnabled,
             'cartaoDinamico' => $cartaoDinamico,
             'beneficiarioPermissoes' => BeneficiarioPermissoes::doTenant($tenant->id),
+            'cupomTeto' => app(CupomService::class)->tetoDoTenant($tenant->id),
             'telemedicinaQuestions' => $telemedicinaQuestions,
             'telemedicinaVinculados' => $telemedicinaVinculados,
             'planos' => Planos::options(),
@@ -132,6 +134,8 @@ class PaginaShowController extends Controller
                 ->toArray(),
             'smsTemplates' => SmsTemplate::query()
                 ->with('tenants')
+                // Templates são exclusivos do tenant: só os vinculados a ele aparecem aqui.
+                ->whereHas('tenants', fn ($q) => $q->where('tenants.id', $tenant->id))
                 ->where('event', 'patient.created')
                 ->orderByDesc('updated_at')
                 ->get()

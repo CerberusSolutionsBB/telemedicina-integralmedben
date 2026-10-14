@@ -43,8 +43,9 @@ class TenantPlano extends Model implements Auditable
     /**
      * Comissão da venda deste plano, conforme o tipo configurado:
      * percentual sobre o valor do plano ou valor fixo por venda.
+     * Com cupom, o percentual incide sobre o valor vendido ($valorVenda).
      */
-    public function comissaoVenda(): float
+    public function comissaoVenda(?float $valorVenda = null): float
     {
         if ($this->comissao_tipo === null || $this->comissao_valor === null) {
             return 0.0;
@@ -52,7 +53,7 @@ class TenantPlano extends Model implements Auditable
 
         return $this->comissao_tipo === self::COMISSAO_FIXO
             ? round((float) $this->comissao_valor, 2)
-            : round((float) ($this->valor ?? 0) * ((float) $this->comissao_valor / 100), 2);
+            : round(($valorVenda ?? (float) ($this->valor ?? 0)) * ((float) $this->comissao_valor / 100), 2);
     }
 
     public function tenant()

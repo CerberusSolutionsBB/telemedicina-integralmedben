@@ -1,6 +1,6 @@
 <script setup>
 import CentralAdminLayout from '@/Layouts/CentralAdminLayout.vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { Pencil, Trash2, Plus, Search, X, FileText, ShieldAlert } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import Button from '@/Components/ui/button/Button.vue';
@@ -34,9 +34,6 @@ const props = defineProps({
         })
     }
 });
-const page = usePage();
-const flashMessage = computed(() => page.props.flash?.message);
-const flashType = computed(() => page.props.flash?.type);
 const search = ref(props.filters.search || '');
 const selectedType = ref(props.filters.type || '');
 const searchInput = ref(null);
@@ -208,14 +205,6 @@ const navigateTo = (routeName, params = {}) => {
             </div>
 
         <div class="py-6">
-            <!-- ✅ Flash Messages -->
-            <div v-if="flashMessage"
-                 :class="[
-                     'mb-4 p-4 rounded-lg text-sm font-medium',
-                     flashType === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
-                 ]">
-                {{ flashMessage }}
-            </div>
             <div class="mx-auto  space-y-4">
                 <div class="flex flex-col lg:flex-row gap-3 justify-between items-start lg:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">

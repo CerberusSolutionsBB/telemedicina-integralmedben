@@ -10,6 +10,7 @@ use App\Models\TenantQuantidadeParceiro;
 use App\Models\User;
 use App\Services\Tenant\TenantPlanoCotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class PaginaPlanoTest extends TestCase
@@ -27,6 +28,11 @@ class PaginaPlanoTest extends TestCase
         // Sem eventos para não provisionar o banco do tenant.
         $this->tenant = Tenant::withoutEvents(fn () => Tenant::create(['id' => 'tenant-planos']));
         $this->user = User::factory()->create();
+
+        foreach (['paginas.view', 'paginas.show', 'paginas.edit'] as $permissao) {
+            Permission::firstOrCreate(['name' => $permissao, 'guard_name' => 'web']);
+        }
+        $this->user->givePermissionTo(['paginas.view', 'paginas.show', 'paginas.edit']);
     }
 
     public function test_sincroniza_planos_e_quantidades(): void

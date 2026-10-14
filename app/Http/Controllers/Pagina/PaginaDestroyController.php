@@ -47,7 +47,7 @@ class PaginaDestroyController extends Controller
             report($e);
 
             return back()->withErrors([
-                'general' => 'Erro ao remover tenant: '.$e->getMessage(),
+                'general' => 'Não foi possível remover o tenant. Tente novamente.',
             ]);
         }
     }

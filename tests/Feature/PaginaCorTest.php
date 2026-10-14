@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class PaginaCorTest extends TestCase
@@ -23,6 +24,11 @@ class PaginaCorTest extends TestCase
         // Sem eventos para não provisionar o banco do tenant.
         $this->tenant = Tenant::withoutEvents(fn () => Tenant::create(['id' => 'tenant-cor']));
         $this->user = User::factory()->create();
+
+        foreach (['paginas.edit'] as $permissao) {
+            Permission::firstOrCreate(['name' => $permissao, 'guard_name' => 'web']);
+        }
+        $this->user->givePermissionTo(['paginas.edit']);
     }
 
     private function cor(): ?string

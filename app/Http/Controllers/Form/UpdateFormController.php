@@ -65,7 +65,7 @@ class UpdateFormController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Erro ao atualizar formulário: '.$e->getMessage());
+                ->with('error', 'Não foi possível atualizar o formulário. Tente novamente.');
         }
     }
 

@@ -66,7 +66,7 @@ class PaginaStoreController extends Controller
 
             return back()
                 ->withErrors([
-                    'general' => 'Erro ao criar tenant: '.$e->getMessage(),
+                    'general' => 'Não foi possível criar o tenant. Tente novamente.',
                 ])
                 ->withInput();
         }

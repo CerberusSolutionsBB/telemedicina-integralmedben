@@ -20,6 +20,9 @@ Route::post('/f/{slug}', [PublicFormController::class, 'store'])
     ->name('public.store');
 Route::get('/f/{slug}/obrigado', [PublicFormController::class, 'thanks'])
     ->name('public.thanks');
+Route::post('/f/{slug}/cupom', [PublicFormController::class, 'cupom'])
+    ->middleware('throttle:10,1')
+    ->name('public.cupom');
 // DESATIVADO: confirmação do telefone por código SMS
 // Route::post('/f/{slug}/telefone/codigo', [PublicFormPhoneVerificationController::class, 'send'])
 //     ->middleware('throttle:10,1')
@@ -60,12 +63,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('destroy')
         ->middleware('permission:forms.delete');
 
-    Route::get('/sms-templates', [SmsTemplateController::class, 'index'])
-        ->name('sms-templates.index');
-    Route::post('/sms-templates', [SmsTemplateController::class, 'store'])
-        ->name('sms-templates.store');
-    Route::put('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'update'])
-        ->name('sms-templates.update');
-    Route::delete('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'destroy'])
-        ->name('sms-templates.destroy');
+    Route::middleware('permission:sms-templates.manage')->group(function () {
+        Route::get('/sms-templates', [SmsTemplateController::class, 'index'])
+            ->name('sms-templates.index');
+        Route::post('/sms-templates', [SmsTemplateController::class, 'store'])
+            ->name('sms-templates.store');
+        Route::put('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'update'])
+            ->name('sms-templates.update');
+        Route::delete('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'destroy'])
+            ->name('sms-templates.destroy');
+    });
 });

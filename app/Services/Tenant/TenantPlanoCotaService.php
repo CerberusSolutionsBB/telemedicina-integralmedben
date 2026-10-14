@@ -6,6 +6,7 @@ use App\Models\TelemedicinaTenant;
 use App\Models\TenantPlano;
 use App\Models\TenantPlanoBeneficiario;
 use App\Models\TenantQuantidadeParceiro;
+use App\Services\Cupom\CupomService;
 use App\Support\Planos;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,8 @@ use Illuminate\Validation\ValidationException;
  */
 class TenantPlanoCotaService
 {
+    public function __construct(private readonly CupomService $cupomService) {}
+
     /**
      * Códigos de plano de um vínculo. Vínculos antigos só gravaram `cod_plano`.
      *
@@ -201,6 +204,9 @@ class TenantPlanoCotaService
      */
     public function devolver(TelemedicinaTenant $vinculo, ?int $parceiroId = null): void
     {
+        // O beneficiário saiu: o uso do cupom da venda volta a contar como disponível.
+        $this->cupomService->estornar($vinculo);
+
         $codigos = self::codigosDoVinculo($vinculo->data ?? []);
 
         if (! $codigos) {

@@ -60,6 +60,8 @@ class StorePatientRequest extends FormRequest
                 'string',
                 Rule::in(Planos::codigos()),
             ],
+            // Cupom de desconto da venda: validado com o plano em PacientePlanoService::validar.
+            'cupom' => ['nullable', 'string', 'max:50'],
             // Membros da família: só gravados quando o plano é o familiar.
             'familiares' => ['nullable', 'array', 'max:'.self::MAX_FAMILIARES],
             'familiares.*.id' => 'nullable|integer',

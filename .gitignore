@@ -41,3 +41,6 @@ package-lock.json
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Credenciais e anotações locais (não versionar)
+DOCS/dados.md
