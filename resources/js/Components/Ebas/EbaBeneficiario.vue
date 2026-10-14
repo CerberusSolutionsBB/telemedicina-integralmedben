@@ -42,7 +42,7 @@ const { form, salvar } = useBeneficiarioPermissoes(props)
             </div>
 
             <div class="mt-5 flex justify-end">
-                <button type="submit" :disabled="form.processing || !form.isDirty"
+                <button type="submit" :disabled="form.processing"
                     class="inline-flex h-10 items-center gap-2 rounded-lg bg-cyan-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-cyan-700 disabled:opacity-50">
                     <Loader2 v-if="form.processing" class="h-4 w-4 animate-spin" />
                     Salvar permissões
