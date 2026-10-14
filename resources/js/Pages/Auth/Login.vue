@@ -68,6 +68,8 @@ const passwordStrengthColor = computed(() => {
 
 // Detectar Caps Lock
 const checkCapsLock = (event) => {
+    // Autofill dispara keydown/keyup como Event genérico, sem getModifierState
+    if (typeof event.getModifierState !== 'function') return;
     capsLockOn.value = event.getModifierState('CapsLock');
 };
 

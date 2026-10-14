@@ -58,6 +58,8 @@ const passwordsMatch = computed(() => {
     return form.password === form.password_confirmation;
 });
 const checkCapsLock = (event) => {
+    // Autofill dispara keydown/keyup como Event genérico, sem getModifierState
+    if (typeof event.getModifierState !== 'function') return;
     capsLockOn.value = event.getModifierState('CapsLock');
 };
 const togglePassword = () => {
