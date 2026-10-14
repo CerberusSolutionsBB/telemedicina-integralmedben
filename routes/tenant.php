@@ -6,6 +6,7 @@ use App\Http\Controllers\PatientCartaoDinamicoController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\Tenant\Configuracao\ConfiguracaoController;
+use App\Http\Controllers\Tenant\CupomController as TenantCupomController;
 use App\Http\Controllers\Tenant\Dashboard\DashboardController;
 use App\Http\Controllers\Tenant\DesempenhoController;
 use App\Http\Controllers\Tenant\Form\FormIndexController;
@@ -67,6 +68,21 @@ Route::middleware([
         Route::post('/patients/{patient}/resend-sms', [PatientController::class, 'resendSms'])->name('patients.resend-sms');
         Route::post('/patients/{patient}/sms-logs/{smsLog}/resend', [PatientController::class, 'resendSmsLog'])->name('patients.sms-logs.resend');
         Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->middleware('beneficiario:status')->name('patients.toggle-status');
+
+        // Cupons do próprio parceiro: só com teto de desconto definido pelo admin (checado no controller).
+        Route::prefix('cupons')->name('cupons.')->controller(TenantCupomController::class)->group(function () {
+            // Prévia do cupom no cadastro do beneficiário (vale também para cupons globais, sem teto).
+            Route::post('/validar', 'validar')->middleware('throttle:20,1')->name('validar');
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{cupom}', 'show')->whereNumber('cupom')->name('show');
+            Route::get('/{cupom}/edit', 'edit')->whereNumber('cupom')->name('edit');
+            Route::put('/{cupom}', 'update')->whereNumber('cupom')->name('update');
+            Route::put('/{cupom}/status', 'status')->whereNumber('cupom')->name('status');
+            Route::get('/{cupom}/pdf', 'pdf')->whereNumber('cupom')->name('pdf');
+            Route::delete('/{cupom}', 'destroy')->whereNumber('cupom')->name('destroy');
+        });
 
         Route::prefix('admin/acl')->name('tenant.acl.')->group(base_path('routes/acl.php'));
 

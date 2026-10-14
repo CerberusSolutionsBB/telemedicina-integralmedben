@@ -2,6 +2,7 @@
 import { ref, computed, watch } from "vue";
 import { Head, router } from "@inertiajs/vue3";
 import { Button } from "@/Components/ui/button";
+import CampoCupom from "@/Components/Cupom/CampoCupom.vue";
 import FormField from "@/Components/FormFields/FormField.vue";
 // DESATIVADO: confirmação do telefone por SMS
 // import PhoneVerificationDialog from "@/Components/FormFields/PhoneVerificationDialog.vue";
@@ -159,6 +160,13 @@ const errors = ref({});
 const acceptedTerms = ref(false);
 const termsError = ref(false);
 
+// Cupom de desconto: só em formulários com plano, no subdomínio de um parceiro.
+const cupom = ref('');
+const cpfInformado = computed(() => {
+    const campo = (props.form.fields || []).find((f) => isCPFField(f));
+    return campo ? String(rawAnswers.value[campo.id] ?? '') : '';
+});
+
 // ⭐ INICIALIZA RESPOSTAS COM WATCHERS
 if (statusConfig.value.canSubmit && props.form.fields) {
     props.form.fields.forEach(field => {
@@ -236,7 +244,8 @@ const submitForm = () => {
     router.post(route('forms.public.store', { slug }), { 
         answers: rawAnswers.value, 
         // phone_tokens: phoneTokens.value,
-        accepted_terms: acceptedTerms.value 
+        accepted_terms: acceptedTerms.value,
+        cupom: cupom.value || null,
     }, {
         onSuccess: () => showToast('Cadastro realizado com sucesso!', 'success'),
         onError: (e) => {
@@ -369,6 +378,11 @@ const progress = computed(() => {
                                 <AlertTriangle class="w-3 h-3" />
                                 {{ errors[`answers.${field.id}`] }}
                             </p>
+                        </div>
+
+                        <div v-if="form.aceita_cupom" class="rounded-lg bg-white p-3">
+                            <CampoCupom v-model="cupom" :url-validacao="route('forms.public.cupom', { slug: form.slug })"
+                                :cpf="cpfInformado" :error="errors.cupom" />
                         </div>
 
                         <!-- Checkbox de Termos -->
@@ -573,6 +587,9 @@ const progress = computed(() => {
                             </p>
                         </template>
                     </div>
+
+                    <CampoCupom v-if="form.aceita_cupom" v-model="cupom" :url-validacao="route('forms.public.cupom', { slug: form.slug })"
+                        :cpf="cpfInformado" :error="errors.cupom" />
 
                     <!-- Checkbox -->
                     <div class="pt-4 border-t border-gray-200">

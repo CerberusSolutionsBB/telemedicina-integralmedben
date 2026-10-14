@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\TenantForm;
 use App\Models\TenantPlano;
 use App\Models\TenantsDetail;
+use App\Services\Cupom\CupomService;
 use App\Services\Tenant\PlanoHistoricoService;
 use App\Services\Tenant\TenantPlanoCotaService;
 use App\Support\BeneficiarioPermissoes;
@@ -104,6 +105,7 @@ class PaginaShowController extends Controller
             'cartaoDinamicoEnabled' => $cartaoDinamicoEnabled,
             'cartaoDinamico' => $cartaoDinamico,
             'beneficiarioPermissoes' => BeneficiarioPermissoes::doTenant($tenant->id),
+            'cupomTeto' => app(CupomService::class)->tetoDoTenant($tenant->id),
             'telemedicinaQuestions' => $telemedicinaQuestions,
             'telemedicinaVinculados' => $telemedicinaVinculados,
             'planos' => Planos::options(),

@@ -5,6 +5,7 @@ import {
     ClipboardList, Users, ScrollText, LandmarkIcon,
     AppWindowIcon, Plus,
     ShieldCheck, KeyRound, Activity, DollarSign,
+    Ticket,
 } from "lucide-vue-next";
 import { computed } from "vue";
 import AdminShell from "@/Components/Layout/AdminShell.vue";
@@ -14,6 +15,7 @@ const page = usePage();
 const allNavLinks = [
     { label: "Dashboard", routeName: "dashboard", icon: LayoutDashboard },
     { label: "Financeiro", routeName: "financeiro.index", icon: DollarSign, permission: "financeiro.view" },
+    { label: "Cupons", routeName: "financeiro.cupons.index", match: "financeiro.cupons.*", icon: Ticket, permission: "cupons.manage" },
     { grupo: "Cadastros", label: "Página de Parceiros", routeName: "pagina.index", icon: AppWindowIcon, permission: "paginas.view" },
     { grupo: "Cadastros", label: "Formulários", routeName: "forms.index", icon: ClipboardList },
     { grupo: "Cadastros", label: "Leis", routeName: "leis.index", icon: LandmarkIcon, permission: "leis.view" },

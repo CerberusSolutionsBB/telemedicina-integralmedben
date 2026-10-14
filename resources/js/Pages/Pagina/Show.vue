@@ -14,6 +14,7 @@ import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue'
 import SmsTemplateModal from '@/Components/SmsTemplateModal.vue'
 import EbaLogo from '@/Components/Ebas/EbaLogo.vue'
 import EbaBeneficiario from '@/Components/Ebas/EbaBeneficiario.vue'
+import EbaCupomTeto from '@/Components/Ebas/EbaCupomTeto.vue'
 import ImageUpload from '@/Components/ImageUpload.vue'
 import SearchInput from '@/Components/SearchInput.vue'
 import { formatDateTime } from '@/Composables/Pagina/helpers'
@@ -112,6 +113,11 @@ const props = defineProps({
     beneficiarioPermissoes: {
         type: Object,
         default: () => ({ create: true, edit: false, delete: false, status: false }),
+    },
+    // Teto (%) dos cupons do parceiro; null = parceiro sem cupons.
+    cupomTeto: {
+        type: Number,
+        default: null,
     },
     telemedicinaQuestions: {
         type: Array,
@@ -1432,8 +1438,10 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                     </div>
 
                     <!-- Logo -->
-                    <EbaBeneficiario v-if="activeTab === 'beneficiario'" :tenant-id="tenant.id"
-                        :permissoes="beneficiarioPermissoes" />
+                    <div v-if="activeTab === 'beneficiario'" class="space-y-8">
+                        <EbaBeneficiario :tenant-id="tenant.id" :permissoes="beneficiarioPermissoes" />
+                        <EbaCupomTeto :tenant-id="tenant.id" :teto="cupomTeto" />
+                    </div>
 
                     <EbaLogo v-if="activeTab === 'logo'" :tenant-id="tenant.id" :upload-url="route('pagina.configuracao.logo.store', tenant.id)" :delete-url="route('pagina.configuracao.logo.destroy', tenant.id)" v-model:list="arquivosLocal" />
 

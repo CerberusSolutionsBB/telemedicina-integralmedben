@@ -20,6 +20,8 @@ class RotasCentraisProtegidasTest extends TestCase
         'forms.public.show',
         'forms.public.store',
         'forms.public.thanks',
+        // Prévia do cupom no formulário público (com throttle).
+        'forms.public.cupom',
         // Logo e cartão aparecem na página pública do parceiro e no painel do tenant.
         'pagina.configuracao.logo.show',
         'pagina.configuracao.cartao-dinamico.imagem.show',

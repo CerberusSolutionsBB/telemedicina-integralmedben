@@ -30,6 +30,8 @@ export function usePatientForm({ patient = null, familiares = [] } = {}) {
         ...(isEdit ? { status: Boolean(patient.status) } : {}),
         enderecos,
         cod_plano: '',
+        // Cupom de desconto da venda do plano (opcional).
+        cupom: '',
         familiares: familiares.map((f) => ({ ...f })),
     })
 

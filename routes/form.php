@@ -20,6 +20,9 @@ Route::post('/f/{slug}', [PublicFormController::class, 'store'])
     ->name('public.store');
 Route::get('/f/{slug}/obrigado', [PublicFormController::class, 'thanks'])
     ->name('public.thanks');
+Route::post('/f/{slug}/cupom', [PublicFormController::class, 'cupom'])
+    ->middleware('throttle:10,1')
+    ->name('public.cupom');
 // DESATIVADO: confirmação do telefone por código SMS
 // Route::post('/f/{slug}/telefone/codigo', [PublicFormPhoneVerificationController::class, 'send'])
 //     ->middleware('throttle:10,1')

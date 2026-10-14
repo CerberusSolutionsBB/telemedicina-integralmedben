@@ -8,6 +8,7 @@ import {
     Settings,
     UserPlus,
     LayoutDashboard,
+    Ticket,
 } from "lucide-vue-next";
 import { computed } from "vue";
 import AdminShell from "@/Components/Layout/AdminShell.vue";
@@ -49,6 +50,10 @@ const navLinks = computed(() => [
     { grupo: "Beneficiários", label: "Beneficiários", routeName: "patients.index", icon: Users },
     { grupo: "Beneficiários", label: "Relatório", routeName: "desempenho.index", match: "desempenho.*", icon: Target },
     { grupo: "Beneficiários", label: "Meus Formulários", routeName: "meus-formularios.index", icon: ClipboardList },
+    // Cupons só quando o admin definiu o teto de desconto do parceiro.
+    ...(page.props.cupomTeto !== null && page.props.cupomTeto !== undefined
+        ? [{ grupo: "Beneficiários", label: "Cupons", routeName: "cupons.index", match: "cupons.*", icon: Ticket }]
+        : []),
     ...(aclLink.value ? [aclLink.value] : []),
     { grupo: "Administração", label: "Configurações", routeName: "configuracao.index", icon: Settings },
 ]);

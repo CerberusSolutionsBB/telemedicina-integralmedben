@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CentralUserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Financeiro\CupomController;
 use App\Http\Controllers\FinanceiroController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
@@ -51,6 +52,18 @@ Route::middleware([PreventAccessFromTenantDomains::class])->group(function () {
             Route::put('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'update'])->name('sms-templates.update');
             Route::delete('/sms-templates/{smsTemplate}', [SmsTemplateController::class, 'destroy'])->name('sms-templates.destroy');
             Route::post('/sms-templates/{smsTemplate}/tenants', [SmsTemplateController::class, 'assignTenants'])->name('sms-templates.assign-tenants');
+        });
+
+        Route::middleware('permission:cupons.manage')->prefix('financeiro/cupons')->name('financeiro.cupons.')->group(function () {
+            Route::get('/', [CupomController::class, 'index'])->name('index');
+            Route::get('/create', [CupomController::class, 'create'])->name('create');
+            Route::post('/', [CupomController::class, 'store'])->name('store');
+            Route::get('/{cupom}', [CupomController::class, 'show'])->name('show');
+            Route::get('/{cupom}/edit', [CupomController::class, 'edit'])->name('edit');
+            Route::put('/{cupom}', [CupomController::class, 'update'])->name('update');
+            Route::put('/{cupom}/status', [CupomController::class, 'status'])->name('status');
+            Route::get('/{cupom}/pdf', [CupomController::class, 'pdf'])->name('pdf');
+            Route::delete('/{cupom}', [CupomController::class, 'destroy'])->name('destroy');
         });
 
         Route::post('/store', [TenantController::class, 'store'])->middleware('permission:paginas.create')->name('tenants.store');

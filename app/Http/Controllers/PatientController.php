@@ -93,7 +93,7 @@ class PatientController extends Controller
         $patient = $this->patientService->store($data);
         $removidos = $this->salvarFamiliares($patient, $codPlano, $data);
 
-        return $this->redirectAfterPlano($patient, $codPlano, 'Paciente cadastrado com sucesso.', $removidos);
+        return $this->redirectAfterPlano($patient, $codPlano, 'Paciente cadastrado com sucesso.', $removidos, $data['cupom'] ?? null);
     }
 
     public function edit(Patient $patient)
@@ -148,7 +148,7 @@ class PatientController extends Controller
         $this->patientService->update($patient, $data);
         $removidos = $this->salvarFamiliares($patient, $codPlano, $data);
 
-        return $this->redirectAfterPlano($patient->refresh(), $codPlano, 'Paciente atualizado com sucesso.', $removidos);
+        return $this->redirectAfterPlano($patient->refresh(), $codPlano, 'Paciente atualizado com sucesso.', $removidos, $data['cupom'] ?? null);
     }
 
     /**
@@ -171,12 +171,13 @@ class PatientController extends Controller
      * erro é exibido junto da mensagem de sucesso.
      *
      * @param  array<int, int>|null  $removidos  null quando o plano não é familiar
+     * @param  string|null  $cupom  código do cupom de desconto aplicado na venda
      */
-    private function redirectAfterPlano(Patient $patient, ?string $codPlano, string $success, ?array $removidos = null)
+    private function redirectAfterPlano(Patient $patient, ?string $codPlano, string $success, ?array $removidos = null, ?string $cupom = null)
     {
         $redirect = redirect()->route('patients.index')->with('success', $success);
 
-        if ($codPlano && $erro = $this->pacientePlanoService->registrar(tenant('id'), $patient, $codPlano)) {
+        if ($codPlano && $erro = $this->pacientePlanoService->registrar(tenant('id'), $patient, $codPlano, $cupom)) {
             return $redirect->with('error', 'Não foi possível registrar o plano na SIPROV; o paciente foi salvo sem vínculo de telemedicina. Detalhe: '.$erro);
         }
 

@@ -65,6 +65,7 @@ class RolePermissionSeeder extends Seeder
 
             'financeiro' => [
                 'financeiro.view',
+                'cupons.manage',
             ],
 
             'integracoes' => [
