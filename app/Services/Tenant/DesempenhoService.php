@@ -210,7 +210,7 @@ class DesempenhoService
 
     /**
      * Registros por plano (cards do Show). "Todos os planos": um item por plano do
-     * tenant; "apenas um plano": só o plano da meta, já que os outros não contam.
+     * tenant; planos escolhidos: só eles, já que os outros não contam.
      *
      * @return array<int, array{cod_plano: string, plano: string, total: int}>
      */
@@ -218,8 +218,9 @@ class DesempenhoService
     {
         $totais = $registros->countBy(fn (Audit $audit) => (string) ($audit->new_values['cod_plano'] ?? ''));
 
-        $planos = $desempenho->escopo_plano === Desempenho::ESCOPO_PLANO
-            ? [['value' => (string) $desempenho->cod_plano, 'label' => $this->planoLabel($desempenho->cod_plano)]]
+        $escolhidos = $desempenho->planosDaMeta();
+        $planos = $escolhidos !== null
+            ? array_map(fn (string $codigo) => ['value' => $codigo, 'label' => $this->planoLabel($codigo)], $escolhidos)
             : $this->planos($tenantId);
 
         return collect($planos)
@@ -276,7 +277,8 @@ class DesempenhoService
      */
     private function registrosBase(Desempenho $desempenho, string $tenantId): Collection
     {
-        $plano = $desempenho->escopo_plano === Desempenho::ESCOPO_PLANO ? (string) $desempenho->cod_plano : null;
+        // null = todos os planos.
+        $planos = $desempenho->planosDaMeta();
 
         return Audit::where('event', 'registro_plano')
             ->where('tags', 'tenant:'.$tenantId)
@@ -288,7 +290,7 @@ class DesempenhoService
             ])
             ->get(['user_id', 'new_values'])
             // cod_plano está em new_values (texto): filtrado em PHP.
-            ->filter(fn (Audit $audit) => $plano === null || (string) ($audit->new_values['cod_plano'] ?? '') === $plano)
+            ->filter(fn (Audit $audit) => $planos === null || in_array((string) ($audit->new_values['cod_plano'] ?? ''), $planos, true))
             ->values();
     }
 }

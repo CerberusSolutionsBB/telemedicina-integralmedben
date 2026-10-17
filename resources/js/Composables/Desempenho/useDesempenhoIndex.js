@@ -20,7 +20,8 @@ export function useDesempenhoIndex(props) {
         ])),
     )
 
-    const planosDisponiveis = computed(() => [...new Set(props.desempenhos.map((d) => d.plano))].sort())
+    // Uma meta pode ter vários planos: o filtro lista cada plano uma vez.
+    const planosDisponiveis = computed(() => [...new Set(props.desempenhos.flatMap((d) => d.planos ?? [d.plano]))].sort())
 
     const filtrados = computed(() => {
         const busca = normalizar(filtros.busca)
@@ -28,7 +29,7 @@ export function useDesempenhoIndex(props) {
         return props.desempenhos.filter((d) =>
             (aba.value === 'todas' || d.progresso.status === aba.value)
             && (!filtros.tipo || d.tipo_meta === filtros.tipo)
-            && (!filtros.plano || d.plano === filtros.plano)
+            && (!filtros.plano || (d.planos ?? [d.plano]).includes(filtros.plano))
             && (!busca || normalizar(`${d.titulo} ${d.roles.join(' ')}`).includes(busca)),
         )
     })

@@ -45,7 +45,7 @@ class Desempenho extends Model
         'descricao',
         'funcao',
         'escopo_plano',
-        'cod_plano',
+        'cod_planos',
         'tipo_meta',
         'meta',
         'meta_valor',
@@ -55,6 +55,7 @@ class Desempenho extends Model
     ];
 
     protected $casts = [
+        'cod_planos' => 'array',
         'meta' => 'integer',
         'meta_valor' => 'decimal:2',
         'data_inicio' => 'date:Y-m-d',
@@ -67,6 +68,20 @@ class Desempenho extends Model
     public function ehComissao(): bool
     {
         return $this->funcao === self::FUNCAO_COMISSAO_VENDA_PLANO;
+    }
+
+    /**
+     * Planos que contam para a meta; null = todos os planos (inclusive os habilitados depois).
+     *
+     * @return array<int, string>|null
+     */
+    public function planosDaMeta(): ?array
+    {
+        if ($this->escopo_plano !== self::ESCOPO_PLANO) {
+            return null;
+        }
+
+        return array_values(array_map('strval', $this->cod_planos ?? []));
     }
 
     public function roles(): BelongsToMany

@@ -15,7 +15,7 @@ export function useDesempenhoForm({ desempenho = null } = {}) {
         usuarios: usuarios.map((u) => u.id),
         funcao: desempenho?.funcao ?? 'registro_beneficiario_plano',
         escopo_plano: desempenho?.escopo_plano ?? 'todos',
-        cod_plano: desempenho?.cod_plano ?? '',
+        cod_planos: desempenho?.cod_planos ?? [],
         tipo_meta: desempenho?.tipo_meta ?? 'individual',
         meta: desempenho?.meta ?? 10,
         meta_valor: desempenho?.meta_valor ?? '',

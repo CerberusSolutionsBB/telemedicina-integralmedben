@@ -90,7 +90,8 @@ class DesempenhoController extends Controller
                 ['label' => 'Editar', 'href' => null],
             ],
             'desempenho' => [
-                ...$desempenho->only(['id', 'titulo', 'descricao', 'funcao', 'escopo_plano', 'cod_plano', 'tipo_meta', 'meta']),
+                ...$desempenho->only(['id', 'titulo', 'descricao', 'funcao', 'escopo_plano', 'tipo_meta', 'meta']),
+                'cod_planos' => $desempenho->planosDaMeta() ?? [],
                 'data_inicio' => $desempenho->data_inicio->format('Y-m-d'),
                 'prazo' => $desempenho->prazo->format('Y-m-d'),
                 'roles' => $desempenho->roles->pluck('id')->all(),
@@ -167,9 +168,11 @@ class DesempenhoController extends Controller
             'descricao' => $desempenho->descricao,
             'funcao' => Desempenho::FUNCOES[$desempenho->funcao] ?? $desempenho->funcao,
             'funcao_key' => $desempenho->funcao,
-            'plano' => $desempenho->escopo_plano === Desempenho::ESCOPO_PLANO
-                ? $this->desempenhoService->planoLabel($desempenho->cod_plano)
-                : 'Todos os planos',
+            // Rótulo único para exibir e lista para o filtro da tabela.
+            'planos' => $planos = ($desempenho->planosDaMeta() === null
+                ? ['Todos os planos']
+                : array_map(fn (string $codigo) => $this->desempenhoService->planoLabel($codigo), $desempenho->planosDaMeta())),
+            'plano' => implode(', ', $planos),
             'tipo_meta' => $desempenho->tipo_meta,
             'tipo_label' => Desempenho::TIPOS[$desempenho->tipo_meta] ?? $desempenho->tipo_meta,
             'meta' => $desempenho->meta,

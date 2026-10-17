@@ -39,6 +39,8 @@ class DesempenhoServiceTest extends TestCase
 
     private const MIGRATION_META_VALOR = 'database/migrations/tenant/2026_10_07_010000_add_meta_valor_to_desempenhos_table.php';
 
+    private const MIGRATION_COD_PLANOS = 'database/migrations/tenant/2026_10_16_234125_change_desempenhos_cod_plano_to_cod_planos.php';
+
     // As tabelas do módulo ficam nas migrations do tenant. Em vez de migrar no
     // setUp (DDL confirma a transação do teste no MySQL), recria o banco uma vez
     // já incluindo essas migrations.
@@ -51,7 +53,7 @@ class DesempenhoServiceTest extends TestCase
 
     protected function migrateFreshUsing()
     {
-        return [...$this->migrateFreshPadrao(), '--path' => ['database/migrations', self::MIGRATION, self::MIGRATION_USUARIOS, self::MIGRATION_META_VALOR]];
+        return [...$this->migrateFreshPadrao(), '--path' => ['database/migrations', self::MIGRATION, self::MIGRATION_USUARIOS, self::MIGRATION_META_VALOR, self::MIGRATION_COD_PLANOS]];
     }
 
     protected function setUp(): void
@@ -88,7 +90,7 @@ class DesempenhoServiceTest extends TestCase
 
     public function test_individual_conta_por_usuario_no_plano_e_periodo(): void
     {
-        $progresso = $this->progresso(['tipo_meta' => 'individual', 'meta' => 3, 'escopo_plano' => 'plano', 'cod_plano' => '331385']);
+        $progresso = $this->progresso(['tipo_meta' => 'individual', 'meta' => 3, 'escopo_plano' => 'plano', 'cod_planos' => ['331385']]);
 
         $this->assertSame(['João' => 3, 'Maria' => 1], collect($progresso['usuarios'])->pluck('total', 'nome')->all());
         $this->assertSame([true, false], array_column($progresso['usuarios'], 'atingiu'));
@@ -126,11 +128,11 @@ class DesempenhoServiceTest extends TestCase
         $request = new DesempenhoRequest;
         $erros = Validator::make([
             'titulo' => 'Meta', 'roles' => [], 'funcao' => 'registro_beneficiario_plano',
-            'escopo_plano' => 'plano', 'cod_plano' => null, 'tipo_meta' => 'individual',
+            'escopo_plano' => 'plano', 'cod_planos' => [], 'tipo_meta' => 'individual',
             'meta' => 0, 'data_inicio' => '2026-10-10', 'prazo' => '2026-10-01',
         ], $request->rules(), $request->messages())->errors();
 
-        foreach (['roles', 'cod_plano', 'meta', 'prazo'] as $campo) {
+        foreach (['roles', 'cod_planos', 'meta', 'prazo'] as $campo) {
             $this->assertTrue($erros->has($campo), "esperado erro em {$campo}");
         }
     }
@@ -165,14 +167,33 @@ class DesempenhoServiceTest extends TestCase
         $this->assertSame($todos['total'], array_sum($porPlano));
 
         // Meta de um plano: só o card desse plano.
-        $umPlano = $this->progresso(['escopo_plano' => 'plano', 'cod_plano' => '331385']);
+        $umPlano = $this->progresso(['escopo_plano' => 'plano', 'cod_planos' => ['331385']]);
         $this->assertSame([['cod_plano' => '331385', 'plano' => 'Clínica Familiar', 'total' => 4]], $umPlano['por_plano']);
+    }
+
+    public function test_meta_com_varios_planos_conta_so_os_escolhidos(): void
+    {
+        $base = ['tipo_meta' => 'coletiva', 'meta' => 10, 'data_inicio' => '2026-09-01'];
+
+        $doisPlanos = $this->progresso([...$base, 'escopo_plano' => 'plano', 'cod_planos' => ['331385', '331384']]);
+        $umPlano = $this->progresso([...$base, 'escopo_plano' => 'plano', 'cod_planos' => ['331385']]);
+        $todos = $this->progresso([...$base, 'escopo_plano' => 'todos']);
+
+        // Cards só dos planos escolhidos, com os mesmos totais de "todos os planos".
+        $this->assertSame(['331385', '331384'], array_column($doisPlanos['por_plano'], 'cod_plano'));
+        $totaisTodos = collect($todos['por_plano'])->pluck('total', 'cod_plano');
+        foreach ($doisPlanos['por_plano'] as $card) {
+            $this->assertSame($totaisTodos[$card['cod_plano']], $card['total']);
+        }
+
+        // O segundo plano soma ao primeiro.
+        $this->assertGreaterThan($umPlano['total'], $doisPlanos['total']);
     }
 
     public function test_somente_usuarios_selecionados_participam_da_meta(): void
     {
         $progresso = $this->progresso(
-            ['tipo_meta' => 'individual', 'meta' => 3, 'escopo_plano' => 'plano', 'cod_plano' => '331385'],
+            ['tipo_meta' => 'individual', 'meta' => 3, 'escopo_plano' => 'plano', 'cod_planos' => ['331385']],
             [$this->joao->id],
         );
 
