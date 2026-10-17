@@ -1,8 +1,13 @@
+{{--
+    Voucher de cupom (cupom de venda e cupom de benefício). Recebe os textos prontos:
+    $rotulo, $titulo, $desconto, $textoDesconto, $codigo, $validade, $condicoes (lista),
+    $comoUsar (lista; ":codigo" vira o código em negrito), $aviso (ou null), $logoBase64.
+--}}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Cupom {{ $cupom->codigo }}</title>
+    <title>Cupom {{ $codigo }}</title>
     <style>
         @page { margin: 40px 0 48px; } /* rodapé desenhado pelo RodapePdf na margem inferior */
         /* Sem reset universal (*): no dompdf ele zera também a margem da página. */
@@ -40,9 +45,9 @@
     </style>
 </head>
 <body>
-    @if ($cupom->situacao() !== \App\Models\Cupom::STATUS_ATIVO && $cupom->situacao() !== 'agendado')
+    @if ($aviso)
         {{-- Aviso para não distribuir um cupom que não vale mais. --}}
-        <div class="status">Atenção: este cupom está {{ $cupom->situacao() }} e não pode ser usado.</div>
+        <div class="status">{{ $aviso }}</div>
     @endif
 
     <div class="voucher">
@@ -53,8 +58,8 @@
                         <td class="logo"><div class="logo-box"><img src="{{ $logoBase64 }}" alt=""></div></td>
                     @endif
                     <td>
-                        <div class="rotulo">{{ $parceiro ?? 'Válido em todos os parceiros' }}</div>
-                        <h1>Cupom de desconto</h1>
+                        <div class="rotulo">{{ $rotulo }}</div>
+                        <h1>{{ $titulo }}</h1>
                     </td>
                 </tr>
             </table>
@@ -62,16 +67,17 @@
 
         <div class="corpo">
             <div class="desconto">{{ $desconto }}</div>
-            <p class="instrucao">na adesão ao plano de telemedicina</p>
+            <p class="instrucao">{{ $textoDesconto }}</p>
 
             <div class="codigo">
                 <div class="rotulo">Seu código</div>
-                <div class="valor">{{ $cupom->codigo }}</div>
+                <div class="valor">{{ $codigo }}</div>
             </div>
 
             <p class="validade">{{ $validade }}</p>
         </div>
 
+        @if ($condicoes)
         <div class="secao">
             <h2>Condições</h2>
             <ul>
@@ -80,13 +86,15 @@
                 @endforeach
             </ul>
         </div>
+        @endif
 
         <div class="secao">
             <h2>Como usar</h2>
             <ol>
-                <li>Informe o código <strong>{{ $cupom->codigo }}</strong> no campo "Cupom" do cadastro ou do formulário de adesão.</li>
-                <li>Clique em "Aplicar" para conferir o desconto antes de enviar.</li>
-                <li>O desconto é aplicado sobre o valor do plano escolhido.</li>
+                {{-- ":codigo" no texto vira o código em negrito. --}}
+                @foreach ($comoUsar as $passo)
+                    <li>{!! str_replace(':codigo', '<strong>'.e($codigo).'</strong>', e($passo)) !!}</li>
+                @endforeach
             </ol>
         </div>
     </div>

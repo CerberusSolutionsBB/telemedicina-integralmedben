@@ -26,6 +26,9 @@ class Cupom extends Model implements Auditable
         self::TIPO_VALOR_FIXO => 'Valor fixo',
     ];
 
+    /** Texto abaixo do desconto no PDF quando o cupom não define o seu. */
+    public const TEXTO_DESCONTO_PADRAO = 'na adesão ao plano de telemedicina';
+
     public const STATUS_ATIVO = 'ativo';
 
     public const STATUS_PAUSADO = 'pausado';
@@ -66,6 +69,7 @@ class Cupom extends Model implements Auditable
         'alvo',
         'tipo',
         'valor',
+        'texto_desconto',
         'tenant_id',
         'criado_por_id',
         'criado_por_nome',

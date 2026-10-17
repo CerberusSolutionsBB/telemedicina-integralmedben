@@ -22,6 +22,8 @@ export function useCupomForm({ cupom = null, rotas }) {
         codigo: cupom?.codigo ?? '',
         tipo: cupom?.tipo ?? 'percentual',
         valor: cupom?.valor ?? '',
+        // Texto abaixo do desconto no PDF; vazio = texto padrão.
+        texto_desconto: cupom?.texto_desconto ?? '',
         tenant_id: cupom?.tenant_id ?? '',
         origem: cupom?.origem ?? 'manual',
         inicio_em: cupom?.inicio_em ?? agora(),

@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use App\Models\TenantPlano;
 use App\Models\TenantsDetail;
 use App\Models\User;
+use App\Services\Cupom\CupomPdfService;
 use App\Services\Siprov\SiprovIntegrationService;
 use App\Services\Tenant\TenantPlanoCotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,6 +67,26 @@ class CupomTelasTest extends TestCase
                 ->where('cupom.pode_excluir', true)
                 ->where('cupom.aplicavel_label', 'Todos os planos')
                 ->has('usos', 0));
+    }
+
+    public function test_pdf_usa_texto_do_desconto_e_esconde_o_limite_total(): void
+    {
+        $this->actingAs($this->usuarioCom(['cupons.manage']))
+            ->post(route('financeiro.cupons.store'), $this->dados([
+                'codigo' => 'FIT2026', 'limite_uso_total' => 10, 'texto_desconto' => '  na consulta com nutricionista ',
+            ]))
+            ->assertRedirect();
+
+        $cupom = Cupom::where('codigo', 'FIT2026')->sole();
+        $dados = app(CupomPdfService::class)->dados($cupom);
+
+        $this->assertSame('na consulta com nutricionista', $dados['textoDesconto']);
+        // O limite total é controle interno: não vai para o cliente.
+        $this->assertSame([], array_filter($dados['condicoes'], fn (string $c) => str_contains($c, 'Limitado') || str_contains($c, '10')));
+        $this->assertContains('Uso único por CPF.', $dados['condicoes']);
+
+        $cupom->update(['texto_desconto' => null]);
+        $this->assertSame(Cupom::TEXTO_DESCONTO_PADRAO, app(CupomPdfService::class)->dados($cupom->fresh())['textoDesconto']);
     }
 
     public function test_exclui_cupom_sem_uso_e_mantem_o_ja_usado(): void
