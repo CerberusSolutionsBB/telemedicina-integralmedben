@@ -8,6 +8,7 @@ use App\Http\Controllers\Pagina\PaginaCupomController;
 use App\Http\Controllers\Pagina\PaginaDestroyController;
 use App\Http\Controllers\Pagina\PaginaIndexController;
 use App\Http\Controllers\Pagina\PaginaLogoController;
+use App\Http\Controllers\Pagina\PaginaModuloController;
 use App\Http\Controllers\Pagina\PaginaPlanoController;
 use App\Http\Controllers\Pagina\PaginaShowController;
 use App\Http\Controllers\Pagina\PaginaStatusController;
@@ -56,6 +57,7 @@ Route::middleware('permission:paginas.edit')->group(function () {
         Route::delete('/{tenant}/telemedicina/{telemedicinaTenant}', [ConfiguracaoController::class, 'unlinkTelemedicina'])->name('telemedicina.unlink');
         Route::put('/{tenant}/beneficiario', [PaginaBeneficiarioController::class, 'update'])->name('beneficiario');
         Route::put('/{tenant}/cupom-teto', [PaginaCupomController::class, 'teto'])->name('cupom-teto');
+        Route::put('/{tenant}/modulos/{modulo}', [PaginaModuloController::class, 'update'])->name('modulos');
         Route::put('/{tenant}/planos', [PaginaPlanoController::class, 'sync'])->name('planos');
         Route::put('/{tenant}/planos/{codPlano}/zerar', [PaginaPlanoController::class, 'zerar'])->name('planos.zerar');
         Route::get('/siprov/search', [ConfiguracaoController::class, 'searchSiprov'])->name('telemedicina.searchSiprov');

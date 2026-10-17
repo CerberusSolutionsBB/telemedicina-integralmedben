@@ -73,17 +73,23 @@ Route::middleware([
         Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])->middleware('beneficiario:status')->name('patients.toggle-status');
 
         // Serviços oferecidos pelo parceiro (auditados).
-        Route::resource('servicos', ServicoController::class)->parameters(['servicos' => 'id'])->whereNumber('id');
-        Route::put('servicos/{id}/status', [ServicoController::class, 'status'])->whereNumber('id')->name('servicos.status');
+        Route::middleware('modulo:servicos')->group(function () {
+            Route::resource('servicos', ServicoController::class)->parameters(['servicos' => 'id'])->whereNumber('id');
+            Route::put('servicos/{id}/status', [ServicoController::class, 'status'])->whereNumber('id')->name('servicos.status');
+        });
 
         // Convênios do parceiro (auditados).
-        Route::resource('convenios', ConvenioController::class)->parameters(['convenios' => 'id'])->whereNumber('id');
-        Route::put('convenios/{id}/status', [ConvenioController::class, 'status'])->whereNumber('id')->name('convenios.status');
+        Route::middleware('modulo:convenios')->group(function () {
+            Route::resource('convenios', ConvenioController::class)->parameters(['convenios' => 'id'])->whereNumber('id');
+            Route::put('convenios/{id}/status', [ConvenioController::class, 'status'])->whereNumber('id')->name('convenios.status');
+        });
 
         // Cupons de benefício (desconto em convênio/serviço; banco do tenant, auditados).
-        Route::resource('cupons-beneficio', CupomBeneficioController::class)->parameters(['cupons-beneficio' => 'id'])->whereNumber('id');
-        Route::put('cupons-beneficio/{id}/status', [CupomBeneficioController::class, 'status'])->whereNumber('id')->name('cupons-beneficio.status');
-        Route::get('cupons-beneficio/{id}/pdf', [CupomBeneficioController::class, 'pdf'])->whereNumber('id')->name('cupons-beneficio.pdf');
+        Route::middleware('modulo:cupons_beneficio')->group(function () {
+            Route::resource('cupons-beneficio', CupomBeneficioController::class)->parameters(['cupons-beneficio' => 'id'])->whereNumber('id');
+            Route::put('cupons-beneficio/{id}/status', [CupomBeneficioController::class, 'status'])->whereNumber('id')->name('cupons-beneficio.status');
+            Route::get('cupons-beneficio/{id}/pdf', [CupomBeneficioController::class, 'pdf'])->whereNumber('id')->name('cupons-beneficio.pdf');
+        });
 
         // Cupons do próprio parceiro: só com teto de desconto definido pelo admin (checado no controller).
         Route::prefix('cupons')->name('cupons.')->controller(TenantCupomController::class)->group(function () {

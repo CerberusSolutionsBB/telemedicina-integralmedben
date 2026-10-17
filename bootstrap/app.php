@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\BeneficiarioPermite;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ModuloHabilitado;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -28,6 +29,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             // Ações do CRUD de beneficiários habilitadas por parceiro
             'beneficiario' => BeneficiarioPermite::class,
+            // Módulos opcionais do painel do parceiro (Serviços, Convênios, Cupons de benefício)
+            'modulo' => ModuloHabilitado::class,
         ]);
 
         // Middlewares web (Inertia + Assets)
