@@ -98,6 +98,10 @@ const botao = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg
                     <dt class="text-gray-500">Valor mínimo do plano</dt>
                     <dd class="font-medium text-gray-900">{{ cupom.valor_minimo > 0 ? fmtMoeda(cupom.valor_minimo) : 'Sem mínimo' }}</dd>
                 </div>
+                <div class="sm:col-span-2 xl:col-span-4">
+                    <dt class="text-gray-500">Texto abaixo do desconto no PDF</dt>
+                    <dd class="font-medium text-gray-900">{{ cupom.texto_desconto || 'na adesão ao plano de telemedicina (padrão)' }}</dd>
+                </div>
                 <div>
                     <dt class="text-gray-500">Acumulável</dt>
                     <dd class="font-medium text-gray-900">Não (um cupom por venda)</dd>

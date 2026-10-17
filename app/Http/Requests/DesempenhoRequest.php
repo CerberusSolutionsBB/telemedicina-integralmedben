@@ -26,7 +26,8 @@ class DesempenhoRequest extends FormRequest
             'usuarios.*' => ['integer', Rule::exists('users', 'id'), new UsuarioDosPerfis],
             'funcao' => ['required', Rule::in(array_keys(Desempenho::FUNCOES))],
             'escopo_plano' => ['required', Rule::in([Desempenho::ESCOPO_TODOS, Desempenho::ESCOPO_PLANO])],
-            'cod_plano' => ['nullable', 'required_if:escopo_plano,'.Desempenho::ESCOPO_PLANO, Rule::in(Planos::codigos())],
+            'cod_planos' => ['nullable', 'array', 'required_if:escopo_plano,'.Desempenho::ESCOPO_PLANO],
+            'cod_planos.*' => ['string', 'distinct', Rule::in(Planos::codigos())],
             'tipo_meta' => ['required', Rule::in(array_keys(Desempenho::TIPOS))],
             'meta' => ['required', 'integer', 'min:1', 'max:1000000'],
             'meta_valor' => [
@@ -49,7 +50,7 @@ class DesempenhoRequest extends FormRequest
             'usuarios.array' => 'Seleção de usuários inválida.',
             'usuarios.*.integer' => 'Seleção de usuários inválida.',
             'usuarios.*.exists' => 'Um dos usuários selecionados não existe mais.',
-            'cod_plano.required_if' => 'Escolha o plano.',
+            'cod_planos.required_if' => 'Escolha pelo menos um plano.',
             'meta.required' => 'Informe a meta.',
             'meta.min' => 'A meta deve ser no mínimo 1.',
             'meta_valor.required_if' => 'Informe a meta em R$ (comissão).',
@@ -62,15 +63,15 @@ class DesempenhoRequest extends FormRequest
     }
 
     /**
-     * Dados para gravar: sem plano quando o escopo é "todos".
+     * Dados para gravar: sem lista de planos quando o escopo é "todos".
      */
     public function dados(): array
     {
         $dados = collect($this->validated())->except(['roles', 'usuarios'])->all();
 
-        if ($dados['escopo_plano'] === Desempenho::ESCOPO_TODOS) {
-            $dados['cod_plano'] = null;
-        }
+        $dados['cod_planos'] = $dados['escopo_plano'] === Desempenho::ESCOPO_TODOS
+            ? null
+            : array_values(array_unique(array_map('strval', $dados['cod_planos'] ?? [])));
 
         return $dados;
     }

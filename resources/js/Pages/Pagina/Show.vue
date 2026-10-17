@@ -15,6 +15,7 @@ import SmsTemplateModal from '@/Components/SmsTemplateModal.vue'
 import EbaLogo from '@/Components/Ebas/EbaLogo.vue'
 import EbaBeneficiario from '@/Components/Ebas/EbaBeneficiario.vue'
 import EbaCupomTeto from '@/Components/Ebas/EbaCupomTeto.vue'
+import EbaModulos from '@/Components/Ebas/EbaModulos.vue'
 import ImageUpload from '@/Components/ImageUpload.vue'
 import SearchInput from '@/Components/SearchInput.vue'
 import { formatDateTime } from '@/Composables/Pagina/helpers'
@@ -113,6 +114,11 @@ const props = defineProps({
     beneficiarioPermissoes: {
         type: Object,
         default: () => ({ create: true, edit: false, delete: false, status: false }),
+    },
+    // Módulos opcionais do painel do parceiro: [{ key, label, descricao, habilitado }]
+    modulosParceiro: {
+        type: Array,
+        default: () => [],
     },
     // Teto (%) dos cupons do parceiro; null = parceiro sem cupons.
     cupomTeto: {
@@ -791,6 +797,8 @@ const cartaoDinamicoCategoryIcon = (category) => cartaoDinamicoCategoryIconMap[c
                                 este
                                 tenant.</p>
                         </div>
+
+                        <EbaModulos :tenant-id="tenant.id" :modulos="modulosParceiro" />
 
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                             <!-- Status Formulário Dinâmico -->

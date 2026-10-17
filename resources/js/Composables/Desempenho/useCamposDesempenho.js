@@ -25,9 +25,15 @@ export function useCamposDesempenho(form, { planos, roles, usuariosIniciais = []
         form.usuarios = lista.map((usuario) => usuario.id)
     }, { deep: true, immediate: true })
 
-    // Escopo "todos os planos" não usa plano específico.
-    watch(() => form.escopo_plano, (escopo) => {
-        if (escopo === 'todos') form.cod_plano = ''
+    // Planos que contam: o modal devolve a lista escolhida. Todos marcados = "todos os
+    // planos" (vale também para planos habilitados depois); senão, só os escolhidos.
+    const planosEscolhidos = computed({
+        get: () => (form.escopo_plano === 'todos' ? planos.map((p) => p.value) : form.cod_planos),
+        set: (lista) => {
+            const todos = lista.length === planos.length
+            form.escopo_plano = todos ? 'todos' : 'plano'
+            form.cod_planos = todos ? [] : lista
+        },
     })
 
     const abrirSelecaoUsuarios = (role) => {
@@ -85,8 +91,9 @@ export function useCamposDesempenho(form, { planos, roles, usuariosIniciais = []
     })
 
     const resumo = computed(() => {
+        const nomes = planos.filter((p) => form.cod_planos.includes(p.value)).map((p) => p.label)
         const plano = form.escopo_plano === 'plano'
-            ? `no plano ${planos.find((p) => p.value === form.cod_plano)?.label ?? '…'}`
+            ? (nomes.length > 1 ? `nos planos ${nomes.join(', ')}` : `no plano ${nomes[0] ?? '…'}`)
             : 'em qualquer plano'
         const perfis = roles.filter((r) => form.roles.includes(r.id)).map((r) => r.name).join(', ') || '…'
         const total = usuarios.value.length
@@ -121,6 +128,7 @@ export function useCamposDesempenho(form, { planos, roles, usuariosIniciais = []
     }
 
     return {
+        planosEscolhidos,
         alternarRole,
         usuariosDoPerfil,
         abrirSelecaoUsuarios,

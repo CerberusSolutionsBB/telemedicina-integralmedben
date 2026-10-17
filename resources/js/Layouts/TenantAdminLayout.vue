@@ -9,6 +9,9 @@ import {
     UserPlus,
     LayoutDashboard,
     Ticket,
+    Briefcase,
+    Handshake,
+    TicketPercent,
 } from "lucide-vue-next";
 import { computed } from "vue";
 import AdminShell from "@/Components/Layout/AdminShell.vue";
@@ -45,6 +48,13 @@ const aclLink = computed(() => {
         : null;
 });
 
+const MODULOS_MENU = [
+    { modulo: "servicos", grupo: "Administração", label: "Serviços", routeName: "servicos.index", match: "servicos.*", icon: Briefcase },
+    { modulo: "convenios", grupo: "Administração", label: "Convênios", routeName: "convenios.index", match: "convenios.*", icon: Handshake },
+    { modulo: "cupons_beneficio", grupo: "Administração", label: "Cupons de benefício", routeName: "cupons-beneficio.index", match: "cupons-beneficio.*", icon: TicketPercent },
+];
+const modulosLigados = computed(() => MODULOS_MENU.filter((item) => page.props.modulosParceiro?.[item.modulo]));
+
 const navLinks = computed(() => [
     { grupo: "Visão geral", label: "Dashboard", routeName: "tenant.dashboard", icon: LayoutDashboard },
     { grupo: "Beneficiários", label: "Beneficiários", routeName: "patients.index", icon: Users },
@@ -55,6 +65,8 @@ const navLinks = computed(() => [
         ? [{ grupo: "Beneficiários", label: "Cupons", routeName: "cupons.index", match: "cupons.*", icon: Ticket }]
         : []),
     ...(aclLink.value ? [aclLink.value] : []),
+    // Módulos opcionais: só os que o admin ligou para o parceiro (aba Configuração).
+    ...modulosLigados.value,
     { grupo: "Administração", label: "Configurações", routeName: "configuracao.index", icon: Settings },
 ]);
 

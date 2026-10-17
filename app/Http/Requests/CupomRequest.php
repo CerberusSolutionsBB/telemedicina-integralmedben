@@ -18,6 +18,7 @@ class CupomRequest extends FormRequest
     public const LIMITES = [
         'codigo' => 50,
         'observacoes' => 2000,
+        'texto_desconto' => 120,
     ];
 
     public function authorize(): bool
@@ -57,6 +58,8 @@ class CupomRequest extends FormRequest
             'planos' => ['nullable', 'array', 'required_if:aplicavel_a,'.Cupom::APLICAVEL_PLANOS],
             'planos.*' => ['string', Rule::in(Planos::codigos())],
             'observacoes' => ['nullable', 'string', 'max:'.self::LIMITES['observacoes']],
+            // Texto abaixo do desconto no PDF (o que o cliente vê); vazio = texto padrão.
+            'texto_desconto' => ['nullable', 'string', 'max:'.self::LIMITES['texto_desconto']],
         ];
     }
 
@@ -79,6 +82,7 @@ class CupomRequest extends FormRequest
             'limite_uso_total' => 'limite total de usos',
             'limite_uso_por_cpf' => 'limite por CPF',
             'valor_minimo' => 'valor mínimo',
+            'texto_desconto' => 'texto do desconto',
         ];
     }
 

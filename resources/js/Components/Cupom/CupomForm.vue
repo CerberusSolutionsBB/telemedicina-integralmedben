@@ -102,6 +102,24 @@ const opcao = (ativa) => [
                     </select>
                 </div>
             </div>
+
+            <div class="mt-4">
+                <label :class="label" for="texto_desconto">Texto abaixo do desconto (aparece no PDF)</label>
+                <input id="texto_desconto" v-model="form.texto_desconto" type="text" :maxlength="opcoes.limites.texto_desconto"
+                    placeholder="na adesão ao plano de telemedicina" aria-describedby="texto_desconto-ajuda"
+                    :class="input(form.errors.texto_desconto)" :aria-invalid="!!form.errors.texto_desconto" />
+                <div class="mt-1 flex items-start gap-2">
+                    <p id="texto_desconto-ajuda" class="text-sm text-gray-600">
+                        Diga em que o cliente ganha o desconto (ex.: "na consulta com nutricionista"). Vazio = "na adesão ao plano de telemedicina".
+                    </p>
+                    <span class="ml-auto shrink-0 text-xs tabular-nums text-gray-600">{{ (form.texto_desconto || '').length }}/{{ opcoes.limites.texto_desconto }}</span>
+                </div>
+                <p class="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    Prévia no PDF: <strong>{{ form.tipo === 'percentual' ? `${form.valor || '0'}% OFF` : `R$ ${form.valor || '0'} OFF` }}</strong>
+                    {{ form.texto_desconto || 'na adesão ao plano de telemedicina' }}
+                </p>
+                <p v-if="form.errors.texto_desconto" :class="erro"><AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />{{ form.errors.texto_desconto }}</p>
+            </div>
         </section>
 
         <!-- Validade e limites -->

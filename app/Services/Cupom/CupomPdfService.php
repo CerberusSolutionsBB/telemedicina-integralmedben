@@ -10,25 +10,18 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdf;
 
 /**
- * Voucher do cupom em PDF (para imprimir ou enviar): código em destaque,
- * desconto, validade, condições e como usar.
+ * Voucher do cupom em PDF (para imprimir ou entregar ao cliente): código em destaque,
+ * desconto, onde vale, validade, condições e como usar. Só informação para o cliente:
+ * controles internos (ex.: limite total de usos) não aparecem.
  */
 class CupomPdfService
 {
     public function gerar(Cupom $cupom): DomPdf
     {
-        $cupom->loadMissing(['planos', 'tenant.details']);
-        $tenant = $cupom->tenant;
-        $parceiro = $tenant ? ($tenant->name ?: ($tenant->details->first()?->descricao ?? $tenant->id)) : null;
+        $dados = $this->dados($cupom);
+        $parceiro = $dados['parceiro'];
 
-        $pdf = Pdf::loadView('pdf.cupom', [
-            'cupom' => $cupom,
-            'parceiro' => $parceiro,
-            'desconto' => $this->desconto($cupom),
-            'validade' => $this->validade($cupom),
-            'condicoes' => $this->condicoes($cupom),
-            'logoBase64' => $this->logo($tenant?->photo_path),
-        ])->setPaper('a4');
+        $pdf = Pdf::loadView('pdf.cupom', $dados)->setPaper('a4');
 
         return RodapePdf::aplicar(
             $pdf,
@@ -36,6 +29,38 @@ class CupomPdfService
             ($parceiro ?? 'Todos os parceiros').' · Cupom '.$cupom->codigo,
             30,
         );
+    }
+
+    /**
+     * Conteúdo do voucher (o que o cliente vê).
+     *
+     * @return array<string, mixed> variáveis de pdf/cupom.blade.php (+ parceiro, para o rodapé)
+     */
+    public function dados(Cupom $cupom): array
+    {
+        $cupom->loadMissing(['planos', 'tenant.details']);
+        $tenant = $cupom->tenant;
+        $parceiro = $tenant ? ($tenant->name ?: ($tenant->details->first()?->descricao ?? $tenant->id)) : null;
+        $situacao = $cupom->situacao();
+
+        return [
+            'parceiro' => $parceiro,
+            'rotulo' => $parceiro ?? 'Válido em todos os parceiros',
+            'titulo' => 'Cupom de desconto',
+            'codigo' => $cupom->codigo,
+            'aviso' => in_array($situacao, [Cupom::STATUS_ATIVO, 'agendado'], true) ? null : "Atenção: este cupom está {$situacao} e não pode ser usado.",
+            'comoUsar' => [
+                'Informe o código :codigo no campo "Cupom" do cadastro ou do formulário de adesão.',
+                'Clique em "Aplicar" para conferir o desconto antes de enviar.',
+                'O desconto é aplicado sobre o valor do plano escolhido.',
+            ],
+            'desconto' => $this->desconto($cupom),
+            // Texto definido por quem criou o cupom (ex.: "na consulta com nutricionista").
+            'textoDesconto' => $cupom->texto_desconto ?: Cupom::TEXTO_DESCONTO_PADRAO,
+            'validade' => $this->validade($cupom),
+            'condicoes' => $this->condicoes($cupom),
+            'logoBase64' => $this->logo($tenant?->photo_path),
+        ];
     }
 
     private function desconto(Cupom $cupom): string
@@ -51,7 +76,8 @@ class CupomPdfService
     }
 
     /**
-     * Regras do cupom em linguagem simples, na ordem em que o usuário precisa delas.
+     * Regras do cupom em linguagem simples, na ordem em que o cliente precisa delas.
+     * O limite total de usos é controle interno do parceiro e não é impresso.
      *
      * @return array<int, string>
      */
@@ -68,7 +94,6 @@ class CupomPdfService
             $cupom->limite_uso_por_cpf === 1
                 ? 'Uso único por CPF.'
                 : "Até {$cupom->limite_uso_por_cpf} usos por CPF.",
-            $cupom->limite_uso_total !== null ? "Limitado aos primeiros {$cupom->limite_uso_total} usos." : null,
             (float) $cupom->valor_minimo > 0 ? 'Para planos a partir de R$ '.number_format((float) $cupom->valor_minimo, 2, ',', '.').'.' : null,
             'Não cumulativo com outros cupons.',
         ]));

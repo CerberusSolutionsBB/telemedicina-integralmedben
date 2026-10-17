@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Services\Cupom\CupomService;
 use App\Support\BeneficiarioPermissoes;
+use App\Support\ModulosParceiro;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,6 +38,10 @@ class HandleInertiaRequests extends Middleware
             // Ações do CRUD de beneficiários habilitadas para o parceiro (só no tenant).
             'beneficiarioPermissoes' => fn () => tenancy()->initialized
                 ? BeneficiarioPermissoes::doTenant(tenant('id'))
+                : null,
+            // Módulos opcionais ligados para o parceiro (só no tenant): o menu esconde os desligados.
+            'modulosParceiro' => fn () => tenancy()->initialized
+                ? ModulosParceiro::doTenant(tenant('id'))
                 : null,
             // Teto de desconto (%) dos cupons do parceiro; null = cupons desativados para ele.
             'cupomTeto' => fn () => tenancy()->initialized

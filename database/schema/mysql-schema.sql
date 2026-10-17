@@ -178,6 +178,7 @@ CREATE TABLE `cupons` (
   `alvo` varchar(20) NOT NULL DEFAULT 'venda',
   `tipo` varchar(20) NOT NULL,
   `valor` decimal(10,2) NOT NULL,
+  `texto_desconto` varchar(120) DEFAULT NULL,
   `tenant_id` varchar(255) DEFAULT NULL,
   `criado_por_id` bigint(20) unsigned DEFAULT NULL,
   `criado_por_nome` varchar(255) DEFAULT NULL,
@@ -1005,3 +1006,4 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (68,'2026_10_07_100
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (69,'2026_10_14_013424_add_financeiro_sms_integracoes_permissions',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (70,'2026_10_14_020934_create_cupons_tables',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (71,'2026_10_14_022515_add_cupons_manage_permission',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (72,'2026_10_16_235129_add_texto_desconto_to_cupons_table',1);

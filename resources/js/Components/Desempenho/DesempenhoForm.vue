@@ -2,6 +2,7 @@
 import { Link } from "@inertiajs/vue3";
 import { useCamposDesempenho } from "@/Composables/Desempenho/useCamposDesempenho";
 import UsuariosDialog from "@/Components/Desempenho/UsuariosDialog.vue";
+import SeletorMultiploModal from "@/Components/SeletorMultiploModal.vue";
 import { AlertCircle, AlertTriangle, Info, Loader2, Users, X } from "lucide-vue-next";
 
 /**
@@ -35,6 +36,7 @@ const {
     erroUsuarios,
     resumo,
     contador,
+    planosEscolhidos,
 } = useCamposDesempenho(form, { planos: props.planos, roles: props.roles, usuariosIniciais: props.usuariosIniciais });
 
 const card = "w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6";
@@ -169,32 +171,17 @@ const opcao = (ativa) => [
                     </p>
                 </div>
 
-                <!-- Plano escolhido fica logo abaixo das opções, sem empurrar os outros campos -->
-                <fieldset class="min-w-0 md:col-span-6 xl:col-span-6">
-                    <legend :class="label">Planos que contam <span class="text-red-600" aria-hidden="true">*</span></legend>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label :class="opcao(form.escopo_plano === 'todos')">
-                            <input v-model="form.escopo_plano" type="radio" value="todos" class="text-cyan-600 focus:ring-cyan-500" />
-                            Todos os planos
-                        </label>
-                        <label :class="opcao(form.escopo_plano === 'plano')">
-                            <input v-model="form.escopo_plano" type="radio" value="plano" class="text-cyan-600 focus:ring-cyan-500" />
-                            Apenas um plano
-                        </label>
-                    </div>
-
-                    <div v-if="form.escopo_plano === 'plano'" class="mt-3">
-                        <label :class="label" for="cod_plano">Plano <span class="text-red-600" aria-hidden="true">*</span></label>
-                        <select id="cod_plano" v-model="form.cod_plano" :class="input(form.errors.cod_plano)"
-                            :aria-invalid="!!form.errors.cod_plano" aria-describedby="cod_plano-erro" required>
-                            <option value="" disabled>Selecione um plano</option>
-                            <option v-for="plano in planos" :key="plano.value" :value="plano.value">{{ plano.label }}</option>
-                        </select>
-                        <p v-if="form.errors.cod_plano" id="cod_plano-erro" :class="erro">
-                            <AlertCircle class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{{ form.errors.cod_plano }}
-                        </p>
-                    </div>
-                </fieldset>
+                <div class="min-w-0 md:col-span-6 xl:col-span-6">
+                    <label :class="label" for="planos_meta">Planos que contam <span class="text-red-600" aria-hidden="true">*</span></label>
+                    <SeletorMultiploModal id="planos_meta" v-model="planosEscolhidos" :items="planos" placeholder="Escolher planos"
+                        titulo="Planos que contam" descricao="Marque os planos cujos registros contam para a meta. Todos marcados vale também para planos novos."
+                        busca-placeholder="Buscar plano..." vazio="Nenhum plano encontrado." rotulo-todos="Todos os planos"
+                        :error="form.errors.cod_planos || form.errors.escopo_plano" aria-describedby="planos_meta-ajuda planos_meta-erro" />
+                    <p id="planos_meta-ajuda" class="mt-1 text-sm text-gray-600">Planos habilitados para este parceiro.</p>
+                    <p v-if="form.errors.cod_planos || form.errors.escopo_plano" id="planos_meta-erro" :class="erro">
+                        <AlertCircle class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{{ form.errors.cod_planos || form.errors.escopo_plano }}
+                    </p>
+                </div>
 
                 <fieldset class="min-w-0 md:col-span-6 xl:col-span-6" aria-describedby="tipo-ajuda">
                     <legend :class="label">Tipo de meta <span class="text-red-600" aria-hidden="true">*</span></legend>

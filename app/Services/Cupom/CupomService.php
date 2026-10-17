@@ -63,6 +63,7 @@ class CupomService
                 'valor_minimo' => $dados['valor_minimo'] ?? 0,
                 'aplicavel_a' => $dados['aplicavel_a'],
                 'observacoes' => $dados['observacoes'] ?? null,
+                'texto_desconto' => filled($dados['texto_desconto'] ?? null) ? trim($dados['texto_desconto']) : null,
             ];
 
             if (! $cupom) {
@@ -171,6 +172,7 @@ class CupomService
             'expira_formatado' => Formatar::dataHora($cupom->expira_em),
             'atualizado_em' => Formatar::dataHora($cupom->updated_at),
             'observacoes' => $cupom->observacoes,
+            'texto_desconto' => $cupom->texto_desconto,
             'criado_por' => $cupom->criado_por_nome,
             'criado_em' => Formatar::dataHora($cupom->created_at),
         ];
