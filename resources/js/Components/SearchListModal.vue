@@ -139,7 +139,7 @@ const confirmarEscolha = () => {
                         {{ item.label }}
                     </span>
                     <span class="flex items-center gap-2 shrink-0">
-                        <span v-if="item.hint" class="text-xs text-gray-400">{{ item.hint }}</span>
+                        <span v-if="item.hint" class="text-xs text-gray-600">{{ item.hint }}</span>
                         <Check v-if="isMarcado(item)" class="w-4 h-4 text-cyan-600" />
                     </span>
                 </button>

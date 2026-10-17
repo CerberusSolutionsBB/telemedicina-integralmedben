@@ -9,6 +9,9 @@ import {
     UserPlus,
     LayoutDashboard,
     Ticket,
+    Briefcase,
+    Handshake,
+    TicketPercent,
 } from "lucide-vue-next";
 import { computed } from "vue";
 import AdminShell from "@/Components/Layout/AdminShell.vue";
@@ -55,6 +58,9 @@ const navLinks = computed(() => [
         ? [{ grupo: "Beneficiários", label: "Cupons", routeName: "cupons.index", match: "cupons.*", icon: Ticket }]
         : []),
     ...(aclLink.value ? [aclLink.value] : []),
+    { grupo: "Administração", label: "Serviços", routeName: "servicos.index", match: "servicos.*", icon: Briefcase },
+    { grupo: "Administração", label: "Convênios", routeName: "convenios.index", match: "convenios.*", icon: Handshake },
+    { grupo: "Administração", label: "Cupons de benefício", routeName: "cupons-beneficio.index", match: "cupons-beneficio.*", icon: TicketPercent },
     { grupo: "Administração", label: "Configurações", routeName: "configuracao.index", icon: Settings },
 ]);
 
