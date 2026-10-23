@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\TenantsDetail;
 use App\Support\BeneficiarioPermissoes;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaginaBeneficiarioController extends Controller
 {
@@ -16,13 +17,32 @@ class PaginaBeneficiarioController extends Controller
     public function update(Request $request, Tenant $tenant)
     {
         $regras = collect(BeneficiarioPermissoes::ACOES)->map(fn () => ['required', 'boolean'])->all();
-        $permissoes = array_map('boolval', $request->validate($regras));
+        $validator = validator($request->all(), $regras);
+
+        if ($validator->fails()) {
+            Log::warning('Permissões de beneficiário recusadas', [
+                'tenant_id' => $tenant->id,
+                'user_id' => $request->user()?->id,
+                'erros' => $validator->errors()->toArray(),
+                'recebido' => $request->all(),
+            ]);
+        }
+
+        $permissoes = array_map('boolval', $validator->validate());
 
         $detail = TenantsDetail::firstOrCreate(['tenant_id' => $tenant->id]);
+        $antes = BeneficiarioPermissoes::doTenant($tenant->id);
         $detail->update(['configuracao' => [
             ...($detail->configuracao ?? []),
             BeneficiarioPermissoes::CHAVE => $permissoes,
         ]]);
+
+        Log::info('Permissões de beneficiário atualizadas', [
+            'tenant_id' => $tenant->id,
+            'user_id' => $request->user()?->id,
+            'antes' => $antes,
+            'depois' => $permissoes,
+        ]);
 
         return redirect()
             ->route('pagina.show', $tenant->id)
