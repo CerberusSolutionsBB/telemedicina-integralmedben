@@ -15,6 +15,7 @@ class TenantAuthController extends Controller
 
         return Inertia::render('Tenant/Login', [
             'tenant_status' => $tenant?->status ?? true,
+            'status' => session('status'),
         ]);
     }
 
