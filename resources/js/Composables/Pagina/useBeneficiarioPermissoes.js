@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/vue3'
 import { showToast } from '@/Utils/toast'
+import { firstError } from './helpers'
 
 // Ações do CRUD de beneficiários (mesmas chaves de BeneficiarioPermissoes::ACOES).
 export const ACOES_BENEFICIARIO = [
@@ -13,7 +14,11 @@ export const ACOES_BENEFICIARIO = [
  * Aba Beneficiário: quais ações do CRUD o parceiro pode usar.
  */
 export function useBeneficiarioPermissoes(props) {
-    const form = useForm({ create: true, edit: false, delete: false, status: false, ...props.permissoes })
+    // Aninhado em "permissoes": no topo do useForm a chave "delete" é sobrescrita
+    // pelo método form.delete() e some do envio. O transform manda o formato plano.
+    const form = useForm({
+        permissoes: { create: true, edit: false, delete: false, status: false, ...props.permissoes },
+    }).transform((data) => data.permissoes)
 
     const salvar = () => {
         form.put(route('pagina.configuracao.beneficiario', props.tenantId), {
@@ -22,7 +27,10 @@ export function useBeneficiarioPermissoes(props) {
                 form.defaults()
                 showToast('Permissões de beneficiário atualizadas!', 'success')
             },
-            onError: () => showToast('Erro ao salvar as permissões.', 'error'),
+            onError: (errors) => {
+                console.error('Erro ao salvar as permissões de beneficiário', errors)
+                showToast(firstError(errors, 'Erro ao salvar as permissões.'), 'error')
+            },
         })
     }
 
