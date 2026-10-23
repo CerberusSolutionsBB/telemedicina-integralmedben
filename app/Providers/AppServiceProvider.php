@@ -6,10 +6,15 @@ use App\Http\Services\ExternalApi\ClubeBeneficiosService;
 use App\Http\Services\ExternalApi\SiprovExternalService;
 use App\Http\Services\ExternalApi\TelemedicinaService;
 use App\Notifications\NotificationDispatcher;
+use App\Services\Siprov\SiprovIntegrationService;
+use App\Services\SmsSenderService;
 use App\Services\Tenant\TenantPublicService;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
+use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(NotificationDispatcher::class, function () {
             return new NotificationDispatcher(
-                app(\App\Services\SmsSenderService::class),
+                app(SmsSenderService::class),
             );
         });
 
@@ -38,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(SiprovExternalService::class, function () {
             return new SiprovExternalService(
-                app(\App\Services\Siprov\SiprovIntegrationService::class),
+                app(SiprovIntegrationService::class),
             );
         });
     }
@@ -47,7 +52,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
-        \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::$onFail = function ($e, $request, $next) {
+        $this->configurarEmailRedefinicaoSenha();
+
+        InitializeTenancyByDomain::$onFail = function ($e, $request, $next) {
             return $next($request);
         };
 
@@ -158,5 +165,33 @@ class AppServiceProvider extends ServiceProvider
             // CSRF
             'csrf_token' => fn () => csrf_token(),
         ]);
+    }
+
+    /**
+     * Link de redefinição no domínio de quem pediu (painel central ou parceiro) e e-mail em português.
+     */
+    private function configurarEmailRedefinicaoSenha(): void
+    {
+        ResetPassword::createUrlUsing(function ($user, string $token) {
+            $rota = tenancy()->initialized ? 'tenant.password.reset' : 'password.reset';
+
+            return route($rota, ['token' => $token, 'email' => $user->getEmailForPasswordReset()]);
+        });
+
+        ResetPassword::toMailUsing(function ($user, string $token) {
+            $remetente = app(TenantPublicService::class)->current()['descricao'] ?? config('mail.from.name');
+            // Painel do parceiro: logo dele (se cadastrado); painel central ou parceiro sem logo: MEDBEM.
+            $logoParceiro = tenancy()->initialized ? tenant()?->caminhoArquivoLogo() : null;
+
+            return (new MailMessage)
+                ->subject("Redefinição de senha - {$remetente}")
+                ->view(['emails.redefinir-senha', 'emails.redefinir-senha-texto'], [
+                    'remetente' => $remetente,
+                    'logo' => $logoParceiro ?? public_path('images/logo-med-ben-email.jpg'),
+                    'nome' => $user->name,
+                    'url' => (ResetPassword::$createUrlCallback)($user, $token),
+                    'expira' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire'),
+                ]);
+        });
     }
 }

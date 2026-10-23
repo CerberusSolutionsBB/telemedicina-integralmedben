@@ -16,6 +16,7 @@ use App\Http\Controllers\Tenant\Form\FormShowController;
 use App\Http\Controllers\Tenant\Relatorio\RelatorioProducaoController;
 use App\Http\Controllers\Tenant\ServicoController;
 use App\Http\Controllers\Tenant\TenantAuthController;
+use App\Http\Controllers\Tenant\TenantPasswordResetController;
 use App\Http\Controllers\Tenant\UserController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,13 @@ Route::middleware([
     Route::get('/public-form', [PublicFormController::class, 'showLoginForm'])->name('public_form.store');
     Route::get('/admin/login', [TenantAuthController::class, 'showLoginForm'])->name('tenant.login');
     Route::post('/admin/login', [TenantAuthController::class, 'login']);
+
+    Route::middleware('guest')->prefix('admin')->name('tenant.password.')->controller(TenantPasswordResetController::class)->group(function () {
+        Route::get('/forgot-password', 'create')->name('request');
+        Route::post('/forgot-password', 'store')->middleware('throttle:6,1')->name('email');
+        Route::get('/reset-password/{token}', 'edit')->name('reset');
+        Route::post('/reset-password', 'update')->middleware('throttle:6,1')->name('store');
+    });
 
     Route::middleware('auth')->group(function () {
         Route::post('/admin/logout', [TenantAuthController::class, 'logout'])->name('tenant.logout');

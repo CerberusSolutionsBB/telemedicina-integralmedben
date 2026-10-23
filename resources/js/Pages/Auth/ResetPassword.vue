@@ -2,30 +2,37 @@
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import PasswordInput from '@/Components/PasswordInput.vue';
+import { Button } from '@/Components/ui/button';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ArrowLeft } from 'lucide-vue-next';
 
+// Usada pelo painel central e pelo parceiro: `rotas` diz para onde postar e voltar.
 const props = defineProps({
     email: {
         type: String,
-        required: true,
+        default: '',
     },
     token: {
         type: String,
         required: true,
     },
+    rotas: {
+        type: Object,
+        default: () => ({ store: 'password.store', login: 'login' }),
+    },
 });
 
 const form = useForm({
     token: props.token,
-    email: props.email,
+    email: props.email ?? '',
     password: '',
     password_confirmation: '',
 });
 
 const submit = () => {
-    form.post(route('password.store'), {
+    form.post(route(props.rotas.store), {
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 };
@@ -33,68 +40,37 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Reset Password" />
+        <Head title="Redefinir senha" />
 
-        <form @submit.prevent="submit">
+        <div class="mb-6 text-center">
+            <h1 class="text-2xl font-bold tracking-tight text-foreground">Criar nova senha</h1>
+            <p class="mt-2 text-sm text-muted-foreground">Use pelo menos 8 caracteres.</p>
+        </div>
+
+        <form @submit.prevent="submit" class="space-y-5">
             <div>
-                <InputLabel for="email" value="Email" />
-
-                <TextInput
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    v-model="form.email"
-                    required
-                    autofocus
-                    autocomplete="username"
-                />
-
+                <InputLabel for="email" value="E-mail" />
+                <TextInput id="email" type="email" class="mt-1 block w-full" v-model="form.email" required
+                    autocomplete="username" />
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+            <PasswordInput id="password" label="Nova senha" placeholder="Digite a nova senha" v-model="form.password"
+                required :error="form.errors.password" />
 
-                <TextInput
-                    id="password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password"
-                    required
-                    autocomplete="new-password"
-                />
+            <PasswordInput id="password_confirmation" label="Confirmar nova senha" placeholder="Repita a nova senha"
+                v-model="form.password_confirmation" required :error="form.errors.password_confirmation" />
 
-                <InputError class="mt-2" :message="form.errors.password" />
-            </div>
+            <Button type="submit" size="lg" class="w-full justify-center bg-primary hover:bg-primary-hover focus-visible:ring-primary" :disabled="form.processing">
+                {{ form.processing ? 'Salvando...' : 'Redefinir senha' }}
+            </Button>
 
-            <div class="mt-4">
-                <InputLabel
-                    for="password_confirmation"
-                    value="Confirm Password"
-                />
-
-                <TextInput
-                    id="password_confirmation"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password_confirmation"
-                    required
-                    autocomplete="new-password"
-                />
-
-                <InputError
-                    class="mt-2"
-                    :message="form.errors.password_confirmation"
-                />
-            </div>
-
-            <div class="mt-4 flex items-center justify-end">
-                <PrimaryButton
-                    :class="{ 'opacity-25': form.processing }"
-                    :disabled="form.processing"
-                >
-                    Reset Password
-                </PrimaryButton>
+            <div class="text-center">
+                <Link :href="route(rotas.login)"
+                    class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                    <ArrowLeft class="h-4 w-4" />
+                    Voltar para o login
+                </Link>
             </div>
         </form>
     </GuestLayout>

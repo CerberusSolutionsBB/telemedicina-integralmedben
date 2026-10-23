@@ -9,11 +9,16 @@ import TextInput from '@/Components/TextInput.vue';
 import PasswordInput from '@/Components/PasswordInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import { AlertTriangle } from 'lucide-vue-next';
+import { useLogoRecortado } from '@/Composables/Layout/useLogoRecortado';
 
 const props = defineProps({
     tenant_status: {
         type: Boolean,
         default: true,
+    },
+    status: {
+        type: String,
+        default: null,
     },
 });
 
@@ -35,6 +40,9 @@ const canSubmit = computed(() => {
 });
 
 const tenantPublic = computed(() => page.props.tenant_public ?? {})
+// Mesmo recorte de margens usado na sidebar do painel do parceiro.
+const logo = useLogoRecortado(computed(() => tenantPublic.value?.logo));
+const logoFalhou = ref(false);
 
 const submit = () => {
     if (!canSubmit.value) return;
@@ -60,9 +68,13 @@ const submit = () => {
 
         <!-- Header -->
         <div class="mb-8 text-center">
-            <div class="inline-flex items-center justify-center w-16 h-16
-                        bg-gradient-to-br from-cyan-500 to-cyan-600
-                        rounded-2xl mb-4 shadow-lg shadow-cyan-500/30">
+            <!-- Logo do parceiro no lugar do ícone; sem logo (ou se falhar ao carregar), fica o ícone. -->
+            <img v-if="logo && !logoFalhou" :src="logo" :alt="tenantPublic?.descricao || 'Logo do parceiro'"
+                class="mx-auto mb-4 block h-auto max-h-24 w-auto max-w-[240px] object-contain"
+                @error="logoFalhou = true" />
+            <div v-else class="inline-flex items-center justify-center w-16 h-16
+                        bg-gradient-to-br from-primary to-primary-hover
+                        rounded-2xl mb-4 shadow-lg shadow-primary/30">
                 <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -77,6 +89,11 @@ const submit = () => {
             <p class="mt-1 text-sm text-gray-500">
                 Acesse o painel de controle
             </p>
+        </div>
+
+        <!-- Sucesso (ex.: senha redefinida) -->
+        <div v-if="status" role="status" class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p class="text-sm font-medium text-green-800">{{ status }}</p>
         </div>
 
         <!-- Erro global -->
@@ -111,14 +128,14 @@ const submit = () => {
                     <TextInput id="email" type="email" v-model="form.email" required autofocus autocomplete="username"
                         placeholder="admin@exemplo.com" :class="[
                             'block w-full px-4 py-3 rounded-lg border transition-all duration-200',
-                            'focus:ring-2 focus:ring-cyan-500 focus:border-transparent',
+                            'focus:ring-2 focus:ring-primary focus:border-transparent',
                             form.errors.email
                                 ? 'border-red-300 focus:ring-red-500 bg-red-50'
                                 : 'border-gray-300 hover:border-gray-400',
-                            isValidEmail === true ? 'border-green-300 focus:ring-green-500' : ''
+                            isValidEmail === true ? 'border-primary focus:ring-primary' : ''
                         ]" />
                     <div v-if="isValidEmail === true" class="absolute right-3 top-1/2 -translate-y-1/2">
-                        <svg class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                     </div>
@@ -136,7 +153,7 @@ const submit = () => {
                 <PasswordInput id="password" v-model="form.password" placeholder="Digite sua senha" required
                     :error="form.errors.password" :input-class="[
                         'block w-full px-4 py-3 rounded-lg border transition-all duration-200',
-                        'focus:ring-2 focus:ring-cyan-500 focus:border-transparent',
+                        'focus:ring-2 focus:ring-primary focus:border-transparent',
                         'border-gray-300 hover:border-gray-400'
                     ].join(' ')" :input-error-class="[
                         'block w-full px-4 py-3 rounded-lg border transition-all duration-200',
@@ -145,13 +162,20 @@ const submit = () => {
                     ].join(' ')" />
             </div>
 
-            <!-- Lembrar-me -->
-            <div class="flex items-center">
-                <Checkbox id="remember" v-model:checked="form.remember"
-                    class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500" />
-                <label for="remember" class="ml-2 text-sm text-gray-600 cursor-pointer select-none">
-                    Manter conectado neste dispositivo
-                </label>
+            <!-- Lembrar-me / Esqueci a senha -->
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center">
+                    <Checkbox id="remember" v-model:checked="form.remember"
+                        class="rounded border-gray-300 text-primary focus:ring-primary" />
+                    <label for="remember" class="ml-2 text-sm text-gray-600 cursor-pointer select-none">
+                        Manter conectado neste dispositivo
+                    </label>
+                </div>
+
+                <Link :href="route('tenant.password.request')"
+                    class="text-sm font-medium text-primary hover:text-primary-hover hover:underline">
+                    Esqueceu a senha?
+                </Link>
             </div>
 
             <!-- Submit -->
@@ -159,7 +183,7 @@ const submit = () => {
                 <Button type="submit" variant="primary" size="lg" class="w-full justify-center" :disabled="!canSubmit"
                     :class="[
                         'transition-all duration-200',
-                        !canSubmit ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg hover:shadow-cyan-500/25'
+                        !canSubmit ? 'opacity-50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover hover:shadow-lg hover:shadow-primary/25'
                     ]">
                     <svg v-if="isLoading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none"
                         viewBox="0 0 24 24">
