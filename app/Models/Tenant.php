@@ -93,6 +93,17 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         ]);
     }
 
+    /**
+     * Caminho absoluto do arquivo de logo (ex.: para anexar inline em e-mail), ou null se não houver.
+     */
+    public function caminhoArquivoLogo(): ?string
+    {
+        $logo = $this->details()->value('logo');
+        $path = $logo ? $this->resolveLogoPath($logo) : null;
+
+        return $path ? Storage::disk('tenants')->path($path) : null;
+    }
+
     public function resolveLogoPath(string $fileName): ?string
     {
         foreach ($this->logoPathCandidates($fileName) as $candidate) {
