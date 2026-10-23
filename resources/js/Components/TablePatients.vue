@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
-import { FileText, FileDown, Download, Pencil, Trash2, Eye, Search, CreditCard, Sparkles } from "lucide-vue-next";
+import { FileText, FileDown, Download, Pencil, Trash2, Eye, Search, CreditCard, Sparkles, Power } from "lucide-vue-next";
 import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal.vue";
 import { showToast } from "@/Utils/toast";
 import {
@@ -43,7 +43,20 @@ const props = defineProps({
 const emit = defineEmits(["delete-patient"]);
 
 const page = usePage();
-const { podeEditar, podeExcluir } = usePermissoesBeneficiario();
+const { podeEditar, podeExcluir, podeAlterarStatus } = usePermissoesBeneficiario();
+
+// Ativa/inativa o beneficiário direto da listagem ("Alterar status" habilitado para o parceiro).
+const alterandoStatus = ref(null);
+const alternarStatus = (patient) => {
+    if (!podeAlterarStatus.value) return;
+    alterandoStatus.value = patient.id;
+    router.patch(route("patients.toggle-status", patient.id), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onError: () => showToast("Erro ao alterar o status.", "error"),
+        onFinish: () => (alterandoStatus.value = null),
+    });
+};
 
 const queryParams = computed(() => {
     const params = new URLSearchParams(page.url?.split('?')[1] || '');
@@ -277,6 +290,21 @@ const confirmGerarCartaoDinamico = async () => {
         cartaoDinamicoModal.value.isProcessing = false;
         closeCartaoDinamicoModal();
     }
+};
+
+const botaoAcaoClasses = (ativo = true) => [
+    'p-1.5 rounded-lg transition-all',
+    ativo ? 'text-gray-400 hover:text-cyan-600 hover:bg-cyan-50' : 'text-gray-300 cursor-not-allowed opacity-50',
+];
+
+const clickEditar = (patient) => {
+    if (!podeEditar.value) return;
+    router.visit(route('patients.edit', patient.id));
+};
+
+const clickExcluir = (patient) => {
+    if (!podeExcluir.value) return;
+    emit('delete-patient', patient);
 };
 </script>
 
@@ -530,15 +558,23 @@ const confirmGerarCartaoDinamico = async () => {
                                         title="PDF">
                                         <FileText class="w-4 h-4" />
                                     </a>
-                                    <button v-if="podeEditar" @click="router.visit(route('patients.edit', patient.id))"
-                                        class="p-1.5 rounded-lg text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 transition-all"
-                                        title="Editar">
+                                    <button type="button" :disabled="!podeEditar"
+                                        :class="botaoAcaoClasses(podeEditar)"
+                                        @click="clickEditar(patient)"
+                                        :title="podeEditar ? 'Editar' : 'Você não tem permissão para editar'">
                                         <Pencil class="w-4 h-4" />
                                     </button>
-                                    <button v-if="podeExcluir" @click="emit('delete-patient', patient)"
-                                        class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                                        title="Excluir">
+                                    <button type="button" :disabled="!podeExcluir"
+                                        :class="botaoAcaoClasses(podeExcluir)"
+                                        @click="clickExcluir(patient)"
+                                        :title="podeExcluir ? 'Excluir' : 'Você não tem permissão para excluir'">
                                         <Trash2 class="w-4 h-4" />
+                                    </button>
+                                    <button type="button" :disabled="!podeAlterarStatus || alterandoStatus === patient.id"
+                                        :class="botaoAcaoClasses(podeAlterarStatus)"
+                                        @click="alternarStatus(patient)"
+                                        :title="podeAlterarStatus ? (patient.status ? 'Inativar' : 'Ativar') : 'Você não tem permissão para alterar o status'">
+                                        <Power class="w-4 h-4" />
                                     </button>
                                 </div>
                             </TableCell>
