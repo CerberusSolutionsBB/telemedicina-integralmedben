@@ -55,6 +55,7 @@ class TenantAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('tenant.logout');
+        // tenant.logout só aceita POST; redirecionar para ela dava 405 ao sair.
+        return redirect()->route('tenant.login');
     }
 }
