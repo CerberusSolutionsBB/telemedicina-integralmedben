@@ -12,6 +12,7 @@ import {
     Briefcase,
     Handshake,
     TicketPercent,
+    Workflow,
 } from "lucide-vue-next";
 import { computed } from "vue";
 import AdminShell from "@/Components/Layout/AdminShell.vue";
@@ -52,6 +53,7 @@ const MODULOS_MENU = [
     { modulo: "servicos", grupo: "Administração", label: "Serviços", routeName: "servicos.index", match: "servicos.*", icon: Briefcase },
     { modulo: "convenios", grupo: "Administração", label: "Convênios", routeName: "convenios.index", match: "convenios.*", icon: Handshake },
     { modulo: "cupons_beneficio", grupo: "Administração", label: "Cupons de benefício", routeName: "cupons-beneficio.index", match: "cupons-beneficio.*", icon: TicketPercent },
+    { modulo: "processos", grupo: "Administração", label: "Processos", routeName: "processos.index", match: "processos.*", icon: Workflow },
 ];
 const modulosLigados = computed(() => MODULOS_MENU.filter((item) => page.props.modulosParceiro?.[item.modulo]));
 

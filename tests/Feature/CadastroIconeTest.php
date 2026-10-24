@@ -2,16 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Tenant\CupomBeneficioController;
+use App\Http\Controllers\Tenant\ProcessoController;
 use App\Http\Requests\CadastroIconeRequest;
 use App\Http\Requests\CupomBeneficioRequest;
+use App\Http\Requests\ProcessoRequest;
 use App\Models\Audit;
 use App\Models\Convenio;
 use App\Models\CupomBeneficio;
+use App\Models\Processo;
 use App\Models\Servico;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Tenant\CadastroIconeService;
 use App\Services\Tenant\CupomBeneficioPdfService;
+use App\Services\Tenant\ProcessoCupomService;
 use App\Support\IconesLucide;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +25,7 @@ use Illuminate\Routing\Route;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -37,13 +43,16 @@ class CadastroIconeTest extends TestCase
         'database/migrations/tenant/2026_10_16_223027_create_convenios_table.php',
         'database/migrations/tenant/2026_10_16_224720_create_cupom_beneficios_table.php',
         'database/migrations/tenant/2026_10_16_232140_add_codigo_to_cupom_beneficios_table.php',
+        'database/migrations/tenant/2026_10_23_000000_create_processos_table.php',
+        'database/migrations/tenant/2026_10_23_000001_create_processos_servicos_table.php',
+        'database/migrations/tenant/2026_10_23_000002_create_processos_cupons_usos_table.php',
     ];
 
     // As tabelas ficam nas migrations do tenant: recria o banco de teste incluindo-as
     // (DDL no setUp confirmaria a transação do teste no MySQL).
     protected function beforeRefreshingDatabase()
     {
-        if (RefreshDatabaseState::$migrated && ! Schema::hasColumn('cupom_beneficios', 'codigo')) {
+        if (RefreshDatabaseState::$migrated && (! Schema::hasColumn('cupom_beneficios', 'codigo') || ! Schema::hasTable('processos_cupons_usos'))) {
             RefreshDatabaseState::$migrated = false;
         }
     }
@@ -229,6 +238,185 @@ class CadastroIconeTest extends TestCase
         $convenio->delete();
     }
 
+    public function test_regras_do_processo(): void
+    {
+        $regras = (new ProcessoRequest)->rules();
+        $base = ['titulo' => 'Abertura de prontuário', 'icone' => 'Workflow', 'status' => true, 'campo_status' => false, 'valor' => 150];
+
+        $this->assertTrue(Validator::make($base, $regras)->passes());
+        $this->assertTrue(Validator::make([...$base, 'valor' => 0], $regras)->passes(), 'Processo sem custo vale.');
+
+        $erros = Validator::make([...$base, 'valor' => -1, 'campo_status' => 'talvez'], $regras)->errors();
+        $this->assertTrue($erros->has('valor'));
+        $this->assertTrue($erros->has('campo_status'));
+        $this->assertTrue(Validator::make(array_diff_key($base, ['valor' => 0]), $regras)->errors()->has('valor'));
+    }
+
+    public function test_processo_comeca_sem_campos_e_mostra_valor_no_historico(): void
+    {
+        config(['audit.console' => true]);
+
+        $processo = Processo::create(['titulo' => 'Abertura', 'icone' => 'Workflow', 'status' => true, 'valor' => 150])->fresh();
+        $this->assertFalse($processo->campo_status, 'Campos personalizados começam desligados.');
+        $this->assertSame('R$ 150,00', $processo->valorFormatado());
+
+        $processo->update(['valor' => 1234.5, 'campo_status' => true]);
+        Audit::query()->update(['tags' => 'tenant:parceiro-x']);
+
+        $controller = app(ProcessoController::class);
+        $historico = app(CadastroIconeService::class)->historico(
+            $processo,
+            'parceiro-x',
+            (fn () => $this->camposHistorico())->call($controller),
+            fn (string $campo, mixed $valor) => (fn () => $this->valorHistorico($campo, $valor))->call($controller),
+        );
+
+        $this->assertContains(['campo' => 'Valor', 'antes' => 'R$ 150,00', 'depois' => 'R$ 1.234,50'], $historico[0]['alteracoes']);
+        $this->assertContains(['campo' => 'Campos personalizados', 'antes' => 'Desligados', 'depois' => 'Ligados'], $historico[0]['alteracoes']);
+    }
+
+    public function test_servicos_do_processo_sincronizam_e_ficam_no_historico(): void
+    {
+        config(['audit.console' => true]);
+        $tele = Servico::create(['titulo' => 'Teleconsulta', 'icone' => 'Video', 'status' => true]);
+        $exame = Servico::create(['titulo' => 'Exames', 'icone' => 'Microscope', 'status' => true]);
+
+        $regras = (new ProcessoRequest)->rules();
+        $base = ['titulo' => 'Abertura', 'icone' => 'Workflow', 'status' => true, 'campo_status' => false, 'valor' => 0];
+        $this->assertTrue(Validator::make([...$base, 'servicos' => [$tele->id, $exame->id]], $regras)->passes());
+        $this->assertTrue(Validator::make($base, $regras)->passes(), 'Serviços são opcionais.');
+        $this->assertTrue(Validator::make([...$base, 'servicos' => [999]], $regras)->errors()->has('servicos.0'));
+        $this->assertTrue(Validator::make([...$base, 'servicos' => [$tele->id, $tele->id]], $regras)->errors()->has('servicos.0'));
+
+        $controller = app(ProcessoController::class);
+        $salvar = fn (Processo $processo, array $ids) => (fn () => $this->salvarRelacoes($processo, ['servicos' => $ids]))->call($controller);
+
+        $processo = Processo::create($base);
+        $salvar($processo, [$tele->id, $exame->id]);
+        $this->assertSame(['Exames', 'Teleconsulta'], $processo->servicos()->pluck('titulo')->all());
+
+        // Mesma escolha (em outra ordem): não grava auditoria nova.
+        $total = Audit::where('event', 'sync')->count();
+        $salvar($processo, [$exame->id, $tele->id]);
+        $this->assertSame($total, Audit::where('event', 'sync')->count());
+
+        $salvar($processo, [$exame->id]);
+        Audit::query()->update(['tags' => 'tenant:parceiro-x']);
+
+        $historico = app(CadastroIconeService::class)->historico(
+            $processo,
+            'parceiro-x',
+            (fn () => $this->camposHistorico())->call($controller),
+            fn (string $campo, mixed $valor) => (fn () => $this->valorHistorico($campo, $valor))->call($controller),
+        );
+
+        $this->assertSame('Vínculos alterados', $historico[0]['evento']);
+        $this->assertSame([['campo' => 'Serviços', 'antes' => 'Teleconsulta', 'depois' => '—']], $historico[0]['alteracoes']);
+        $this->assertSame([['campo' => 'Serviços', 'antes' => '—', 'depois' => 'Exames, Teleconsulta']], $historico[1]['alteracoes']);
+
+        // Serviço vinculado a um processo não é excluído.
+        $this->expectException(QueryException::class);
+        $exame->delete();
+    }
+
+    public function test_itens_do_cupom_no_formato_da_lista(): void
+    {
+        $convenio = Convenio::create(['titulo' => 'Farmácia', 'icone' => 'Pill', 'status' => true]);
+        CupomBeneficio::create(['codigo' => 'ZETA10', 'titulo' => 'Zeta', 'icone' => 'Pill', 'status' => true, 'convenio_id' => $convenio->id, 'tipo_desconto' => 'percentual', 'valor_desconto' => 10]);
+        CupomBeneficio::create(['codigo' => 'ALFA30', 'titulo' => 'Alfa', 'icone' => 'Pill', 'status' => false, 'convenio_id' => $convenio->id, 'tipo_desconto' => 'valor_fixo', 'valor_desconto' => 30]);
+
+        // Mesma lista da tela do módulo, usada também na aba "Cupons de benefício" do Relatório.
+        $itens = app(CupomBeneficioController::class)->itens();
+
+        $this->assertSame(['Alfa', 'Zeta'], $itens->pluck('titulo')->all());
+        $this->assertSame(['ALFA30', 'R$ 30,00', false], [$itens[0]['codigo'], $itens[0]['desconto'], $itens[0]['status']]);
+        $this->assertSame(['titulo' => 'Farmácia', 'icone' => 'Pill'], $itens[1]['convenio']);
+    }
+
+    public function test_cupom_de_beneficio_aplicado_ao_processo(): void
+    {
+        Carbon::setTestNow('2026-10-23 12:00:00');
+        $tele = Servico::create(['titulo' => 'Teleconsulta', 'icone' => 'Video', 'status' => true]);
+        $exame = Servico::create(['titulo' => 'Exames', 'icone' => 'Microscope', 'status' => true]);
+        $convenio = Convenio::create(['titulo' => 'Farmácia', 'icone' => 'Pill', 'status' => true]);
+        $processo = Processo::create(['titulo' => 'Abertura', 'icone' => 'Workflow', 'status' => true, 'valor' => 200]);
+        $processo->servicos()->attach($tele);
+
+        $cupom = fn (array $dados) => CupomBeneficio::create([
+            'titulo' => 'Cupom', 'icone' => 'Ticket', 'status' => true, 'servico_id' => $tele->id, 'tipo_desconto' => 'percentual', 'valor_desconto' => 15, ...$dados,
+        ]);
+        $aplicar = fn (string $codigo) => app(ProcessoCupomService::class)->aplicar($processo, $codigo);
+        $erro = function (string $codigo) use ($aplicar): string {
+            try {
+                $aplicar($codigo);
+            } catch (ValidationException $e) {
+                return $e->errors()['cupom'][0];
+            }
+            $this->fail("O cupom {$codigo} deveria ser recusado.");
+        };
+
+        $cupom(['codigo' => 'TELE15', 'cod_plano' => '331385']);
+        // Código digitado em minúsculas e com espaço vale.
+        $calculo = $aplicar('tele 15');
+        $this->assertSame([200.0, 30.0, 170.0, '15%', 'Clínica Familiar'], [$calculo['valor_original'], $calculo['desconto'], $calculo['valor_final'], $calculo['desconto_texto'], $calculo['plano']]);
+
+        // Valor fixo maior que o processo: o valor final não fica negativo.
+        $cupom(['codigo' => 'FIXO500', 'tipo_desconto' => 'valor_fixo', 'valor_desconto' => 500]);
+        $this->assertSame(0.0, $aplicar('FIXO500')['valor_final']);
+
+        $cupom(['codigo' => 'INATIVO', 'status' => false]);
+        $cupom(['codigo' => 'VENCIDO', 'prazo' => '2026-10-22']);
+        $cupom(['codigo' => 'EXAME10', 'servico_id' => $exame->id]);
+        $cupom(['codigo' => 'FARMA10', 'servico_id' => null, 'convenio_id' => $convenio->id]);
+
+        $this->assertSame('Cupom não encontrado. Confira o código.', $erro('NAOEXISTE'));
+        $this->assertSame('Este cupom está inativo.', $erro('INATIVO'));
+        $this->assertSame('Este cupom venceu em 22/10/2026.', $erro('VENCIDO'));
+        $this->assertSame('Teleconsulta', $calculo['servico'], 'Informa o serviço do cupom que está no processo.');
+        $this->assertSame('Este cupom é do serviço "Exames", que não faz parte deste processo (serviços do processo: Teleconsulta).', $erro('EXAME10'));
+        $this->assertSame('Este cupom é do convênio "Farmácia", não de um serviço.', $erro('FARMA10'));
+
+        // Processo sem serviços: nenhum cupom confere.
+        $processo->servicos()->detach();
+        $this->assertSame('Este processo não tem serviços vinculados. Edite o processo e vincule o serviço do cupom.', $erro('TELE15'));
+    }
+
+    public function test_uso_do_cupom_no_processo_fica_no_historico_com_quem_usou(): void
+    {
+        Carbon::setTestNow('2026-10-23 15:30:00');
+        $ana = User::factory()->create(['name' => 'Ana']);
+        $tele = Servico::create(['titulo' => 'Teleconsulta', 'icone' => 'Video', 'status' => true]);
+        $processo = Processo::create(['titulo' => 'Abertura', 'icone' => 'Workflow', 'status' => true, 'valor' => 200]);
+        $processo->servicos()->attach($tele);
+        $cupom = CupomBeneficio::create([
+            'codigo' => 'TELE15', 'titulo' => '15% na teleconsulta', 'icone' => 'Ticket', 'status' => true,
+            'servico_id' => $tele->id, 'tipo_desconto' => 'percentual', 'valor_desconto' => 15,
+        ]);
+        $servico = app(ProcessoCupomService::class);
+
+        $uso = $servico->registrar($processo, 'tele15', $ana);
+
+        $this->assertSame(
+            ['codigo' => 'TELE15', 'cupom_titulo' => '15% na teleconsulta', 'desconto_texto' => '15%', 'valor_original' => 200.0, 'desconto' => 30.0, 'valor_final' => 170.0, 'usuario' => 'Ana', 'data' => '23/10/2026 12:30'],
+            collect($servico->paraTela($uso))->except('id')->all(),
+        );
+
+        // Cupom recusado não grava uso.
+        $cupom->update(['status' => false]);
+        try {
+            $servico->registrar($processo, 'TELE15', $ana);
+            $this->fail('Cupom inativo deveria ser recusado.');
+        } catch (ValidationException) {
+        }
+        $this->assertSame(1, $processo->usosCupom()->count());
+
+        // Usuário e cupom excluídos depois: o histórico guarda nome e código.
+        $ana->delete();
+        $cupom->delete();
+        $historico = $servico->paraTela($processo->usosCupom()->first());
+        $this->assertSame(['TELE15', 'Ana', null], [$historico['codigo'], $historico['usuario'], $historico['cupom_titulo']]);
+    }
+
     /**
      * @return array<string, array{0: class-string}>
      */
@@ -238,6 +426,7 @@ class CadastroIconeTest extends TestCase
             'serviço' => [Servico::class],
             'convênio' => [Convenio::class],
             'cupom de benefício' => [CupomBeneficio::class],
+            'processo' => [Processo::class],
         ];
     }
 }

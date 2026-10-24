@@ -27,6 +27,10 @@ class ModulosParceiro
             'label' => 'Cupons de benefício',
             'descricao' => 'Descontos que o beneficiário usa nos convênios e serviços. Precisa de Convênios ou Serviços ligado.',
         ],
+        'processos' => [
+            'label' => 'Processos',
+            'descricao' => 'Cadastro dos processos do parceiro, com valor, campos personalizados e serviços vinculados.',
+        ],
     ];
 
     /**
