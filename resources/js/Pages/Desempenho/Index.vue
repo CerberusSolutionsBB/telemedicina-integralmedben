@@ -7,19 +7,29 @@ import { Button } from "@/Components/ui/button";
 import { useDesempenhoIndex } from "@/Composables/Desempenho/useDesempenhoIndex";
 import RelatorioProducao from "@/Components/Desempenho/RelatorioProducao.vue";
 import { useAbaAtiva } from "@/Composables/Pagina/useAbaAtiva";
-import { FileBarChart, Plus, Target } from "lucide-vue-next";
+import TabelaCadastroIcone from "@/Components/CadastroIcone/TabelaCadastroIcone.vue";
+import CupomBeneficioResumo from "@/Components/CupomBeneficio/CupomBeneficioResumo.vue";
+import ProcessoCupom from "@/Components/Processo/ProcessoCupom.vue";
+import { CUPONS_BENEFICIO, PROCESSOS } from "@/Composables/CadastroIcone/modulos";
+import { FileBarChart, Plus, Target, TicketPercent, Workflow } from "lucide-vue-next";
 
 const props = defineProps({
     desempenhos: { type: Array, default: () => [] },
     statusLabels: { type: Object, default: () => ({}) },
     // Opções do relatório de produção: { usuarios, perfis, planos, origens, padrao, maxDias }
     relatorioOpcoes: { type: Object, required: true },
+    // Cupons de benefício no formato da lista do módulo; null = módulo desligado (sem a aba).
+    cuponsBeneficio: { type: Array, default: null },
+    // Processos no formato da lista do módulo; null = módulo desligado (sem a aba).
+    processos: { type: Array, default: null },
 });
 
-// Seções da tela: Metas | Relatórios (persistida em ?secao=).
+// Seções da tela: Metas | Relatórios | Cupons de benefício | Processos (persistida em ?secao=).
 const secoes = [
     { key: "metas", label: "Metas", icon: Target },
     { key: "relatorios", label: "Relatórios", icon: FileBarChart },
+    ...(props.cuponsBeneficio ? [{ key: "cupons", label: "Cupons de benefício", icon: TicketPercent }] : []),
+    ...(props.processos ? [{ key: "processos", label: "Processos", icon: Workflow }] : []),
 ];
 const { activeTab: secao } = useAbaAtiva("relatorio:secao", secoes.map((s) => s.key), "metas", "secao");
 
@@ -50,10 +60,10 @@ const rotuloAba = (key) => (key === "todas" ? "Todas" : props.statusLabels[key])
                 <p class="text-sm text-gray-500">Acompanhe a produção da equipe e as metas de registro de beneficiários.</p>
             </div>
 
-            <nav class="flex gap-2 border-b border-gray-200" aria-label="Seções">
+            <nav class="flex gap-2 overflow-x-auto border-b border-gray-200" aria-label="Seções">
                 <button v-for="item in secoes" :key="item.key" type="button" @click="secao = item.key"
                     :aria-current="secao === item.key ? 'page' : undefined" :class="[
-                        'inline-flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors',
+                        'inline-flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors',
                         secao === item.key
                             ? 'border-cyan-500 text-cyan-700'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -64,6 +74,15 @@ const rotuloAba = (key) => (key === "todas" ? "Todas" : props.statusLabels[key])
             </nav>
 
             <RelatorioProducao v-if="secao === 'relatorios'" :opcoes="relatorioOpcoes" />
+
+            <TabelaCadastroIcone v-if="secao === 'cupons' && cuponsBeneficio" :modulo="CUPONS_BENEFICIO" :itens="cuponsBeneficio" visao-padrao="grade">
+                <template #resumo="{ item }"><CupomBeneficioResumo :item="item" /></template>
+            </TabelaCadastroIcone>
+
+            <!-- Processos em grade, com o código do cupom de benefício (só com o módulo de cupons ligado) -->
+            <TabelaCadastroIcone v-if="secao === 'processos' && processos" :modulo="PROCESSOS" :itens="processos" visao-padrao="grade">
+                <template v-if="cuponsBeneficio" #cartao="{ item }"><ProcessoCupom :processo="item" /></template>
+            </TabelaCadastroIcone>
 
             <div v-if="secao === 'metas'" class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
