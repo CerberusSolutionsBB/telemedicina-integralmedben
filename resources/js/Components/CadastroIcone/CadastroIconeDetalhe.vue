@@ -7,16 +7,33 @@ import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal.vue";
 import IconeLucide from "@/Components/Icone/IconeLucide.vue";
 import HistoricoAuditoria from "@/Components/CadastroIcone/HistoricoAuditoria.vue";
 import { useAcoesCadastroIcone } from "@/Composables/CadastroIcone/useAcoesCadastroIcone";
+import { useAbaAtiva } from "@/Composables/Pagina/useAbaAtiva";
 import { rotaDe } from "@/Composables/CadastroIcone/modulos";
-import { CheckCircle2, CircleOff, FileDown, Home, Pencil, Power, Trash2 } from "lucide-vue-next";
+import { CheckCircle2, CircleOff, FileDown, History, Home, LayoutList, Pencil, Power, Trash2 } from "lucide-vue-next";
 
-/** Tela de detalhe de um cadastro com ícone, com o histórico da auditoria. */
+/**
+ * Tela de detalhe de um cadastro com ícone, com o histórico da auditoria.
+ * Com `abas`, o conteúdo é dividido em abas (como na página do parceiro):
+ * Visão geral (slot detalhes + descrição) | abas do módulo (slot aba-<key>) | Histórico.
+ */
 const props = defineProps({
     modulo: { type: Object, required: true },
     breadcrumbs: { type: Array, required: true },
     item: { type: Object, required: true },
     historico: { type: Array, default: () => [] },
+    // Abas próprias do módulo entre "Visão geral" e "Histórico": [{ key, label, icon, contador? }].
+    // null = sem abas (tudo numa página só).
+    abas: { type: Array, default: null },
 });
+
+const todasAbas = computed(() => [
+    { key: "geral", label: "Visão geral", icon: LayoutList },
+    ...(props.abas ?? []),
+    { key: "historico", label: "Histórico", icon: History, contador: props.historico.length },
+]);
+
+// Aba aberta: ?aba= na URL e sessionStorage, por item.
+const { activeTab: aba } = useAbaAtiva(`${props.modulo.rota}:${props.item.id}:aba`, todasAbas.value.map((a) => a.key), "geral");
 
 const { pendente, acaoPendente, processando, pedir, fechar, confirmar } = useAcoesCadastroIcone(props.modulo);
 
@@ -78,15 +95,52 @@ const botao = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg
                 </div>
             </div>
 
-            <!-- Informações próprias do módulo (ex.: desconto, vínculos e prazo do cupom) -->
-            <slot name="detalhes" :item="item" />
+            <!-- Com abas: Visão geral | abas do módulo | Histórico -->
+            <template v-if="abas">
+                <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <div class="overflow-x-auto border-b border-gray-100 bg-gray-50/70 px-4 pt-4 md:px-6">
+                        <nav class="flex min-w-max gap-2 pb-3" aria-label="Seções">
+                            <button v-for="item_aba in todasAbas" :key="item_aba.key" type="button" @click="aba = item_aba.key"
+                                :aria-current="aba === item_aba.key ? 'page' : undefined"
+                                class="group flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl border px-4 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 motion-reduce:transition-none"
+                                :class="aba === item_aba.key
+                                    ? 'border-cyan-200 bg-white text-cyan-600 shadow-sm'
+                                    : 'border-transparent bg-transparent text-gray-600 hover:border-gray-200 hover:bg-white hover:text-gray-900'">
+                                <component :is="item_aba.icon" class="h-4 w-4 shrink-0" aria-hidden="true"
+                                    :class="aba === item_aba.key ? 'text-cyan-500' : 'text-gray-400 group-hover:text-gray-600'" />
+                                {{ item_aba.label }}
+                                <span v-if="item_aba.contador !== undefined" class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{{ item_aba.contador }}</span>
+                            </button>
+                        </nav>
+                    </div>
 
-            <section class="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-                <h2 class="text-base font-semibold text-gray-900">Descrição</h2>
-                <p class="mt-2 max-w-prose whitespace-pre-line text-base leading-relaxed text-gray-700">{{ item.descricao || 'Sem descrição.' }}</p>
-            </section>
+                    <div class="space-y-6 p-4 md:p-6">
+                        <template v-if="aba === 'geral'">
+                            <slot name="detalhes" :item="item" />
+                            <section class="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+                                <h2 class="text-base font-semibold text-gray-900">Descrição</h2>
+                                <p class="mt-2 max-w-prose whitespace-pre-line text-base leading-relaxed text-gray-700">{{ item.descricao || 'Sem descrição.' }}</p>
+                            </section>
+                        </template>
+                        <HistoricoAuditoria v-else-if="aba === 'historico'" :historico="historico" />
+                        <template v-for="extra in abas" :key="extra.key">
+                            <slot v-if="aba === extra.key" :name="`aba-${extra.key}`" :item="item" />
+                        </template>
+                    </div>
+                </div>
+            </template>
 
-            <HistoricoAuditoria :historico="historico" />
+            <template v-else>
+                <!-- Informações próprias do módulo (ex.: desconto, vínculos e prazo do cupom) -->
+                <slot name="detalhes" :item="item" />
+
+                <section class="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+                    <h2 class="text-base font-semibold text-gray-900">Descrição</h2>
+                    <p class="mt-2 max-w-prose whitespace-pre-line text-base leading-relaxed text-gray-700">{{ item.descricao || 'Sem descrição.' }}</p>
+                </section>
+
+                <HistoricoAuditoria :historico="historico" />
+            </template>
         </div>
 
         <ConfirmDeleteModal :show="!!pendente" :title="acaoPendente?.titulo"

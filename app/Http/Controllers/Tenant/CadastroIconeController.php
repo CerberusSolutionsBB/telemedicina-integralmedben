@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -46,10 +48,22 @@ abstract class CadastroIconeController extends Controller
     public function index(): Response
     {
         return Inertia::render("{$this->paginas}/Index", [
-            'itens' => $this->consultaLista()->get()
-                ->map(fn (Model $item) => $this->paraTela($item))
-                ->values(),
+            'itens' => $this->itens(),
         ]);
+    }
+
+    /**
+     * Itens da lista no formato das telas (também usado fora do módulo, ex.: aba
+     * Cupons de benefício da tela Relatório).
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function itens(): Collection
+    {
+        return $this->consultaLista()->get()
+            ->map(fn (Model $item) => $this->paraTela($item))
+            ->values()
+            ->toBase();
     }
 
     public function create(): Response
@@ -65,7 +79,13 @@ abstract class CadastroIconeController extends Controller
 
     public function store(): RedirectResponse
     {
-        $item = $this->model::create($this->dadosValidados());
+        $dados = $this->dadosValidados();
+        $item = DB::transaction(function () use ($dados) {
+            $item = $this->model::create($dados);
+            $this->salvarRelacoes($item, $dados);
+
+            return $item;
+        });
 
         return redirect()->route("{$this->rotas}.show", $item->getKey())->with('success', "{$this->singular} \"{$item->titulo}\" criado.");
     }
@@ -82,6 +102,7 @@ abstract class CadastroIconeController extends Controller
                 $this->camposHistorico(),
                 fn (string $campo, mixed $valor) => $this->valorHistorico($campo, $valor),
             ),
+            ...$this->extrasDetalhe($item),
             'breadcrumbs' => [
                 ['label' => $this->plural, 'href' => route("{$this->rotas}.index")],
                 ['label' => $item->titulo, 'href' => null],
@@ -107,7 +128,12 @@ abstract class CadastroIconeController extends Controller
     public function update(int $id): RedirectResponse
     {
         $item = $this->model::findOrFail($id);
-        $item->update($this->dadosValidados());
+        $dados = $this->dadosValidados();
+
+        DB::transaction(function () use ($item, $dados) {
+            $item->update($dados);
+            $this->salvarRelacoes($item, $dados);
+        });
 
         return redirect()->route("{$this->rotas}.show", $item->getKey())->with('success', "{$this->singular} \"{$item->titulo}\" atualizado.");
     }
@@ -145,6 +171,14 @@ abstract class CadastroIconeController extends Controller
     }
 
     /**
+     * Grava as relações do item (ex.: serviços de um processo), na mesma transação
+     * do create/update. Os dados validados de relação não estão no $fillable.
+     *
+     * @param  array<string, mixed>  $dados
+     */
+    protected function salvarRelacoes(Model $item, array $dados): void {}
+
+    /**
      * Item no formato das telas; módulos com campos extras acrescentam os seus.
      *
      * @return array<string, mixed>
@@ -152,6 +186,16 @@ abstract class CadastroIconeController extends Controller
     protected function paraTela(Model $item): array
     {
         return $this->cadastroService->paraTela($item);
+    }
+
+    /**
+     * Dados extras da tela de detalhe (ex.: usos de cupom do processo).
+     *
+     * @return array<string, mixed>
+     */
+    protected function extrasDetalhe(Model $item): array
+    {
+        return [];
     }
 
     /**
