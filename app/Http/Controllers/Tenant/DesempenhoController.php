@@ -8,6 +8,7 @@ use App\Models\Desempenho;
 use App\Models\User;
 use App\Services\Tenant\DesempenhoService;
 use App\Services\Tenant\ProducaoUsuariosService;
+use App\Support\ModulosParceiro;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,14 @@ class DesempenhoController extends Controller
             'desempenhos' => $desempenhos,
             'statusLabels' => DesempenhoService::STATUS,
             'relatorioOpcoes' => $this->producao->opcoes(tenant('id')),
+            // Aba "Cupons de benefício": só com o módulo ligado para o parceiro.
+            'cuponsBeneficio' => ModulosParceiro::habilitado(tenant('id'), 'cupons_beneficio')
+                ? app(CupomBeneficioController::class)->itens()
+                : null,
+            // Aba "Processos" (com prévia de cupom): só com o módulo ligado.
+            'processos' => ModulosParceiro::habilitado(tenant('id'), 'processos')
+                ? app(ProcessoController::class)->itens()
+                : null,
         ]);
     }
 

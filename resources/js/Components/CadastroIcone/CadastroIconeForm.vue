@@ -97,17 +97,20 @@ const input = (temErro) => [
             <SeletorIcone v-model="form.icone" :sugeridos="icones" :error="form.errors.icone" class="mt-5" />
         </section>
 
-        <section :class="card">
-            <div class="flex items-start justify-between gap-4">
-                <TituloSecao :numero="numeroIcone + 1" titulo="Status" :ajuda="`Só ${modulo.plural} ativos ficam disponíveis.`" />
-                <AppSwitch v-model="form.status" :sr-text="`${modulo.singular} ativo`" />
-            </div>
-            <p class="mt-3 flex items-center gap-2 text-sm font-medium"
-                :class="form.status ? 'text-green-700 dark:text-green-400' : 'text-gray-600'">
-                <component :is="form.status ? CheckCircle2 : CircleOff" class="h-4 w-4" aria-hidden="true" />
-                {{ form.status ? `Ativo: o ${modulo.singular} fica disponível.` : `Inativo: o ${modulo.singular} fica guardado, mas indisponível.` }}
-            </p>
-        </section>
+        <!-- Última seção: status (padrão) ou a do módulo (ex.: serviços do processo) -->
+        <slot name="status" :form="form" :numero="numeroIcone + 1">
+            <section :class="card">
+                <div class="flex items-start justify-between gap-4">
+                    <TituloSecao :numero="numeroIcone + 1" titulo="Status" :ajuda="`Só ${modulo.plural} ativos ficam disponíveis.`" />
+                    <AppSwitch v-model="form.status" :sr-text="`${modulo.singular} ativo`" />
+                </div>
+                <p class="mt-3 flex items-center gap-2 text-sm font-medium"
+                    :class="form.status ? 'text-green-700 dark:text-green-400' : 'text-gray-600'">
+                    <component :is="form.status ? CheckCircle2 : CircleOff" class="h-4 w-4" aria-hidden="true" />
+                    {{ form.status ? `Ativo: o ${modulo.singular} fica disponível.` : `Inativo: o ${modulo.singular} fica guardado, mas indisponível.` }}
+                </p>
+            </section>
+        </slot>
 
         <!-- Resumo do que foi preenchido, antes de salvar (opcional por módulo) -->
         <slot name="resumo" :form="form" />

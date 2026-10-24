@@ -20,6 +20,8 @@ class CadastroIconeService
         'updated' => 'Alterado',
         'deleted' => 'Excluído',
         'restored' => 'Restaurado',
+        // auditSync de uma relação (ex.: serviços do processo).
+        'sync' => 'Vínculos alterados',
     ];
 
     private const CAMPOS = [

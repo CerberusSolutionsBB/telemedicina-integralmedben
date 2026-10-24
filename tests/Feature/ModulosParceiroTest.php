@@ -29,7 +29,7 @@ class ModulosParceiroTest extends TestCase
 
     public function test_modulos_comecam_desligados_e_ligam_um_a_um(): void
     {
-        $this->assertSame(['servicos' => false, 'convenios' => false, 'cupons_beneficio' => false], ModulosParceiro::doTenant($this->tenant->id));
+        $this->assertSame(['servicos' => false, 'convenios' => false, 'cupons_beneficio' => false, 'processos' => false], ModulosParceiro::doTenant($this->tenant->id));
 
         ModulosParceiro::definir($this->tenant->id, 'convenios', true);
 

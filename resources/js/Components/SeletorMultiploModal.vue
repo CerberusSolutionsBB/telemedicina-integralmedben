@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
+import IconeLucide from "@/Components/Icone/IconeLucide.vue";
 import { Check, ChevronDown, Search, X } from "lucide-vue-next";
 
 /**
@@ -10,7 +11,7 @@ import { Check, ChevronDown, Search, X } from "lucide-vue-next";
  */
 const props = defineProps({
     id: { type: String, required: true },
-    // [{ value, label, hint? }]
+    // [{ value, label, hint?, icone? }]; com icone (lucide), a lista vira cards "ícone | título".
     items: { type: Array, default: () => [] },
     placeholder: { type: String, default: "Escolher" },
     titulo: { type: String, required: true },
@@ -20,6 +21,8 @@ const props = defineProps({
     // Texto do campo quando todos estão escolhidos (ex.: "Todos os planos").
     rotuloTodos: { type: String, default: "Todos" },
     error: { type: [String, Boolean], default: false },
+    // Confirmar sem nenhum item (escolha opcional, ex.: serviços do processo).
+    permiteVazio: { type: Boolean, default: false },
 });
 
 const selecionados = defineModel({ type: Array, default: () => [] });
@@ -36,6 +39,8 @@ const filtrados = computed(() => {
     const q = normalizar(termo.value);
     return props.items.filter((item) => !q || normalizar(`${item.label} ${item.hint ?? ""}`).includes(q));
 });
+
+const comIcones = computed(() => props.items.some((item) => item.icone));
 
 const marcado = (item) => marcados.value.some((v) => mesmo(v, item.value));
 const todosMarcados = computed(() => props.items.length > 0 && marcados.value.length === props.items.length);
@@ -56,7 +61,7 @@ watch(aberto, async (abriu) => {
 });
 
 const confirmar = () => {
-    if (!marcados.value.length) return;
+    if (!marcados.value.length && !props.permiteVazio) return;
     // Mantém a ordem da lista original.
     selecionados.value = props.items.filter((item) => marcado(item)).map((item) => item.value);
     aberto.value = false;
@@ -121,7 +126,25 @@ const textoCampo = computed(() => {
                 <div class="max-h-80 overflow-y-auto border-t border-gray-100" role="group" :aria-label="titulo">
                     <p v-if="!filtrados.length" class="py-10 text-center text-sm text-gray-600">{{ vazio }}</p>
 
-                    <button v-for="item in filtrados" :key="item.value" type="button" role="checkbox" :aria-checked="marcado(item)"
+                    <div v-else-if="comIcones" class="grid grid-cols-1 gap-2 p-3">
+                        <button v-for="item in filtrados" :key="item.value" type="button" role="checkbox" :aria-checked="marcado(item)"
+                            @click="alternar(item)"
+                            class="flex min-h-14 w-full items-center gap-3 rounded-xl border p-2.5 text-left text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 motion-reduce:transition-none"
+                            :class="marcado(item) ? 'border-cyan-500 bg-cyan-50 ring-1 ring-cyan-500' : 'border-gray-200 bg-white hover:bg-gray-50'">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg"
+                                :class="marcado(item) ? 'bg-white text-cyan-700' : 'bg-cyan-50 text-cyan-700'">
+                                <IconeLucide :nome="item.icone" class="h-5 w-5" />
+                            </span>
+                            <span class="min-w-0 flex-1 truncate border-l border-gray-200 pl-3" :class="marcado(item) ? 'font-semibold text-gray-900' : 'text-gray-800'">{{ item.label }}</span>
+                            <span v-if="item.hint" class="shrink-0 text-xs text-gray-600">{{ item.hint }}</span>
+                            <span class="grid h-5 w-5 shrink-0 place-items-center rounded border-2"
+                                :class="marcado(item) ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-gray-400 bg-white'" aria-hidden="true">
+                                <Check v-if="marcado(item)" class="h-3.5 w-3.5" />
+                            </span>
+                        </button>
+                    </div>
+
+                    <button v-for="item in filtrados" v-else :key="item.value" type="button" role="checkbox" :aria-checked="marcado(item)"
                         @click="alternar(item)"
                         class="flex min-h-11 w-full items-center gap-3 px-5 py-2.5 text-left text-sm transition-colors duration-150 hover:bg-gray-50 focus-visible:bg-cyan-50 focus-visible:outline-none motion-reduce:transition-none">
                         <span class="grid h-5 w-5 shrink-0 place-items-center rounded border-2"
@@ -133,13 +156,14 @@ const textoCampo = computed(() => {
                     </button>
                 </div>
 
-                <DialogFooter class="flex-col-reverse gap-2 border-t border-gray-100 p-4 sm:flex-row sm:justify-end">
+                <!-- Cancelar | Confirmar lado a lado, metade da largura cada -->
+                <DialogFooter class="grid grid-cols-2 gap-2 border-t border-gray-100 p-4">
                     <button type="button" @click="aberto = false"
-                        class="inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+                        class="inline-flex w-full min-h-11 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
                         Cancelar
                     </button>
-                    <button type="button" :disabled="!marcados.length" @click="confirmar"
-                        class="inline-flex min-h-11 items-center justify-center rounded-lg bg-cyan-600 px-4 text-sm font-semibold text-white hover:bg-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                    <button type="button" :disabled="!marcados.length && !permiteVazio" @click="confirmar"
+                        class="inline-flex w-full min-h-11 items-center justify-center rounded-lg bg-cyan-600 px-4 text-sm font-semibold text-white hover:bg-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
                         Confirmar{{ marcados.length ? ` (${marcados.length})` : '' }}
                     </button>
                 </DialogFooter>

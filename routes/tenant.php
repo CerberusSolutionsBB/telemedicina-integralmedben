@@ -13,6 +13,7 @@ use App\Http\Controllers\Tenant\Dashboard\DashboardController;
 use App\Http\Controllers\Tenant\DesempenhoController;
 use App\Http\Controllers\Tenant\Form\FormIndexController;
 use App\Http\Controllers\Tenant\Form\FormShowController;
+use App\Http\Controllers\Tenant\ProcessoController;
 use App\Http\Controllers\Tenant\Relatorio\RelatorioProducaoController;
 use App\Http\Controllers\Tenant\ServicoController;
 use App\Http\Controllers\Tenant\TenantAuthController;
@@ -97,6 +98,15 @@ Route::middleware([
             Route::resource('cupons-beneficio', CupomBeneficioController::class)->parameters(['cupons-beneficio' => 'id'])->whereNumber('id');
             Route::put('cupons-beneficio/{id}/status', [CupomBeneficioController::class, 'status'])->whereNumber('id')->name('cupons-beneficio.status');
             Route::get('cupons-beneficio/{id}/pdf', [CupomBeneficioController::class, 'pdf'])->whereNumber('id')->name('cupons-beneficio.pdf');
+        });
+
+        // Processos do parceiro (auditados).
+        Route::middleware('modulo:processos')->group(function () {
+            Route::resource('processos', ProcessoController::class)->parameters(['processos' => 'id'])->whereNumber('id');
+            Route::put('processos/{id}/status', [ProcessoController::class, 'status'])->whereNumber('id')->name('processos.status');
+            // Prévia de cupom de benefício no processo (aba Processos do Relatório).
+            Route::post('processos/{id}/cupom', [ProcessoController::class, 'cupom'])->whereNumber('id')->middleware('throttle:20,1')->name('processos.cupom');
+            Route::post('processos/{id}/cupom/usar', [ProcessoController::class, 'usarCupom'])->whereNumber('id')->middleware('throttle:20,1')->name('processos.cupom.usar');
         });
 
         // Cupons do próprio parceiro: só com teto de desconto definido pelo admin (checado no controller).

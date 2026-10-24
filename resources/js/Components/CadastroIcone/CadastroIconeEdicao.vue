@@ -43,6 +43,7 @@ const cancelar = computed(() => (props.item ? route(rotaDe(props.modulo, "show")
         <CadastroIconeForm :modulo="modulo" :form="form" :icones="icones" :limites="limites" :cancelar-href="cancelar"
             :rotulo-salvar="item ? 'Salvar alterações' : `Criar ${modulo.singular}`" @submit="salvar">
             <template v-if="$slots.campos" #campos="escopo"><slot name="campos" v-bind="escopo" /></template>
+            <template v-if="$slots.status" #status="escopo"><slot name="status" v-bind="escopo" /></template>
             <template v-if="$slots.resumo" #resumo="escopo"><slot name="resumo" v-bind="escopo" /></template>
         </CadastroIconeForm>
     </TenantAdminLayout>

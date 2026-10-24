@@ -53,6 +53,40 @@ export const CUPONS_BENEFICIO = {
     }),
 }
 
+/** 0 -> "Sem serviços", 1 -> "1 serviço", 2 -> "2 serviços". */
+const quantidadeServicos = (total) => (total ? `${total} ${total === 1 ? 'serviço' : 'serviços'}` : 'Sem serviços')
+
+export const PROCESSOS = {
+    rota: 'processos',
+    singular: 'processo',
+    plural: 'processos',
+    titulo: 'Processos',
+    novo: 'Novo processo',
+    descricaoLista: 'Processos do parceiro. Toda alteração fica registrada no histórico.',
+    exemploTitulo: 'Ex.: Abertura de prontuário',
+    exemploDescricao: 'Ex.: Etapas e documentos necessários para abrir o prontuário do beneficiário.',
+    // Lista sem a coluna "Detalhes" (descrição fica no detalhe)...
+    semDetalhes: true,
+    // ...e com colunas próprias entre o título e o status.
+    colunas: [
+        { titulo: 'Valor', valor: (item) => item.valor_formatado, classe: 'text-right tabular-nums' },
+        {
+            titulo: 'Qtd. de serviços',
+            valor: (item) => item.servicos?.length ?? 0,
+            // No cartão do celular: "2 serviços".
+            texto: (item) => quantidadeServicos(item.servicos?.length ?? 0),
+            classe: 'text-center tabular-nums',
+        },
+    ],
+    // Seção do formulário além de "Dados" e "Ícone" (Valor); Serviços fica no lugar de "Status".
+    secoesExtras: 1,
+    // Campos além de título, descrição, ícone e status.
+    valoresIniciais: (item) => ({
+        valor: item?.valor ?? '',
+        servicos: item?.servicos?.map((servico) => servico.id) ?? [],
+    }),
+}
+
 /** Nome da rota do módulo (ex.: rotaDe(SERVICOS, 'show') -> 'servicos.show'). */
 export const rotaDe = (modulo, acao) => `${modulo.rota}.${acao}`
 
