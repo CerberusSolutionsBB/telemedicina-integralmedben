@@ -39,7 +39,7 @@ const breadcrumbItems = computed(() => [
         </div>
 
         <PatientForm :form="form" :planos="planos" :vendedores="vendedores" :tipos-familiares="tiposFamiliares" :limites="limites" :cancelar-href="route('patients.index')"
-            rotulo-salvar="Cadastrar beneficiário" @submit="salvar" />
+            rotulo-salvar="Cadastrar beneficiário" mostrar-opcao-sms @submit="salvar" />
 
         <SairSemSalvarDialog v-model:open="confirmarSaida" @ficar="ficar" @sair="sair" />
     </TenantAdminLayout>

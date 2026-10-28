@@ -27,7 +27,7 @@ export function usePatientForm({ patient = null, familiares = [] } = {}) {
         // Vendedor/indicado por: quem recebe a comissão da venda do plano.
         // No cadastro começa vazio: o vendedor é sempre escolhido.
         user_id: patient?.user_id ?? null,
-        ...(isEdit ? { status: Boolean(patient.status) } : {}),
+        ...(isEdit ? { status: Boolean(patient.status) } : { enviar_sms: false }),
         enderecos,
         cod_plano: '',
         // Cupom de desconto da venda do plano (opcional).

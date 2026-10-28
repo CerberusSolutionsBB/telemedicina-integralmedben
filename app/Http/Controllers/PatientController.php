@@ -9,6 +9,7 @@ use App\Http\Services\Patient\PatientCardPdfService;
 use App\Http\Services\Patient\PatientFiltros;
 use App\Http\Services\Patient\PatientService;
 use App\Http\Services\Patient\PatientsReportPdfService;
+use App\Http\Services\Sms\PatientRegistrationSmsService;
 use App\Http\Services\Sms\ResendSmsService;
 use App\Models\Patient;
 use App\Models\SmsLogs;
@@ -29,6 +30,7 @@ class PatientController extends Controller
     public function __construct(
         private PatientService $patientService,
         private ResendSmsService $resendSmsService,
+        private PatientRegistrationSmsService $patientRegistrationSmsService,
         private PatientsReportPdfService $patientsReportPdfService,
         private PatientCardPdfService $patientCardPdfService,
         private PacientePlanoService $pacientePlanoService,
@@ -93,7 +95,14 @@ class PatientController extends Controller
         $patient = $this->patientService->store($data);
         $removidos = $this->salvarFamiliares($patient, $codPlano, $data);
 
-        return $this->redirectAfterPlano($patient, $codPlano, 'Paciente cadastrado com sucesso.', $removidos, $data['cupom'] ?? null);
+        return $this->redirectAfterPlano(
+            $patient,
+            $codPlano,
+            'Paciente cadastrado com sucesso.',
+            $removidos,
+            $data['cupom'] ?? null,
+            (bool) ($data['enviar_sms'] ?? false),
+        );
     }
 
     public function edit(Patient $patient)
@@ -167,13 +176,15 @@ class PatientController extends Controller
 
     /**
      * Registra o plano (SIPROV + telemedicina), envia os dependentes do plano
-     * familiar e redireciona. Se a SIPROV falhar, o paciente continua salvo e o
-     * erro é exibido junto da mensagem de sucesso.
+     * familiar, o SMS de confirmação (quando marcado) e redireciona. Se a
+     * SIPROV falhar, o paciente continua salvo e o erro é exibido junto da
+     * mensagem de sucesso.
      *
      * @param  array<int, int>|null  $removidos  null quando o plano não é familiar
      * @param  string|null  $cupom  código do cupom de desconto aplicado na venda
+     * @param  bool  $enviarSms  opção marcada no cadastro ("Novo beneficiário")
      */
-    private function redirectAfterPlano(Patient $patient, ?string $codPlano, string $success, ?array $removidos = null, ?string $cupom = null)
+    private function redirectAfterPlano(Patient $patient, ?string $codPlano, string $success, ?array $removidos = null, ?string $cupom = null, bool $enviarSms = false)
     {
         $redirect = redirect()->route('patients.index')->with('success', $success);
 
@@ -184,6 +195,15 @@ class PatientController extends Controller
         // Dependentes vão para o benefício do titular, então só depois do registro do plano.
         if ($removidos !== null && $erro = $this->pacienteDependentesSiprovService->enviar(tenant('id'), $patient, $removidos)) {
             return $redirect->with('error', 'Os dependentes foram salvos, mas não foram enviados à SIPROV. Detalhe: '.$erro);
+        }
+
+        // Confirmação do cadastro por SMS: só depois do plano registrado com sucesso.
+        if ($enviarSms) {
+            $sms = $this->patientRegistrationSmsService->execute($patient, tenant('id'), $codPlano);
+
+            if (! $sms['sent']) {
+                return $redirect->with('error', 'Beneficiário cadastrado, mas o SMS não foi enviado. Detalhe: '.($sms['error'] ?? 'erro desconhecido'));
+            }
         }
 
         return $redirect;
