@@ -1,7 +1,8 @@
 {{--
     Voucher de cupom (cupom de venda e cupom de benefício). Recebe os textos prontos:
     $rotulo, $titulo, $desconto, $textoDesconto, $codigo, $validade, $condicoes (lista),
-    $comoUsar (lista; ":codigo" vira o código em negrito), $aviso (ou null), $logoBase64.
+    $comoUsar (lista; ":codigo" vira o código em negrito), $aviso (ou null),
+    $logoBase64 (logomarca da página do parceiro tenant).
 --}}
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -55,7 +56,7 @@
             <table>
                 <tr>
                     @if ($logoBase64)
-                        <td class="logo"><div class="logo-box"><img src="{{ $logoBase64 }}" alt=""></div></td>
+                        <td class="logo"><div class="logo-box"><img src="{{ $logoBase64 }}" alt="Logomarca do parceiro"></div></td>
                     @endif
                     <td>
                         <div class="rotulo">{{ $rotulo }}</div>
