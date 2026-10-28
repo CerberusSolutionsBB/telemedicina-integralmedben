@@ -3,6 +3,7 @@
 namespace App\Services\Cupom;
 
 use App\Models\Cupom;
+use App\Models\Tenant;
 use App\Support\Formatar;
 use App\Support\Planos;
 use App\Support\RodapePdf;
@@ -59,7 +60,7 @@ class CupomPdfService
             'textoDesconto' => $cupom->texto_desconto ?: Cupom::TEXTO_DESCONTO_PADRAO,
             'validade' => $this->validade($cupom),
             'condicoes' => $this->condicoes($cupom),
-            'logoBase64' => $this->logo($tenant?->photo_path),
+            'logoBase64' => $this->logo($tenant),
         ];
     }
 
@@ -99,15 +100,21 @@ class CupomPdfService
         ]));
     }
 
-    private function logo(?string $caminhoRelativo): ?string
+    private function logo(?Tenant $tenant): ?string
     {
-        if (! $caminhoRelativo) {
+        if (! $tenant) {
             return null;
         }
 
-        $caminho = base_path('storage/app/public/'.$caminhoRelativo);
+        // Logomarca da página do parceiro (Página › configuração › logo).
+        $caminho = $tenant->caminhoArquivoLogo();
 
-        return file_exists($caminho)
+        // Compatibilidade: parceiros antigos usavam a foto do cadastro (photo_path).
+        if (! $caminho && $tenant->photo_path) {
+            $caminho = base_path('storage/app/public/'.$tenant->photo_path);
+        }
+
+        return $caminho && is_file($caminho)
             ? 'data:'.mime_content_type($caminho).';base64,'.base64_encode(file_get_contents($caminho))
             : null;
     }

@@ -13,6 +13,7 @@ use App\Models\CupomBeneficio;
 use App\Models\Processo;
 use App\Models\Servico;
 use App\Models\Tenant;
+use App\Models\TenantsDetail;
 use App\Models\User;
 use App\Services\Tenant\CadastroIconeService;
 use App\Services\Tenant\CupomBeneficioPdfService;
@@ -24,6 +25,7 @@ use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -191,6 +193,23 @@ class CadastroIconeTest extends TestCase
 
         $cupom->update(['prazo' => '2026-10-01']);
         $this->assertStringContainsString('venceu em 01/10/2026', app(CupomBeneficioPdfService::class)->dados($cupom->fresh(), 'parceiro-pdf')['aviso']);
+    }
+
+    public function test_pdf_do_cupom_de_beneficio_usa_a_logomarca_da_pagina_do_parceiro(): void
+    {
+        Storage::fake('tenants');
+        Tenant::withoutEvents(fn () => Tenant::create(['id' => 'parceiro-logo', 'name' => 'Clínica Vida']));
+        TenantsDetail::create(['tenant_id' => 'parceiro-logo', 'logo' => 'logo_parceiro.png']);
+        Storage::disk('tenants')->put('logo_parceiro.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='));
+
+        $cupom = CupomBeneficio::create([
+            'codigo' => 'LOGO15', 'titulo' => 'Desconto', 'icone' => 'Pill', 'status' => true,
+            'tipo_desconto' => 'percentual', 'valor_desconto' => 15,
+        ]);
+
+        $logo = app(CupomBeneficioPdfService::class)->dados($cupom, 'parceiro-logo')['logoBase64'];
+
+        $this->assertStringStartsWith('data:image/png;base64,', $logo);
     }
 
     public function test_cupom_vencido_e_desconto_formatado(): void

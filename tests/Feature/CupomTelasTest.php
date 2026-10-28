@@ -15,6 +15,7 @@ use App\Services\Cupom\CupomPdfService;
 use App\Services\Siprov\SiprovIntegrationService;
 use App\Services\Tenant\TenantPlanoCotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -104,6 +105,20 @@ class CupomTelasTest extends TestCase
         $this->actingAs($user)->delete(route('financeiro.cupons.destroy', $usado))->assertSessionHas('error');
 
         $this->assertSame(['JAUSADO'], Cupom::pluck('codigo')->all());
+    }
+
+    public function test_pdf_usa_a_logomarca_da_pagina_do_parceiro(): void
+    {
+        Storage::fake('tenants');
+        TenantsDetail::where('tenant_id', $this->tenant->id)->update(['logo' => 'logo_parceiro.png']);
+        Storage::disk('tenants')->put('logo_parceiro.png', $this->png());
+
+        $cupom = Cupom::create([...$this->dados(['codigo' => 'LOGO10', 'tenant_id' => $this->tenant->id, 'status' => Cupom::STATUS_ATIVO]),
+            'inicio_em' => now()->subDay(), 'expira_em' => now()->addDay()]);
+
+        $logo = app(CupomPdfService::class)->dados($cupom)['logoBase64'];
+
+        $this->assertStringStartsWith('data:image/png;base64,', $logo);
     }
 
     public function test_gera_o_pdf_do_cupom(): void
@@ -228,5 +243,10 @@ class CupomTelasTest extends TestCase
         }
 
         return tap(User::factory()->create())->givePermissionTo($permissoes);
+    }
+
+    private function png(): string
+    {
+        return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
     }
 }
