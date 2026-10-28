@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\PatientSexoEnum;
 use App\Models\Patient;
+use App\Rules\TelefoneBrasileiro;
 use App\Services\Tenant\PacientePlanoService;
 use App\Support\Planos;
 use Illuminate\Foundation\Http\FormRequest;
@@ -41,7 +42,26 @@ class StorePatientRequest extends FormRequest
             'data_nascimento' => ['required', 'date', 'before_or_equal:today'],
             'sexo' => ['nullable', 'string', Rule::enum(PatientSexoEnum::class)],
             'email' => ['nullable', 'email', 'max:'.self::LIMITES['email']],
-            'numero' => 'nullable|string|max:20',
+            'numero' => [
+                'nullable',
+                'string',
+                'max:20',
+                // Marcou o envio: o celular passa a ser obrigatório e validado.
+                Rule::requiredIf(fn () => $this->deveEnviarSms()),
+                Rule::when($this->deveEnviarSms(), [
+                    new TelefoneBrasileiro,
+                    // SMS só chega em celular (11 dígitos, com o 9 após o DDD).
+                    function (string $attribute, mixed $value, \Closure $fail) {
+                        $digitos = self::digitos($value);
+
+                        if (strlen($digitos) !== 11 || $digitos[2] !== '9') {
+                            $fail('Informe um celular válido para receber o SMS.');
+                        }
+                    },
+                ]),
+            ],
+            // Opção do cadastro: enviar SMS de confirmação para o celular informado.
+            'enviar_sms' => 'nullable|boolean',
             'enderecos' => 'nullable|array',
             'enderecos.cep' => 'nullable|string|max:9',
             'enderecos.logradouro' => 'nullable|string|max:'.self::LIMITES['logradouro'],
@@ -106,6 +126,7 @@ class StorePatientRequest extends FormRequest
             'nome.required' => 'O nome do paciente é obrigatório.',
             'sexo.in' => 'O sexo deve ser masculino ou feminino.',
             'email.email' => 'Informe um e-mail válido.',
+            'numero.required' => 'Informe o celular do beneficiário para enviar o SMS.',
             'cpf.required_with' => 'Informe o CPF para vincular o paciente a um plano.',
             'data_nascimento.required' => 'Informe a data de nascimento.',
             'data_nascimento.date' => 'Informe uma data de nascimento válida.',
@@ -128,6 +149,14 @@ class StorePatientRequest extends FormRequest
     private static function digitos(mixed $valor): string
     {
         return preg_replace('/\D/', '', (string) $valor);
+    }
+
+    /**
+     * Opção do cadastro manual (POST): no Edit o campo não é exibido nem enviado.
+     */
+    private function deveEnviarSms(): bool
+    {
+        return $this->isMethod('POST') && $this->boolean('enviar_sms');
     }
 
     /**

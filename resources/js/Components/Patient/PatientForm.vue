@@ -1,4 +1,5 @@
 <script setup>
+import { watch } from "vue";
 import { Link } from "@inertiajs/vue3";
 import AppSwitch from "@/Components/ui/switch/Switch.vue";
 import PatientPlanoSelect from "@/Components/PatientPlanoSelect.vue";
@@ -29,6 +30,8 @@ const props = defineProps({
     limites: { type: Object, default: () => ({}) },
     cancelarHref: { type: String, required: true },
     rotuloSalvar: { type: String, default: "Salvar" },
+    // Novo beneficiário: opção de enviar SMS de confirmação para o celular.
+    mostrarOpcaoSms: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["submit"]);
@@ -38,6 +41,11 @@ const isEdit = form.status !== undefined;
 const { podeAlterarStatus } = usePermissoesBeneficiario();
 // Plano obrigatório (exceto quem já tem vínculo); o CPF segue o plano.
 const exigePlano = !props.planoAtual;
+
+// Sem celular não há como enviar o SMS: desmarca a opção.
+watch(() => form.numero, (numero) => {
+    if (props.mostrarOpcaoSms && !numero) form.enviar_sms = false;
+});
 
 const { avisoCpf, avisoEmail } = useCamposPaciente(form);
 
@@ -142,6 +150,19 @@ const input = (erro) => [
                         <p v-if="form.errors.numero" class="text-sm text-red-600">{{ form.errors.numero }}</p>
                         <ContadorCaracteres :valor="form.numero" :limite="MASCARAS.celular" />
                     </div>
+
+                    <!-- Opção do cadastro: só envia se marcar e houver celular. -->
+                    <label v-if="mostrarOpcaoSms" class="mt-2 flex items-start gap-2 text-sm"
+                        :class="form.numero ? 'cursor-pointer text-gray-700' : 'cursor-not-allowed text-gray-400'">
+                        <input id="enviar_sms" v-model="form.enviar_sms" type="checkbox" :disabled="!form.numero"
+                            class="mt-0.5 h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 disabled:cursor-not-allowed" />
+                        <span>
+                            Deseja enviar SMS para este número?
+                            <span class="block text-xs" :class="form.numero ? 'text-gray-500' : 'text-gray-400'">
+                                O beneficiário recebe a confirmação do cadastro por SMS.
+                            </span>
+                        </span>
+                    </label>
                 </div>
             </div>
         </section>
