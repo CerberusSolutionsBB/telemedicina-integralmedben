@@ -176,7 +176,7 @@ class CadastroIconeTest extends TestCase
     {
         Carbon::setTestNow('2026-10-16 12:00:00');
         Tenant::withoutEvents(fn () => Tenant::create(['id' => 'parceiro-pdf', 'name' => 'Clínica Vida']));
-        $convenio = Convenio::create(['titulo' => 'Farmácia Bem Estar', 'icone' => 'Pill', 'status' => true]);
+        $convenio = Convenio::create(['titulo' => 'Farmácia Bem Estar', 'descricao' => 'Rua A, 10 · seg a sex', 'icone' => 'Pill', 'status' => true]);
         $cupom = CupomBeneficio::create([
             'codigo' => 'FARMA15', 'titulo' => '15% na farmácia', 'icone' => 'Pill', 'status' => true,
             'descricao' => "Apresente o cartão no caixa.\nNão vale para manipulados.",
@@ -190,6 +190,9 @@ class CadastroIconeTest extends TestCase
         $this->assertSame(['Válido para beneficiários do plano Clínica Familiar.', 'Apresente o cartão no caixa.', 'Não vale para manipulados.'], $dados['condicoes']);
         $this->assertStringContainsString(':codigo em Farmácia Bem Estar', $dados['comoUsar'][0]);
         $this->assertNull($dados['aviso']);
+        $this->assertSame(['15% na farmácia', 'Desconto percentual'], [$dados['nome'], $dados['tipoDesconto']]);
+        $this->assertSame(['Validade' => 'Até 31/12/2026', 'Plano' => 'Clínica Familiar', 'Situação' => 'Ativo'], $dados['infos']);
+        $this->assertSame([['tipo' => 'Convênio', 'titulo' => 'Farmácia Bem Estar', 'descricao' => 'Rua A, 10 · seg a sex']], $dados['locais']);
 
         $cupom->update(['prazo' => '2026-10-01']);
         $this->assertStringContainsString('venceu em 01/10/2026', app(CupomBeneficioPdfService::class)->dados($cupom->fresh(), 'parceiro-pdf')['aviso']);
