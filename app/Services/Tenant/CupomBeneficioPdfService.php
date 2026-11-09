@@ -38,7 +38,7 @@ class CupomBeneficioPdfService
      */
     public function dados(CupomBeneficio $cupom, string $tenantId): array
     {
-        $cupom->loadMissing(['convenio:id,titulo', 'servico:id,titulo']);
+        $cupom->loadMissing(['convenio:id,titulo,descricao', 'servico:id,titulo,descricao']);
         $tenant = Tenant::with('details')->find($tenantId);
         $parceiro = $tenant ? ($tenant->name ?: ($tenant->details->first()?->descricao ?? $tenant->id)) : $tenantId;
         $onde = collect([$cupom->convenio?->titulo, $cupom->servico?->titulo])->filter()->implode(' e em ');
@@ -56,9 +56,40 @@ class CupomBeneficioPdfService
                 'Diga que é beneficiário '.$parceiro.'.',
                 'O desconto é aplicado na hora do atendimento ou da compra.',
             ],
+            'nome' => $cupom->titulo,
+            'tipoDesconto' => $cupom->tipo_desconto === CupomBeneficio::TIPO_VALOR_FIXO ? 'Desconto em reais' : 'Desconto percentual',
+            'infos' => [
+                'Validade' => $cupom->prazo ? 'Até '.Formatar::data($cupom->prazo) : 'Sem prazo de validade',
+                'Plano' => $this->plano($cupom) ?? 'Todos os planos',
+                'Situação' => match (true) {
+                    ! $cupom->status => 'Inativo',
+                    $cupom->vencido() => 'Vencido',
+                    default => 'Ativo',
+                },
+            ],
+            'locais' => $this->locais($cupom),
             'aviso' => $this->aviso($cupom),
             'logoBase64' => $this->logo($tenant),
         ];
+    }
+
+    /**
+     * Convênio e serviço onde o cupom vale, com a descrição cadastrada de cada um.
+     *
+     * @return array<int, array{tipo: string, titulo: string, descricao: ?string}>
+     */
+    private function locais(CupomBeneficio $cupom): array
+    {
+        return collect(['Convênio' => $cupom->convenio, 'Serviço' => $cupom->servico])
+            ->filter()
+            ->map(fn ($item, $tipo) => ['tipo' => $tipo, 'titulo' => $item->titulo, 'descricao' => filled($item->descricao) ? trim($item->descricao) : null])
+            ->values()
+            ->all();
+    }
+
+    private function plano(CupomBeneficio $cupom): ?string
+    {
+        return $cupom->cod_plano ? (collect(Planos::options())->pluck('label', 'value')[$cupom->cod_plano] ?? $cupom->cod_plano) : null;
     }
 
     /**
@@ -66,7 +97,7 @@ class CupomBeneficioPdfService
      */
     private function condicoes(CupomBeneficio $cupom): array
     {
-        $plano = $cupom->cod_plano ? (collect(Planos::options())->pluck('label', 'value')[$cupom->cod_plano] ?? null) : null;
+        $plano = $this->plano($cupom);
 
         return array_values(array_filter([
             $plano ? "Válido para beneficiários do plano {$plano}." : 'Válido para beneficiários de qualquer plano.',
